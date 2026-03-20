@@ -3,7 +3,7 @@
   "id": "viscord",
   "version": "${version}",
   "name": "Viscord",
-  "description": "This is an example description! Tell everyone what your mod is about!",
+  "description": "A standalone Discord integration for Minecraft servers, porting the Discord capabilities from VonixCore.",
   "authors": [
     "Me!"
   ],

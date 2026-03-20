@@ -9,7 +9,7 @@ version = "${version}"
 displayName = "Viscord"
 authors = "Me!"
 description = '''
-This is an example description! Tell everyone what your mod is about!
+A standalone Discord integration for Minecraft servers, porting the Discord capabilities from VonixCore.
 '''
 #logoFile = ""
 

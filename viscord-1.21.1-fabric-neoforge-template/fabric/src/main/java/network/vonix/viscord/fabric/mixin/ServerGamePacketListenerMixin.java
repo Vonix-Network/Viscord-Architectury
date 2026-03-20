@@ -22,7 +22,7 @@ public abstract class ServerGamePacketListenerMixin {
     public ServerPlayer player;
 
     @Inject(method = "broadcastChatMessage", at = @At("HEAD"))
-    private void vonixcore$onBroadcastChatMessage(PlayerChatMessage message, CallbackInfo ci) {
+    private void viscord$onBroadcastChatMessage(PlayerChatMessage message, CallbackInfo ci) {
         try {
             String rawMessage = message.signedContent();
 

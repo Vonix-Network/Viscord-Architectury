@@ -22,7 +22,7 @@ public abstract class ServerGamePacketListenerMixin {
     public ServerPlayer player;
 
     @Inject(method = "handleChat(Lnet/minecraft/network/protocol/game/ServerboundChatPacket;)V", at = @At("HEAD"))
-    private void vonixcore$onHandleChat(ServerboundChatPacket packet, CallbackInfo ci) {
+    private void viscord$onHandleChat(ServerboundChatPacket packet, CallbackInfo ci) {
         try {
             String rawMessage = packet.getMessage();
 

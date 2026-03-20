@@ -30,7 +30,7 @@ public abstract class PlayerAdvancementsMixin {
      * Targets the award method which is called when a player earns an advancement.
      */
     @Inject(method = "award", at = @At("RETURN"))
-    private void vonixcore$onAdvancementAward(AdvancementHolder advancementHolder, String criterionName,
+    private void viscord$onAdvancementAward(AdvancementHolder advancementHolder, String criterionName,
             CallbackInfoReturnable<Boolean> cir) {
         // Only process if the advancement was actually awarded (returned true)
         if (!cir.getReturnValue()) {

@@ -18,7 +18,7 @@ public abstract class ServerGamePacketListenerMixin {
     @Shadow public ServerPlayer player;
 
     @Inject(method = "handleChat", at = @At("HEAD"))
-    private void vonixcore$onHandleChat(ServerboundChatPacket packet, CallbackInfo ci) {
+    private void viscord$onHandleChat(ServerboundChatPacket packet, CallbackInfo ci) {
         try {
             String rawMessage = packet.message();
             if (DiscordManager.getInstance().isRunning()) {
