@@ -1,0 +1,9 @@
+build/
+.gradle/
+.idea/
+.vscode/
+*.jar
+Releases/
+node_modules/
+.DS_Store
+*.log

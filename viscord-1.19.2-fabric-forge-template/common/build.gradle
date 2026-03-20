@@ -1,0 +1,44 @@
+architectury {
+    common rootProject.enabled_platforms.split(',')
+}
+
+dependencies {
+    // We depend on Fabric Loader here to use the Fabric @Environment annotations,
+    // which get remapped to the correct annotations on each platform.
+    // Do NOT use other classes from Fabric Loader.
+    modImplementation "net.fabricmc:fabric-loader:$rootProject.fabric_loader_version"
+
+    // Architectury API. This is optional, and you can comment it out if you don't need it.
+    modImplementation "dev.architectury:architectury:$rootProject.architectury_api_version"
+
+    // Discord Integration Dependencies
+    implementation('org.javacord:javacord:3.8.0') {
+        exclude group: 'org.apache.logging.log4j', module: 'log4j-api'
+        exclude group: 'org.slf4j', module: 'slf4j-api'
+    }
+
+    // OkHttp
+    implementation 'com.squareup.okhttp3:okhttp:4.12.0'
+    implementation 'com.squareup.okio:okio-jvm:3.9.0'
+    implementation 'com.squareup.okio:okio:3.9.0'
+
+    // Kotlin stdlib (compileOnly as it's usually provided)
+    compileOnly 'org.jetbrains.kotlin:kotlin-stdlib:1.9.22'
+    compileOnly 'org.jetbrains.kotlin:kotlin-stdlib-jdk8:1.9.22'
+
+    // Jackson
+    implementation 'com.fasterxml.jackson.core:jackson-databind:2.17.0'
+    implementation 'com.fasterxml.jackson.core:jackson-core:2.17.0'
+    implementation 'com.fasterxml.jackson.core:jackson-annotations:2.17.0'
+
+    // Javacord transitive
+    implementation 'io.vavr:vavr:0.10.4'
+    implementation 'com.neovisionaries:nv-websocket-client:2.14'
+
+    // Crypto
+    implementation 'com.codahale:xsalsa20poly1305:0.11.0'
+    implementation 'org.bouncycastle:bcprov-jdk18on:1.78.1'
+
+    // LuckPerms API
+    compileOnly 'net.luckperms:api:5.4'
+}
