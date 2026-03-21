@@ -7,7 +7,7 @@ import net.minecraft.network.chat.Component;
 import net.minecraft.network.chat.HoverEvent;
 import net.minecraft.network.chat.MutableComponent;
 import net.minecraft.network.chat.Style;
-import net.minecraft.network.chat.TextColor;
+import net.minecraft.network.chat.TextComponent;
 import net.minecraft.server.MinecraftServer;
 import net.minecraft.server.level.ServerPlayer;
 import network.vonix.viscord.Viscord;
@@ -581,7 +581,7 @@ public class DiscordManager {
 
         // Regular message processing
         if (server != null) {
-            MutableComponent finalComponent = Component.empty();
+            MutableComponent finalComponent = new TextComponent("");
 
             if (isWebhook) {
                 // Cross-server webhook: special formatting WITHOUT [Discord] prefix
@@ -640,12 +640,12 @@ public class DiscordManager {
                     }
 
                     // Clickable [Discord] with aqua color
-                    finalComponent.append(Component.literal("[Discord]")
+                    finalComponent.append(new TextComponent("[Discord]")
                             .setStyle(Style.EMPTY
                                     .withColor(ChatFormatting.AQUA)
                                     .withClickEvent(new ClickEvent(ClickEvent.Action.OPEN_URL, inviteUrl))
                                     .withHoverEvent(new HoverEvent(HoverEvent.Action.SHOW_TEXT,
-                                            Component.literal("Click to join our Discord!")))));
+                                            new TextComponent("Click to join our Discord!")))));
 
                     // Part after [Discord]
                     if (parts.length > 1 && !parts[1].isEmpty()) {
@@ -850,11 +850,11 @@ public class DiscordManager {
      */
     private Component toMinecraftComponentWithLinks(String text) {
         if (text == null || text.isEmpty()) {
-            return Component.empty();
+            return new TextComponent("");
         }
 
         Matcher matcher = DISCORD_MARKDOWN_LINK.matcher(text);
-        MutableComponent result = Component.empty();
+        MutableComponent result = new TextComponent("");
         int lastEnd = 0;
         boolean hasLink = false;
 
@@ -865,14 +865,14 @@ public class DiscordManager {
             if (start > lastEnd) {
                 String before = text.substring(lastEnd, start);
                 if (!before.isEmpty()) {
-                    result.append(Component.literal(before));
+                    result.append(new TextComponent(before));
                 }
             }
 
             String label = matcher.group(1);
             String url = matcher.group(2);
 
-            Component linkComponent = Component.literal(label)
+            Component linkComponent = new TextComponent(label)
                     .withStyle(style -> style
                             .withClickEvent(new ClickEvent(ClickEvent.Action.OPEN_URL, url))
                             .withUnderlined(true)
@@ -886,12 +886,12 @@ public class DiscordManager {
         if (lastEnd < text.length()) {
             String tail = text.substring(lastEnd);
             if (!tail.isEmpty()) {
-                result.append(Component.literal(tail));
+                result.append(new TextComponent(tail));
             }
         }
 
         if (!hasLink) {
-            return Component.literal(text);
+            return new TextComponent(text);
         }
 
         return result;
@@ -906,7 +906,7 @@ public class DiscordManager {
         
         for (ServerPlayer player : server.getPlayerList().getPlayers()) {
             if (!hasServerMessagesFiltered(player.getUUID())) {
-                player.sendSystemMessage(message, false);
+                player.sendMessage(message, player.getUUID());
             }
         }
     }
@@ -920,7 +920,7 @@ public class DiscordManager {
         
         for (ServerPlayer player : server.getPlayerList().getPlayers()) {
             if (!hasEventsFiltered(player.getUUID())) {
-                player.sendSystemMessage(message, false);
+                player.sendMessage(message, player.getUUID());
             }
         }
     }
@@ -934,7 +934,7 @@ public class DiscordManager {
         
         for (ServerPlayer player : server.getPlayerList().getPlayers()) {
             if (!hasServerSystemMessagesFiltered(player.getUUID())) {
-                player.sendSystemMessage(message, false);
+                player.sendMessage(message, player.getUUID());
             }
         }
     }
