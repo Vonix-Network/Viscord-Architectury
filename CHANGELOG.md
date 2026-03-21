@@ -7,6 +7,20 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [2.4.1] - 2026-03-21
+
+### 🔗 Account Linking System
+- **Full /link Command Implementation** - Complete Discord-Minecraft account linking
+  - Discord-side: `/link <code>` command for verification
+  - Minecraft-side: `/viscord discord link` for code generation
+  - 6-digit unique codes with configurable expiry time
+  - Double-link prevention (MC & Discord accounts)
+  - JSON persistence with automatic cleanup
+  - Full error handling and user feedback
+- **Link Management** - `/viscord discord unlink` command
+- **Account Security** - Prevents multiple links per account
+- **Data Persistence** - Links stored in `viscord-links.json`
+
 ## [2.4.0] - 2026-03-21
 
 ### ⚠️ Compatibility Notes
