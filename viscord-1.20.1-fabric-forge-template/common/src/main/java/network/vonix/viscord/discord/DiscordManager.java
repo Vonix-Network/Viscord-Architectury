@@ -352,6 +352,12 @@ public class DiscordManager {
             return;
         }
 
+        // Handle /link command for account linking
+        if (message.getContent().startsWith("/link ")) {
+            handleLinkCommand(event);
+            return;
+        }
+
         // If it's an event channel message, check if we should show other server events
         if (isEventChannel && !ViscordConfig.CONFIG.showOtherServerEvents.get()) {
             return;
@@ -1289,6 +1295,44 @@ public class DiscordManager {
 
         } catch (Exception e) {
             Viscord.LOGGER.error("[Discord] Error handling !list command", e);
+        }
+    }
+
+    private void handleLinkCommand(org.javacord.api.event.message.MessageCreateEvent event) {
+        try {
+            if (!ViscordConfig.CONFIG.enableAccountLinking.get()) {
+                event.getChannel().sendMessage("❌ Account linking is disabled.");
+                return;
+            }
+
+            String content = event.getMessage().getContent().trim();
+            String[] parts = content.split(" ", 2);
+            
+            if (parts.length < 2) {
+                event.getChannel().sendMessage("❌ Usage: `/link <code>`\nGet a code with `/viscord discord link` in Minecraft.");
+                return;
+            }
+
+            String code = parts[1].trim();
+            String discordId = event.getMessageAuthor().getIdAsString();
+            String discordUsername = event.getMessageAuthor().getDisplayName();
+
+            if (linkedAccountsManager == null) {
+                event.getChannel().sendMessage("❌ Account linking system is not available.");
+                return;
+            }
+
+            LinkedAccountsManager.LinkResult result = linkedAccountsManager.verifyAndLink(code, discordId, discordUsername);
+            
+            if (result.success) {
+                event.getChannel().sendMessage("✅ " + result.message);
+            } else {
+                event.getChannel().sendMessage("❌ " + result.message);
+            }
+
+        } catch (Exception e) {
+            Viscord.LOGGER.error("[Discord] Error handling /link command", e);
+            event.getChannel().sendMessage("❌ An error occurred while processing your link request.");
         }
     }
 
