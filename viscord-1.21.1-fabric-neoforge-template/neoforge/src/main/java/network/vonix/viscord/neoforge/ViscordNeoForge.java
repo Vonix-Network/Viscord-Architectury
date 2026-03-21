@@ -1,12 +1,14 @@
 package network.vonix.viscord.neoforge;
 
+import net.neoforged.bus.api.IEventBus;
 import net.neoforged.fml.common.Mod;
 
 import network.vonix.viscord.Viscord;
 
 @Mod(Viscord.MOD_ID)
 public final class ViscordNeoForge {
-    public ViscordNeoForge() {
+    public ViscordNeoForge(IEventBus modBus) {
+        System.out.println("[Viscord] NeoForge entry point called!");
         // Run our common setup.
         Viscord.init();
     }

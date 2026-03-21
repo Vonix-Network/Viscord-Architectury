@@ -33,3 +33,6 @@ mandatory = true
 versionRange = "[4.12.94,)"
 ordering = "AFTER"
 side = "BOTH"
+
+[[mixins]]
+config = "viscord-platform.mixins.json"

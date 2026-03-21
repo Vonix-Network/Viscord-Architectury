@@ -62,7 +62,7 @@ public class DiscordEventHandler {
                 Commands.literal("discord")
                         .requires(source -> source.hasPermission(0))
                         .executes(context -> {
-                            String invite = ViscordConfig.CONFIG.inviteUrl.get();
+                            String invite = ViscordConfig.CONFIG.discordInviteUrl.get();
                             CommandSourceStack source = context.getSource();
 
                             if (invite == null || invite.isEmpty()) {

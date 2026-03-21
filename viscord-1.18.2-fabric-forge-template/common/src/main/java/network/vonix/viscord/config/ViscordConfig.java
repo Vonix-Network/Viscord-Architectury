@@ -14,15 +14,25 @@ public class ViscordConfig {
         public static final SimpleConfigSpec SPEC;
         public static final ViscordConfig CONFIG;
 
+        // Platform selection
+        public final SimpleConfigValue<String> platform;
+        
         // Master toggle
         public final SimpleConfigValue<Boolean> enabled;
 
-        // Connection settings
-        public final SimpleConfigValue<String> botToken;
-        public final SimpleConfigValue<String> channelId;
-        public final SimpleConfigValue<String> webhookUrl;
-        public final SimpleConfigValue<String> webhookId;
-        public final SimpleConfigValue<String> inviteUrl;
+        // Discord settings
+        public final SimpleConfigValue<String> discordBotToken;
+        public final SimpleConfigValue<String> discordChannelId;
+        public final SimpleConfigValue<String> discordWebhookUrl;
+        public final SimpleConfigValue<String> discordWebhookId;
+        public final SimpleConfigValue<String> discordInviteUrl;
+        
+        // Fluxer settings
+        public final SimpleConfigValue<String> fluxerWebhookUrl;
+        public final SimpleConfigValue<String> fluxerEventWebhookUrl;
+        public final SimpleConfigValue<String> fluxerApiKey;
+        public final SimpleConfigValue<Integer> fluxerReceiverPort;
+        public final SimpleConfigValue<String> fluxerReceiverPath;
 
         // Server identity
         public final SimpleConfigValue<String> serverPrefix;
@@ -75,53 +85,94 @@ public class ViscordConfig {
 
         private ViscordConfig(SimpleConfigBuilder builder) {
                 builder.comment(
-                                "Viscord Discord Integration",
-                                "Bidirectional chat between Minecraft and Discord",
+                                "Viscord - Bidirectional Chat Integration",
+                                "Connect your Minecraft server to Discord or Fluxer",
                                 "",
-                                "Setup Guide:",
-                                "1. Create a Discord bot at https://discord.com/developers/applications",
-                                "2. Enable MESSAGE CONTENT INTENT in Bot settings",
-                                "3. Invite bot to your server with Message permissions",
-                                "4. Copy bot token and paste below",
-                                "5. Create a webhook in your Discord channel and paste URL below")
-                                .push("discord");
+                                "Quick Start:",
+                                "1. Set 'enabled' to true",
+                                "2. Choose your platform: 'discord' or 'fluxer'",
+                                "3. Configure your platform settings below",
+                                "4. Restart the server")
+                                .push("viscord");
 
                 enabled = builder.comment(
-                                "Enable Discord integration",
-                                "Set to false to completely disable Discord features")
+                                "Enable Viscord integration",
+                                "Master toggle for all features")
                                 .define("enabled", false);
 
+                platform = builder.comment(
+                                "Chat platform to use",
+                                "discord - Full Discord bot with webhooks",
+                                "fluxer - Simple webhook service")
+                                .define("platform", "discord");
+                
                 builder.pop().comment(
-                                "Connection Settings",
-                                "Required settings to connect to Discord")
-                                .push("connection");
+                                "Discord Configuration",
+                                "Required only when platform is set to 'discord'")
+                                .push("discord");
 
-                botToken = builder.comment(
+                discordBotToken = builder.comment(
                                 "Discord Bot Token",
-                                "Get from: Discord Developer Portal -> Your App -> Bot -> Token",
-                                "IMPORTANT: Keep this secret! Never share your bot token.")
-                                .define("bot_token", "YOUR_BOT_TOKEN_HERE");
+                                "Get from: https://discord.com/developers/applications",
+                                "Bot tab -> Copy Token",
+                                "\nIMPORTANT: Keep this secret!")
+                                .define("discord.bot_token", "YOUR_BOT_TOKEN_HERE");
 
-                channelId = builder.comment(
-                                "Discord Channel ID for chat messages",
-                                "Right-click the channel -> Copy Channel ID",
-                                "(Enable Developer Mode in Discord settings first)")
-                                .define("channel_id", "YOUR_CHANNEL_ID_HERE");
+                discordChannelId = builder.comment(
+                                "Discord Channel ID",
+                                "Right-click channel -> Copy Channel ID",
+                                "(Enable Developer Mode in Discord settings)")
+                                .define("discord.channel_id", "YOUR_CHANNEL_ID_HERE");
 
-                webhookUrl = builder.comment(
-                                "Discord or Fluxer Webhook URL for sending messages",
-                                "Channel Settings -> Integrations -> Webhooks -> New Webhook -> Copy URL")
-                                .define("webhook_url", "");
+                discordWebhookUrl = builder.comment(
+                                "Discord Webhook URL",
+                                "Channel Settings -> Integrations -> Webhooks -> Copy URL")
+                                .define("discord.webhook_url", "");
 
-                webhookId = builder.comment(
-                                "Webhook ID (leave empty to auto-extract from URL)",
-                                "Only set this if auto-detection doesn't work")
-                                .define("webhook_id", "");
+                discordWebhookId = builder.comment(
+                                "Webhook ID (optional)",
+                                "Auto-extracted from URL if left empty")
+                                .define("discord.webhook_id", "");
 
-                inviteUrl = builder.comment(
-                                "Public Discord invite URL",
+                discordInviteUrl = builder.comment(
+                                "Discord Invite URL",
                                 "Shown when players use /discord command")
-                                .define("invite_url", "");
+                                .define("discord.invite_url", "");
+                
+                builder.pop().comment(
+                                "Fluxer Configuration",
+                                "Required only when platform is set to 'fluxer'")
+                                .push("fluxer");
+                
+                fluxerWebhookUrl = builder.comment(
+                                "Fluxer Webhook URL",
+                                "Get this from your Fluxer dashboard")
+                                .define("fluxer.webhook_url", "");
+                
+                fluxerEventWebhookUrl = builder.comment(
+                                "Event Webhook URL (optional)",
+                                "Separate webhook for server events",
+                                "Leave empty to use main webhook")
+                                .define("fluxer.event_webhook_url", "");
+                
+                fluxerApiKey = builder.comment(
+                                "Fluxer API Key",
+                                "Get this from your Fluxer dashboard",
+                                "\nIMPORTANT: Keep this secret!")
+                                .define("fluxer.api_key", "YOUR_FLUXER_API_KEY");
+                
+                fluxerReceiverPort = builder.comment(
+                                "Receiver Port",
+                                "Port for receiving Fluxer messages",
+                                "Default: 8080",
+                                "Must be open in your firewall")
+                                .defineInRange("fluxer.port", 8080, 1024, 65535);
+                
+                fluxerReceiverPath = builder.comment(
+                                "Receiver Path",
+                                "Fluxer sends messages to: http://your-server:PORT/PATH",
+                                "Default: webhook")
+                                .define("fluxer.path", "webhook");
 
                 builder.pop().comment(
                                 "Server Identity",

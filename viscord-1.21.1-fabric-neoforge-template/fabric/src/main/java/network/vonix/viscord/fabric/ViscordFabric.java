@@ -7,6 +7,7 @@ import network.vonix.viscord.Viscord;
 public final class ViscordFabric implements ModInitializer {
     @Override
     public void onInitialize() {
+        System.out.println("[Viscord] Fabric entry point called!");
         // This code runs as soon as Minecraft is in a mod-load-ready state.
         // However, some things (like resources) may still be uninitialized.
         // Proceed with mild caution.

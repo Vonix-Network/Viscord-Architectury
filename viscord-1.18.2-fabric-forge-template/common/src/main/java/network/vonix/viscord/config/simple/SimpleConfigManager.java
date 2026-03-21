@@ -2,7 +2,10 @@ package network.vonix.viscord.config.simple;
 
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.fasterxml.jackson.databind.SerializationFeature;
+import network.vonix.viscord.Viscord;
+
 import java.io.File;
+import java.io.IOException;
 import java.nio.file.Path;
 import java.util.HashMap;
 import java.util.Map;
@@ -14,38 +17,59 @@ public class SimpleConfigManager {
         File file = path.toFile();
         Map<String, Object> loaded = new HashMap<>();
         
+        Viscord.LOGGER.info("[Config] Loading config from: {}", file.getAbsolutePath());
+        
         if (file.exists()) {
             try {
                 Map<String, Object> json = mapper.readValue(file, Map.class);
                 flatten(json, "", loaded);
+                Viscord.LOGGER.info("[Config] Loaded {} values from existing config", loaded.size());
             } catch (Exception e) {
-                System.err.println("Failed to load config " + file.getName() + ": " + e.getMessage());
+                Viscord.LOGGER.error("[Config] Failed to load config {}: {}", file.getName(), e.getMessage());
             }
+        } else {
+            Viscord.LOGGER.info("[Config] Config file does not exist, will create new one");
         }
         
         // Update values
+        int loadedCount = 0;
         for (SimpleConfigValue<?> val : spec.getValues()) {
             if (loaded.containsKey(val.getPath())) {
                 val.set(loaded.get(val.getPath()));
+                loadedCount++;
             }
         }
+        
+        Viscord.LOGGER.info("[Config] Applied {} values from config file", loadedCount);
         
         // Save to ensure new keys are written (and structure is correct)
         save(path, spec);
     }
 
-    private static void save(Path path, SimpleConfigSpec spec) {
+    public static void save(Path path, SimpleConfigSpec spec) {
         Map<String, Object> root = new HashMap<>();
         for (SimpleConfigValue<?> val : spec.getValues()) {
             putNested(root, val.getPath(), val.get());
         }
         
+        File file = path.toFile();
+        
         try {
-            File parent = path.getParent().toFile();
-            if (!parent.exists()) parent.mkdirs();
-            mapper.writeValue(path.toFile(), root);
-        } catch (Exception e) {
-            e.printStackTrace();
+            // Ensure parent directories exist
+            File parent = file.getParentFile();
+            if (parent != null && !parent.exists()) {
+                boolean created = parent.mkdirs();
+                if (!created) {
+                    Viscord.LOGGER.error("[Config] Failed to create parent directories: {}", parent.getAbsolutePath());
+                    return;
+                }
+                Viscord.LOGGER.info("[Config] Created parent directories: {}", parent.getAbsolutePath());
+            }
+            
+            mapper.writeValue(file, root);
+            Viscord.LOGGER.info("[Config] Saved config to: {}", file.getAbsolutePath());
+        } catch (IOException e) {
+            Viscord.LOGGER.error("[Config] Failed to save config to {}: {}", file.getAbsolutePath(), e.getMessage());
         }
     }
     

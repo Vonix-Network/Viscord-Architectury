@@ -10,7 +10,6 @@ import org.apache.logging.log4j.Logger;
 import java.nio.file.Path;
 import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Executors;
-import java.nio.file.Paths;
 import java.util.concurrent.TimeUnit;
 
 public final class Viscord {
@@ -26,8 +25,10 @@ public final class Viscord {
 
 
     public static void init() {
+        LOGGER.info("[{}] Viscord.init() called!", MOD_ID);
         instance = new Viscord();
         instance.onInitialize();
+        LOGGER.info("[{}] Viscord.init() completed!", MOD_ID);
     }
 
     public static Viscord getInstance() {
@@ -38,12 +39,19 @@ public final class Viscord {
         LOGGER.info("[{}] Initializing Viscord (Standalone Discord Integration)", MOD_ID);
 
         // Load Discord config
-        Path configDir = Paths.get("config");
-        Path discordConfigPath = configDir.resolve("viscord-discord.json");
+        Path configDir = dev.architectury.platform.Platform.getConfigFolder();
+        Path discordConfigPath = configDir.resolve("viscord.json");
+        
+        LOGGER.info("[{}] Config directory: {}", MOD_ID, configDir.toAbsolutePath());
+        LOGGER.info("[{}] Config file path: {}", MOD_ID, discordConfigPath.toAbsolutePath());
+        LOGGER.info("[{}] Config spec has {} values", MOD_ID, ViscordConfig.SPEC.getValues().size());
+        
         SimpleConfigManager.load(discordConfigPath, ViscordConfig.SPEC);
         
-        if (!discordConfigPath.toFile().exists()) {
-            LOGGER.warn("[{}] Config file not found, defaults will be used.", MOD_ID);
+        if (discordConfigPath.toFile().exists()) {
+            LOGGER.info("[{}] Config file exists and was loaded successfully", MOD_ID);
+        } else {
+            LOGGER.error("[{}] Config file still does not exist after load attempt!", MOD_ID);
         }
 
         // Register Discord events

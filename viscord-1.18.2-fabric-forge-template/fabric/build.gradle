@@ -35,6 +35,29 @@ dependencies {
 
     common(project(path: ':common', configuration: 'namedElements')) { transitive = false }
     shadowBundle project(path: ':common', configuration: 'transformProductionFabric')
+
+    // Discord Integration
+    shadowBundle('org.javacord:javacord:3.8.0') {
+        exclude group: 'org.apache.logging.log4j', module: 'log4j-api'
+        exclude group: 'org.slf4j', module: 'slf4j-api'
+    }
+    
+    shadowBundle 'com.squareup.okhttp3:okhttp:4.12.0'
+    shadowBundle 'com.squareup.okio:okio-jvm:3.9.0'
+    shadowBundle 'com.squareup.okio:okio:3.9.0'
+    
+    // Jackson
+    shadowBundle 'com.fasterxml.jackson.core:jackson-databind:2.17.0'
+    shadowBundle 'com.fasterxml.jackson.core:jackson-core:2.17.0'
+    shadowBundle 'com.fasterxml.jackson.core:jackson-annotations:2.17.0'
+    
+    // Javacord transitive
+    shadowBundle 'io.vavr:vavr:0.10.4'
+    shadowBundle 'com.neovisionaries:nv-websocket-client:2.14'
+    
+    // Crypto
+    shadowBundle 'com.codahale:xsalsa20poly1305:0.11.0'
+    shadowBundle 'org.bouncycastle:bcprov-jdk18on:1.78.1'
 }
 
 processResources {
@@ -48,6 +71,54 @@ processResources {
 shadowJar {
     configurations = [project.configurations.shadowBundle]
     archiveClassifier = 'dev-shadow'
+    
+    // Exclude logging libraries that conflict with Minecraft's module system
+    exclude 'org/slf4j/**'
+    exclude 'org/apache/logging/**'
+    exclude 'javax/annotation/**'
+
+    // Exclude module-info.class to prevent module conflicts with shadowed libraries (Jackson, etc.)
+    exclude '**/module-info.class'
+    exclude 'META-INF/versions/**'
+    exclude 'META-INF/proguard/**'
+    exclude 'META-INF/maven/**'
+    exclude 'META-INF/LICENSE*'
+    exclude 'META-INF/NOTICE*'
+    exclude 'META-INF/*.SF'
+    exclude 'META-INF/*.DSA'
+    exclude 'META-INF/*.RSA'
+    
+    // Relocate Kotlin to prevent conflicts (OkHttp uses it)
+    relocate 'kotlin', 'network.vonix.viscord.shadow.kotlin'
+    relocate 'kotlinx', 'network.vonix.viscord.shadow.kotlinx'
+    
+    // Relocate JetBrains annotations
+    relocate 'org.jetbrains', 'network.vonix.viscord.shadow.jetbrains'
+    relocate 'org.intellij', 'network.vonix.viscord.shadow.intellij'
+    
+    // Exclude Javacord internal classes from shadowing to prevent class loading issues
+    exclude 'org.javacord.core.util.rest.**'
+    exclude 'org.javacord.core.entity.**'
+    exclude 'org.javacord.core.audio.**'
+    exclude 'org.javacord.core.util.logging.**'
+    exclude 'org.javacord.core.util.gateway.**'
+    exclude 'org.javacord.core.util.event.**'
+    exclude 'org.javacord.core.util.file.**'
+    exclude 'org.javacord.core.util.auth.**'
+    exclude 'org.javacord.core.util.read.**'
+    exclude 'org.javacord.core.common.**'
+    exclude 'org.javacord.core.util.ratelimit.**'
+    
+    relocate 'org.javacord', 'network.vonix.viscord.shadow.javacord'
+    relocate 'okhttp3', 'network.vonix.viscord.shadow.okhttp3'
+    relocate 'okio', 'network.vonix.viscord.shadow.okio'
+    relocate 'com.fasterxml.jackson', 'network.vonix.viscord.shadow.jackson'
+    relocate 'io.vavr', 'network.vonix.viscord.shadow.vavr'
+    relocate 'com.neovisionaries', 'network.vonix.viscord.shadow.neovisionaries'
+    relocate 'com.codahale', 'network.vonix.viscord.shadow.codahale'
+    relocate 'org.bouncycastle', 'network.vonix.viscord.shadow.bouncycastle'
+
+    mergeServiceFiles()
 }
 
 remapJar {

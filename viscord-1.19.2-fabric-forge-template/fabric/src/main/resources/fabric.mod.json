@@ -16,14 +16,15 @@
   "environment": "*",
   "entrypoints": {
     "main": [
-      "network.vonix.viscord.fabric.ExampleModFabric"
+      "network.vonix.viscord.fabric.ViscordFabric"
     ],
     "client": [
       "network.vonix.viscord.fabric.client.ExampleModFabricClient"
     ]
   },
   "mixins": [
-    "viscord.mixins.json"
+    "viscord.mixins.json",
+    "viscord-fabric.mixins.json"
   ],
   "depends": {
     "fabricloader": ">=0.18.4",

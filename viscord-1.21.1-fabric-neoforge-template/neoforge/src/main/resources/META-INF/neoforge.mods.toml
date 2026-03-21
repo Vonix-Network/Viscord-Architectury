@@ -35,4 +35,4 @@ ordering = "AFTER"
 side = "BOTH"
 
 [[mixins]]
-config = "viscord.mixins.json"
+config = "viscord-platform.mixins.json"
