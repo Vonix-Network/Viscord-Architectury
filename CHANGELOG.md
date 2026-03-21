@@ -7,6 +7,57 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [2.4.0] - 2026-03-21
+
+### 🌟 Added
+- **Full Reload Capability** - New `/viscord reload` command for administrators
+  - Disconnects and reconnects Discord/Fluxer bot with new config
+  - Full async operation to prevent server lag
+  - 30-second timeout protection
+  - Graceful error handling with rollback
+- **Status Command** - New `/viscord status` command for administrators
+  - Shows current connection status (Running/Stopped)
+  - Displays configured platform (Discord/Fluxer)
+  - Shows if Viscord is enabled/disabled in config
+- **Commands Documentation** - New commands section in web docs
+  - Complete command reference for admins and players
+  - Permission level documentation
+  - Usage examples
+
+### 🔄 Changed
+- **Command Rebrand** - All `/vonix` commands rebranded to `/viscord`
+  - `/vonix discord link` → `/viscord discord link`
+  - `/vonix discord unlink` → `/viscord discord unlink`
+  - `/vonix discord messages` → `/viscord discord messages`
+  - `/vonix discord events` → `/viscord discord events`
+  - `/vonix discord help` → `/viscord discord help`
+  - `/vonix reload` (new) → `/viscord reload`
+  - Backward compatibility alias maintained for `/vonix`
+- **Documentation Updates** - Web docs updated to version 2.4.0
+  - Added Commands tab with full reference
+  - Version badges updated throughout
+  - Footer version corrected
+
+### 🔧 Technical Improvements
+- **Config Directory Reorganization** - All Viscord files now stored in `config/viscord/`
+  - Main config: `config/viscord/viscord.json`
+  - Player preferences: `config/viscord/player_preferences.json`
+  - Account links: `config/viscord/linked_accounts.json`
+  - Better organization and separation from other mods
+- **Async Safety** - Fixed blocking `.get()` call in Discord initialization
+  - Prevents 10-second server freeze during startup
+  - All Discord operations now fully async
+  - Better error handling for connection failures
+- **Production Readiness Review** - Full codebase review completed
+  - Core mod structure verified
+  - Discord integration layer optimized
+  - Command system enhanced
+
+### ⚡ Performance
+- Discord initialization no longer blocks main thread
+- Config reload runs entirely on async executor
+- Message processing maintains async safety
+
 ## [2.2.0] - 2026-03-21
 
 ### 🌟 Added

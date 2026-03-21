@@ -8,12 +8,11 @@ import net.minecraft.network.chat.HoverEvent;
 import net.minecraft.network.chat.MutableComponent;
 import net.minecraft.network.chat.Style;
 import net.minecraft.network.chat.TextColor;
-import net.minecraft.network.chat.TextComponent;
-import net.minecraft.network.chat.TranslatableComponent;
 import net.minecraft.server.MinecraftServer;
 import net.minecraft.server.level.ServerPlayer;
 import network.vonix.viscord.Viscord;
 import network.vonix.viscord.config.ViscordConfig;
+import network.vonix.viscord.utils.DiscordFormatter;
 import dev.architectury.platform.Platform;
 import org.javacord.api.entity.message.Message;
 import org.javacord.api.entity.message.embed.Embed;
@@ -167,7 +166,11 @@ public class DiscordManager {
         }
         
         // 3. Initialize Sub-systems (player preferences work regardless of platform)
-        Path configDir = dev.architectury.platform.Platform.getConfigFolder();
+        Path configDir = dev.architectury.platform.Platform.getConfigFolder().resolve("viscord");
+        // Ensure directory exists
+        if (!configDir.toFile().exists()) {
+            configDir.toFile().mkdirs();
+        }
         try {
             this.playerPreferences = new PlayerPreferences(configDir);
             // Account linking is Discord-specific, skip for Fluxer
@@ -205,6 +208,12 @@ public class DiscordManager {
         server.execute(() -> {
             broadcastSystemMessageRespectingFilters(finalComponent);
         });
+        
+        // Tridirectional: Bridge to Discord if enabled
+        if (ViscordConfig.CONFIG.enableTridirectionalChat.get() && 
+            ViscordConfig.CONFIG.fluxerToDiscord.get()) {
+            bridgeFluxerToDiscord(username, message);
+        }
     }
     
     private void initializeDiscord() {
@@ -226,7 +235,11 @@ public class DiscordManager {
         }
 
         // 2. Initialize Sub-systems
-        Path configDir = dev.architectury.platform.Platform.getConfigFolder();
+        Path configDir = dev.architectury.platform.Platform.getConfigFolder().resolve("viscord");
+        // Ensure directory exists
+        if (!configDir.toFile().exists()) {
+            configDir.toFile().mkdirs();
+        }
         try {
             this.playerPreferences = new PlayerPreferences(configDir);
             if (ViscordConfig.CONFIG.enableAccountLinking.get()) {
@@ -350,6 +363,145 @@ public class DiscordManager {
         if (ViscordConfig.CONFIG.ignoreWebhooks.get() && message.getAuthor().isWebhook())
             return;
 
+        // Store original message for tridirectional bridging
+        String authorName = message.getAuthor().getDisplayName();
+        String content = message.getContent();
+        
+        // Process for Minecraft (existing functionality)
+        processDiscordMessageForMinecraft(event);
+        
+        // Tridirectional: Bridge to Fluxer if enabled
+        if (ViscordConfig.CONFIG.enableTridirectionalChat.get() && 
+            ViscordConfig.CONFIG.discordToFluxer.get()) {
+            bridgeDiscordToFluxer(authorName, content, message);
+        }
+    }
+    
+    /**
+     * Bridges Discord messages to Fluxer for tridirectional chat.
+     */
+    private void bridgeDiscordToFluxer(String authorName, String content, Message message) {
+        if (!isFluxerConfigured()) {
+            return;
+        }
+        
+        try {
+            // Format message for Fluxer with source identification
+            // Discord messages don't need formatting conversion as they're plain text
+            String fluxerMessage = formatMessageForPlatform(content, "Discord", authorName);
+            
+            // Send to Fluxer via webhook
+            String fluxerWebhookUrl = ViscordConfig.CONFIG.fluxerWebhookUrl.get();
+            if (fluxerWebhookUrl != null && !fluxerWebhookUrl.isEmpty()) {
+                // Temporarily update webhook URL and send message
+                String originalUrl = webhookClient.getWebhookUrl();
+                webhookClient.updateUrl(fluxerWebhookUrl);
+                webhookClient.sendMessage(authorName, "", fluxerMessage);
+                webhookClient.updateUrl(originalUrl); // Restore original URL
+                Viscord.LOGGER.debug("[Tridirectional] Bridged Discord message to Fluxer: {}", authorName);
+            }
+        } catch (Exception e) {
+            Viscord.LOGGER.error("[Tridirectional] Failed to bridge Discord message to Fluxer", e);
+        }
+    }
+    
+    /**
+     * Bridges Fluxer messages to Discord for tridirectional chat.
+     */
+    private void bridgeFluxerToDiscord(String username, String message) {
+        if (!isDiscordConfigured()) {
+            return;
+        }
+        
+        try {
+            // Convert Minecraft formatting codes to Discord markdown for Fluxer messages
+            String convertedMessage = DiscordFormatter.convertToDiscordFormatting(message);
+            
+            // Format message for Discord with source identification
+            String discordMessage = formatMessageForPlatform(convertedMessage, "Fluxer", username);
+            
+            // Send to Discord via webhook
+            String discordWebhookUrl = ViscordConfig.CONFIG.discordWebhookUrl.get();
+            if (discordWebhookUrl != null && !discordWebhookUrl.isEmpty()) {
+                // Temporarily update webhook URL and send message
+                String originalUrl = webhookClient.getWebhookUrl();
+                webhookClient.updateUrl(discordWebhookUrl);
+                webhookClient.sendMessage(username, "", discordMessage);
+                webhookClient.updateUrl(originalUrl); // Restore original URL
+                Viscord.LOGGER.debug("[Tridirectional] Bridged Fluxer message to Discord: {}", username);
+            }
+        } catch (Exception e) {
+            Viscord.LOGGER.error("[Tridirectional] Failed to bridge Fluxer message to Discord", e);
+        }
+    }
+    
+    /**
+     * Formats message with platform source identification.
+     */
+    private String formatMessageForPlatform(String message, String sourcePlatform, String authorName) {
+        if (ViscordConfig.CONFIG.showPlatformSource.get()) {
+            return "[" + sourcePlatform + "] " + authorName + ": " + message;
+        } else {
+            return authorName + ": " + message;
+        }
+    }
+    
+    /**
+     * Checks if Discord is properly configured.
+     */
+    private boolean isDiscordConfigured() {
+        String webhookUrl = ViscordConfig.CONFIG.discordWebhookUrl.get();
+        return webhookUrl != null && !webhookUrl.isEmpty();
+    }
+    
+    /**
+     * Checks if Fluxer is properly configured.
+     */
+    private boolean isFluxerConfigured() {
+        String webhookUrl = ViscordConfig.CONFIG.fluxerWebhookUrl.get();
+        return webhookUrl != null && !webhookUrl.isEmpty();
+    }
+    
+    /**
+     * Processes Discord message for Minecraft (extracted from original method).
+     */
+    private void processDiscordMessageForMinecraft(org.javacord.api.event.message.MessageCreateEvent event) {
+        if (server == null)
+            return;
+
+        Message message = event.getMessage();
+        String msgChannelId = message.getChannel().getIdAsString();
+        String mainChannelId = ViscordConfig.CONFIG.discordChannelId.get();
+        String eventChannelId = ViscordConfig.CONFIG.eventChannelId.get();
+
+        boolean isMainChannel = mainChannelId != null && mainChannelId.equals(msgChannelId);
+        boolean isEventChannel = eventChannelId != null && !eventChannelId.isEmpty()
+                && eventChannelId.equals(msgChannelId);
+
+        // Ignore messages from other channels
+        if (!isMainChannel && !isEventChannel) {
+            return;
+        }
+
+        // Handle !list command early (before any filtering)
+        if (message.getContent().trim().equalsIgnoreCase("!list")) {
+            handleTextListCommand(event);
+            return;
+        }
+
+        // If it's an event channel message, check if we should show other server events
+        if (isEventChannel && !ViscordConfig.CONFIG.showOtherServerEvents.get()) {
+            return;
+        }
+
+        // Filter out bots if configured
+        if (ViscordConfig.CONFIG.ignoreBots.get() && message.getAuthor().isBotUser())
+            return;
+
+        // Filter out webhooks if configured
+        if (ViscordConfig.CONFIG.ignoreWebhooks.get() && message.getAuthor().isWebhook())
+            return;
+
         // Filter by prefix to prevent echoing our own messages
         if (ViscordConfig.CONFIG.filterByPrefix.get()) {
             String serverPrefix = ViscordConfig.CONFIG.serverPrefix.get();
@@ -429,7 +581,7 @@ public class DiscordManager {
 
         // Regular message processing
         if (server != null) {
-            MutableComponent finalComponent = new TextComponent("");
+            MutableComponent finalComponent = Component.empty();
 
             if (isWebhook) {
                 // Cross-server webhook: special formatting WITHOUT [Discord] prefix
@@ -488,12 +640,12 @@ public class DiscordManager {
                     }
 
                     // Clickable [Discord] with aqua color
-                    finalComponent.append(new TextComponent("[Discord]")
+                    finalComponent.append(Component.literal("[Discord]")
                             .setStyle(Style.EMPTY
                                     .withColor(ChatFormatting.AQUA)
                                     .withClickEvent(new ClickEvent(ClickEvent.Action.OPEN_URL, inviteUrl))
                                     .withHoverEvent(new HoverEvent(HoverEvent.Action.SHOW_TEXT,
-                                            new TranslatableComponent("Click to join our Discord!")))));
+                                            Component.literal("Click to join our Discord!")))));
 
                     // Part after [Discord]
                     if (parts.length > 1 && !parts[1].isEmpty()) {
@@ -698,11 +850,11 @@ public class DiscordManager {
      */
     private Component toMinecraftComponentWithLinks(String text) {
         if (text == null || text.isEmpty()) {
-            return new TextComponent("");
+            return Component.empty();
         }
 
         Matcher matcher = DISCORD_MARKDOWN_LINK.matcher(text);
-        MutableComponent result = new TextComponent("");
+        MutableComponent result = Component.empty();
         int lastEnd = 0;
         boolean hasLink = false;
 
@@ -713,14 +865,14 @@ public class DiscordManager {
             if (start > lastEnd) {
                 String before = text.substring(lastEnd, start);
                 if (!before.isEmpty()) {
-                    result.append(new TextComponent(before));
+                    result.append(Component.literal(before));
                 }
             }
 
             String label = matcher.group(1);
             String url = matcher.group(2);
 
-            Component linkComponent = new TextComponent(label)
+            Component linkComponent = Component.literal(label)
                     .withStyle(style -> style
                             .withClickEvent(new ClickEvent(ClickEvent.Action.OPEN_URL, url))
                             .withUnderlined(true)
@@ -734,12 +886,12 @@ public class DiscordManager {
         if (lastEnd < text.length()) {
             String tail = text.substring(lastEnd);
             if (!tail.isEmpty()) {
-                result.append(new TextComponent(tail));
+                result.append(Component.literal(tail));
             }
         }
 
         if (!hasLink) {
-            return new TextComponent(text);
+            return Component.literal(text);
         }
 
         return result;
@@ -754,7 +906,7 @@ public class DiscordManager {
         
         for (ServerPlayer player : server.getPlayerList().getPlayers()) {
             if (!hasServerMessagesFiltered(player.getUUID())) {
-                player.sendMessage(message, player.getUUID());
+                player.sendSystemMessage(message, false);
             }
         }
     }
@@ -768,7 +920,7 @@ public class DiscordManager {
         
         for (ServerPlayer player : server.getPlayerList().getPlayers()) {
             if (!hasEventsFiltered(player.getUUID())) {
-                player.sendMessage(message, player.getUUID());
+                player.sendSystemMessage(message, false);
             }
         }
     }
@@ -782,7 +934,7 @@ public class DiscordManager {
         
         for (ServerPlayer player : server.getPlayerList().getPlayers()) {
             if (!hasServerSystemMessagesFiltered(player.getUUID())) {
-                player.sendMessage(message, player.getUUID());
+                player.sendSystemMessage(message, false);
             }
         }
     }
@@ -803,10 +955,13 @@ public class DiscordManager {
         String avatarUrl = getAvatarUrl(username);
         String webhookUrl = getMainWebhookUrl();
         
+        // Convert Minecraft formatting codes to Discord markdown
+        String formattedMessage = DiscordFormatter.convertToDiscordFormatting(message);
+        
         // Temporarily update webhook URL if different from current
         if (webhookUrl != null && !webhookUrl.isEmpty()) {
             webhookClient.updateUrl(webhookUrl);
-            webhookClient.sendMessage(formattedUsername, avatarUrl, message);
+            webhookClient.sendMessage(formattedUsername, avatarUrl, formattedMessage);
         }
     }
     
@@ -822,21 +977,13 @@ public class DiscordManager {
         String avatarUrl = getAvatarUrl(username);
         String eventWebhookUrl = getEventWebhookUrl();
         
+        // Convert Minecraft formatting codes to Discord markdown
+        String formattedMessage = DiscordFormatter.convertToDiscordFormatting(message);
+        
+        // Temporarily update webhook URL if different from current
         if (eventWebhookUrl != null && !eventWebhookUrl.isEmpty()) {
             webhookClient.updateUrl(eventWebhookUrl);
-            webhookClient.sendMessage(formattedUsername, avatarUrl, message);
-        }
-    }
-
-    public void sendSystemMessage(String message) {
-        if (!running)
-            return;
-
-        if (message.startsWith("💀")) {
-            sendDeathEmbed(message);
-        } else {
-            // System messages often don't have a player, so use server avatar/name
-            sendMinecraftMessage("Server", message);
+            webhookClient.sendMessage(formattedUsername, avatarUrl, formattedMessage);
         }
     }
 

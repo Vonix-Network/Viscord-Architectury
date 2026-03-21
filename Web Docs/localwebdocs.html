@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Viscord 2.3.0 - Complete Documentation</title>
+    <title>Viscord 2.4.0 - Complete Documentation</title>
     <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&display=swap" rel="stylesheet">
     <link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css" rel="stylesheet">
     <style>
@@ -326,7 +326,7 @@
     <div class="container">
         <header>
             <div class="logo">Viscord</div>
-            <div class="version">Version 2.3.0</div>
+            <div class="version">Version 2.4.0</div>
             <p style="font-size: 1.2rem; color: var(--text-secondary); margin-bottom: 20px;">
                 The Ultimate Cross-Platform Minecraft Chat Solution
             </p>
@@ -345,6 +345,9 @@
             <button class="nav-tab" onclick="showTab('configuration')">
                 <i class="fas fa-cog"></i> Configuration
             </button>
+            <button class="nav-tab" onclick="showTab('commands')">
+                <i class="fas fa-terminal"></i> Commands
+            </button>
             <button class="nav-tab" onclick="showTab('features')">
                 <i class="fas fa-star"></i> Features
             </button>
@@ -359,8 +362,8 @@
         <!-- Overview Tab -->
         <div id="overview" class="tab-content active">
             <div class="card">
-                <h2><i class="fas fa-rocket"></i> Welcome to Viscord 2.2.0</h2>
-                <p>Viscord is the most advanced Minecraft chat integration mod, enabling seamless communication between Minecraft, Discord, and Fluxer platforms. With version 2.2.0, we've introduced revolutionary features including tridirectional chat and rich formatting support.</p>
+                <h2><i class="fas fa-rocket"></i> Welcome to Viscord 2.4.0</h2>
+                <p>Viscord is the most advanced Minecraft chat integration mod, enabling seamless communication between Minecraft, Discord, and Fluxer platforms. With version 2.4.0, we've introduced full reload capability and command rebranding for better usability.</p>
                 
                 <div class="feature-grid">
                     <div class="feature-card">
@@ -655,6 +658,76 @@
 
                 <div class="warning">
                     <i class="fas fa-exclamation-triangle"></i> <strong>Important:</strong> For tridirectional chat, you must configure both Discord AND Fluxer settings, even if you primarily use one platform.
+                </div>
+            </div>
+        </div>
+
+        <!-- Commands Tab -->
+        <div id="commands" class="tab-content">
+            <div class="card">
+                <h2><i class="fas fa-terminal"></i> Available Commands</h2>
+                <p>Viscord provides several commands for both administrators and regular players.</p>
+                
+                <h3 style="color: var(--accent); margin: 30px 0 15px 0;">Admin Commands</h3>
+                <table style="width: 100%; border-collapse: collapse; margin: 20px 0;">
+                    <tr style="background: var(--bg-darker);">
+                        <th style="padding: 12px; border: 1px solid var(--border); text-align: left;">Command</th>
+                        <th style="padding: 12px; border: 1px solid var(--border); text-align: left;">Permission</th>
+                        <th style="padding: 12px; border: 1px solid var(--border); text-align: left;">Description</th>
+                    </tr>
+                    <tr>
+                        <td style="padding: 12px; border: 1px solid var(--border);"><code>/viscord reload</code></td>
+                        <td style="padding: 12px; border: 1px solid var(--border);">OP (level 4)</td>
+                        <td style="padding: 12px; border: 1px solid var(--border);">Reload Viscord configuration and reconnect to Discord/Fluxer</td>
+                    </tr>
+                    <tr style="background: var(--bg-darker);">
+                        <td style="padding: 12px; border: 1px solid var(--border);"><code>/viscord status</code></td>
+                        <td style="padding: 12px; border: 1px solid var(--border);">OP (level 4)</td>
+                        <td style="padding: 12px; border: 1px solid var(--border);">Show current Viscord status and configuration</td>
+                    </tr>
+                </table>
+
+                <h3 style="color: var(--accent); margin: 30px 0 15px 0;">Player Commands</h3>
+                <table style="width: 100%; border-collapse: collapse; margin: 20px 0;">
+                    <tr style="background: var(--bg-darker);">
+                        <th style="padding: 12px; border: 1px solid var(--border); text-align: left;">Command</th>
+                        <th style="padding: 12px; border: 1px solid var(--border); text-align: left;">Permission</th>
+                        <th style="padding: 12px; border: 1px solid var(--border); text-align: left;">Description</th>
+                    </tr>
+                    <tr>
+                        <td style="padding: 12px; border: 1px solid var(--border);"><code>/discord</code></td>
+                        <td style="padding: 12px; border: 1px solid var(--border);">All players</td>
+                        <td style="padding: 12px; border: 1px solid var(--border);">Show Discord invite link (if configured)</td>
+                    </tr>
+                    <tr style="background: var(--bg-darker);">
+                        <td style="padding: 12px; border: 1px solid var(--border);"><code>/viscord discord link</code></td>
+                        <td style="padding: 12px; border: 1px solid var(--border);">All players</td>
+                        <td style="padding: 12px; border: 1px solid var(--border);">Generate account link code for Discord integration</td>
+                    </tr>
+                    <tr>
+                        <td style="padding: 12px; border: 1px solid var(--border);"><code>/viscord discord unlink</code></td>
+                        <td style="padding: 12px; border: 1px solid var(--border);">All players</td>
+                        <td style="padding: 12px; border: 1px solid var(--border);">Unlink your Discord account from Minecraft</td>
+                    </tr>
+                    <tr style="background: var(--bg-darker);">
+                        <td style="padding: 12px; border: 1px solid var(--border);"><code>/viscord discord messages [enable|disable]</code></td>
+                        <td style="padding: 12px; border: 1px solid var(--border);">All players</td>
+                        <td style="padding: 12px; border: 1px solid var(--border);">Toggle cross-server message visibility</td>
+                    </tr>
+                    <tr>
+                        <td style="padding: 12px; border: 1px solid var(--border);"><code>/viscord discord events [enable|disable]</code></td>
+                        <td style="padding: 12px; border: 1px solid var(--border);">All players</td>
+                        <td style="padding: 12px; border: 1px solid var(--border);">Toggle event message visibility (joins, leaves, deaths)</td>
+                    </tr>
+                    <tr style="background: var(--bg-darker);">
+                        <td style="padding: 12px; border: 1px solid var(--border);"><code>/viscord discord help</code></td>
+                        <td style="padding: 12px; border: 1px solid var(--border);">All players</td>
+                        <td style="padding: 12px; border: 1px solid var(--border);">Show all available Viscord commands</td>
+                    </tr>
+                </table>
+
+                <div class="note">
+                    <i class="fas fa-info-circle"></i> <strong>Note:</strong> The <code>/vonix</code> command is deprecated and will be removed in a future version. Please use <code>/viscord</code> instead.
                 </div>
             </div>
         </div>
@@ -1011,7 +1084,7 @@ Output: 🟡 **Golden** 🔵 *Italic* 🔴 __and__ **~~underlined strikethrough~
         </div>
 
         <div class="footer">
-            <p>&copy; 2026 Viscord - Version 2.3.0</p>
+            <p>&copy; 2026 Viscord - Version 2.4.0</p>
             <p>The Ultimate Cross-Platform Minecraft Chat Solution</p>
             <p style="margin-top: 10px; font-size: 0.9rem;">
                 Made with ❤️ for the Minecraft community

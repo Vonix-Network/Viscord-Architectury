@@ -166,7 +166,11 @@ public class DiscordManager {
         }
         
         // 3. Initialize Sub-systems (player preferences work regardless of platform)
-        Path configDir = dev.architectury.platform.Platform.getConfigFolder();
+        Path configDir = dev.architectury.platform.Platform.getConfigFolder().resolve("viscord");
+        // Ensure directory exists
+        if (!configDir.toFile().exists()) {
+            configDir.toFile().mkdirs();
+        }
         try {
             this.playerPreferences = new PlayerPreferences(configDir);
             // Account linking is Discord-specific, skip for Fluxer
@@ -231,7 +235,11 @@ public class DiscordManager {
         }
 
         // 2. Initialize Sub-systems
-        Path configDir = dev.architectury.platform.Platform.getConfigFolder();
+        Path configDir = dev.architectury.platform.Platform.getConfigFolder().resolve("viscord");
+        // Ensure directory exists
+        if (!configDir.toFile().exists()) {
+            configDir.toFile().mkdirs();
+        }
         try {
             this.playerPreferences = new PlayerPreferences(configDir);
             if (ViscordConfig.CONFIG.enableAccountLinking.get()) {

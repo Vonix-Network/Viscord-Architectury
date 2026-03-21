@@ -12,6 +12,7 @@ import net.minecraft.server.MinecraftServer;
 import net.minecraft.server.level.ServerPlayer;
 import network.vonix.viscord.Viscord;
 import network.vonix.viscord.config.ViscordConfig;
+import network.vonix.viscord.utils.DiscordFormatter;
 import dev.architectury.platform.Platform;
 import org.javacord.api.entity.message.Message;
 import org.javacord.api.entity.message.embed.Embed;
@@ -165,7 +166,11 @@ public class DiscordManager {
         }
         
         // 3. Initialize Sub-systems (player preferences work regardless of platform)
-        Path configDir = dev.architectury.platform.Platform.getConfigFolder();
+        Path configDir = dev.architectury.platform.Platform.getConfigFolder().resolve("viscord");
+        // Ensure directory exists
+        if (!configDir.toFile().exists()) {
+            configDir.toFile().mkdirs();
+        }
         try {
             this.playerPreferences = new PlayerPreferences(configDir);
             // Account linking is Discord-specific, skip for Fluxer
@@ -203,6 +208,12 @@ public class DiscordManager {
         server.execute(() -> {
             broadcastSystemMessageRespectingFilters(finalComponent);
         });
+        
+        // Tridirectional: Bridge to Discord if enabled
+        if (ViscordConfig.CONFIG.enableTridirectionalChat.get() && 
+            ViscordConfig.CONFIG.fluxerToDiscord.get()) {
+            bridgeFluxerToDiscord(username, message);
+        }
     }
     
     private void initializeDiscord() {
@@ -224,7 +235,11 @@ public class DiscordManager {
         }
 
         // 2. Initialize Sub-systems
-        Path configDir = dev.architectury.platform.Platform.getConfigFolder();
+        Path configDir = dev.architectury.platform.Platform.getConfigFolder().resolve("viscord");
+        // Ensure directory exists
+        if (!configDir.toFile().exists()) {
+            configDir.toFile().mkdirs();
+        }
         try {
             this.playerPreferences = new PlayerPreferences(configDir);
             if (ViscordConfig.CONFIG.enableAccountLinking.get()) {
@@ -312,6 +327,145 @@ public class DiscordManager {
      * Handles incoming messages from Discord (via BotClient).
      */
     private void onDiscordMessage(org.javacord.api.event.message.MessageCreateEvent event) {
+        if (server == null)
+            return;
+
+        Message message = event.getMessage();
+        String msgChannelId = message.getChannel().getIdAsString();
+        String mainChannelId = ViscordConfig.CONFIG.discordChannelId.get();
+        String eventChannelId = ViscordConfig.CONFIG.eventChannelId.get();
+
+        boolean isMainChannel = mainChannelId != null && mainChannelId.equals(msgChannelId);
+        boolean isEventChannel = eventChannelId != null && !eventChannelId.isEmpty()
+                && eventChannelId.equals(msgChannelId);
+
+        // Ignore messages from other channels
+        if (!isMainChannel && !isEventChannel) {
+            return;
+        }
+
+        // Handle !list command early (before any filtering)
+        if (message.getContent().trim().equalsIgnoreCase("!list")) {
+            handleTextListCommand(event);
+            return;
+        }
+
+        // If it's an event channel message, check if we should show other server events
+        if (isEventChannel && !ViscordConfig.CONFIG.showOtherServerEvents.get()) {
+            return;
+        }
+
+        // Filter out bots if configured
+        if (ViscordConfig.CONFIG.ignoreBots.get() && message.getAuthor().isBotUser())
+            return;
+
+        // Filter out webhooks if configured
+        if (ViscordConfig.CONFIG.ignoreWebhooks.get() && message.getAuthor().isWebhook())
+            return;
+
+        // Store original message for tridirectional bridging
+        String authorName = message.getAuthor().getDisplayName();
+        String content = message.getContent();
+        
+        // Process for Minecraft (existing functionality)
+        processDiscordMessageForMinecraft(event);
+        
+        // Tridirectional: Bridge to Fluxer if enabled
+        if (ViscordConfig.CONFIG.enableTridirectionalChat.get() && 
+            ViscordConfig.CONFIG.discordToFluxer.get()) {
+            bridgeDiscordToFluxer(authorName, content, message);
+        }
+    }
+    
+    /**
+     * Bridges Discord messages to Fluxer for tridirectional chat.
+     */
+    private void bridgeDiscordToFluxer(String authorName, String content, Message message) {
+        if (!isFluxerConfigured()) {
+            return;
+        }
+        
+        try {
+            // Format message for Fluxer with source identification
+            // Discord messages don't need formatting conversion as they're plain text
+            String fluxerMessage = formatMessageForPlatform(content, "Discord", authorName);
+            
+            // Send to Fluxer via webhook
+            String fluxerWebhookUrl = ViscordConfig.CONFIG.fluxerWebhookUrl.get();
+            if (fluxerWebhookUrl != null && !fluxerWebhookUrl.isEmpty()) {
+                // Temporarily update webhook URL and send message
+                String originalUrl = webhookClient.getWebhookUrl();
+                webhookClient.updateUrl(fluxerWebhookUrl);
+                webhookClient.sendMessage(authorName, "", fluxerMessage);
+                webhookClient.updateUrl(originalUrl); // Restore original URL
+                Viscord.LOGGER.debug("[Tridirectional] Bridged Discord message to Fluxer: {}", authorName);
+            }
+        } catch (Exception e) {
+            Viscord.LOGGER.error("[Tridirectional] Failed to bridge Discord message to Fluxer", e);
+        }
+    }
+    
+    /**
+     * Bridges Fluxer messages to Discord for tridirectional chat.
+     */
+    private void bridgeFluxerToDiscord(String username, String message) {
+        if (!isDiscordConfigured()) {
+            return;
+        }
+        
+        try {
+            // Convert Minecraft formatting codes to Discord markdown for Fluxer messages
+            String convertedMessage = DiscordFormatter.convertToDiscordFormatting(message);
+            
+            // Format message for Discord with source identification
+            String discordMessage = formatMessageForPlatform(convertedMessage, "Fluxer", username);
+            
+            // Send to Discord via webhook
+            String discordWebhookUrl = ViscordConfig.CONFIG.discordWebhookUrl.get();
+            if (discordWebhookUrl != null && !discordWebhookUrl.isEmpty()) {
+                // Temporarily update webhook URL and send message
+                String originalUrl = webhookClient.getWebhookUrl();
+                webhookClient.updateUrl(discordWebhookUrl);
+                webhookClient.sendMessage(username, "", discordMessage);
+                webhookClient.updateUrl(originalUrl); // Restore original URL
+                Viscord.LOGGER.debug("[Tridirectional] Bridged Fluxer message to Discord: {}", username);
+            }
+        } catch (Exception e) {
+            Viscord.LOGGER.error("[Tridirectional] Failed to bridge Fluxer message to Discord", e);
+        }
+    }
+    
+    /**
+     * Formats message with platform source identification.
+     */
+    private String formatMessageForPlatform(String message, String sourcePlatform, String authorName) {
+        if (ViscordConfig.CONFIG.showPlatformSource.get()) {
+            return "[" + sourcePlatform + "] " + authorName + ": " + message;
+        } else {
+            return authorName + ": " + message;
+        }
+    }
+    
+    /**
+     * Checks if Discord is properly configured.
+     */
+    private boolean isDiscordConfigured() {
+        String webhookUrl = ViscordConfig.CONFIG.discordWebhookUrl.get();
+        return webhookUrl != null && !webhookUrl.isEmpty();
+    }
+    
+    /**
+     * Checks if Fluxer is properly configured.
+     */
+    private boolean isFluxerConfigured() {
+        String webhookUrl = ViscordConfig.CONFIG.fluxerWebhookUrl.get();
+        return webhookUrl != null && !webhookUrl.isEmpty();
+    }
+    
+    /**
+     * Processes Discord message for Minecraft (extracted from original method).
+     */
+    private void processDiscordMessageForMinecraft(org.javacord.api.event.message.MessageCreateEvent event) {
         if (server == null)
             return;
 
@@ -801,10 +955,13 @@ public class DiscordManager {
         String avatarUrl = getAvatarUrl(username);
         String webhookUrl = getMainWebhookUrl();
         
+        // Convert Minecraft formatting codes to Discord markdown
+        String formattedMessage = DiscordFormatter.convertToDiscordFormatting(message);
+        
         // Temporarily update webhook URL if different from current
         if (webhookUrl != null && !webhookUrl.isEmpty()) {
             webhookClient.updateUrl(webhookUrl);
-            webhookClient.sendMessage(formattedUsername, avatarUrl, message);
+            webhookClient.sendMessage(formattedUsername, avatarUrl, formattedMessage);
         }
     }
     
@@ -820,21 +977,13 @@ public class DiscordManager {
         String avatarUrl = getAvatarUrl(username);
         String eventWebhookUrl = getEventWebhookUrl();
         
+        // Convert Minecraft formatting codes to Discord markdown
+        String formattedMessage = DiscordFormatter.convertToDiscordFormatting(message);
+        
+        // Temporarily update webhook URL if different from current
         if (eventWebhookUrl != null && !eventWebhookUrl.isEmpty()) {
             webhookClient.updateUrl(eventWebhookUrl);
-            webhookClient.sendMessage(formattedUsername, avatarUrl, message);
-        }
-    }
-
-    public void sendSystemMessage(String message) {
-        if (!running)
-            return;
-
-        if (message.startsWith("💀")) {
-            sendDeathEmbed(message);
-        } else {
-            // System messages often don't have a player, so use server avatar/name
-            sendMinecraftMessage("Server", message);
+            webhookClient.sendMessage(formattedUsername, avatarUrl, formattedMessage);
         }
     }
 

@@ -38,9 +38,14 @@ public final class Viscord {
     private void onInitialize() {
         LOGGER.info("[{}] Initializing Viscord (Standalone Discord Integration)", MOD_ID);
 
-        // Load Discord config
-        Path configDir = dev.architectury.platform.Platform.getConfigFolder();
+        // Load Discord config from config/viscord/ subdirectory
+        Path configDir = dev.architectury.platform.Platform.getConfigFolder().resolve("viscord");
         Path discordConfigPath = configDir.resolve("viscord.json");
+        
+        // Ensure config directory exists
+        if (!configDir.toFile().exists()) {
+            configDir.toFile().mkdirs();
+        }
         
         LOGGER.info("[{}] Config directory: {}", MOD_ID, configDir.toAbsolutePath());
         LOGGER.info("[{}] Config file path: {}", MOD_ID, discordConfigPath.toAbsolutePath());
@@ -59,20 +64,19 @@ public final class Viscord {
 
         LifecycleEvent.SERVER_STARTED.register(server -> {
             if (ViscordConfig.CONFIG.enabled.get()) {
-                try {
-                    java.util.concurrent.CompletableFuture<Void> discordInitFuture = java.util.concurrent.CompletableFuture.runAsync(() -> {
+                // Non-blocking async initialization
+                java.util.concurrent.CompletableFuture.runAsync(() -> {
+                    try {
                         DiscordManager.getInstance().initialize(server);
-                    });
-                    
-                    // Wait max 10 seconds for Discord initialization
-                    discordInitFuture.get(10, TimeUnit.SECONDS);
-                    discordEnabled = true;
-                    LOGGER.info("[{}] Discord module enabled", MOD_ID);
-                } catch (java.util.concurrent.TimeoutException e) {
-                    LOGGER.error("[{}] Discord initialization timed out after 10 seconds!", MOD_ID);
-                } catch (Exception e) {
-                    LOGGER.error("[{}] Failed to initialize Discord: {}", MOD_ID, e.getMessage());
-                }
+                        discordEnabled = true;
+                        LOGGER.info("[{}] Discord module enabled", MOD_ID);
+                    } catch (java.util.concurrent.TimeoutException e) {
+                        LOGGER.error("[{}] Discord initialization timed out after 10 seconds!", MOD_ID);
+                    } catch (Exception e) {
+                        LOGGER.error("[{}] Failed to initialize Discord: {}", MOD_ID, e.getMessage());
+                    }
+                }, ASYNC_EXECUTOR);
+                LOGGER.info("[{}] Discord initialization started asynchronously", MOD_ID);
             }
         });
 
