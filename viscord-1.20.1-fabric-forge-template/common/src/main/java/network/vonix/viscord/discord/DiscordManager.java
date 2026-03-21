@@ -12,6 +12,7 @@ import net.minecraft.server.MinecraftServer;
 import net.minecraft.server.level.ServerPlayer;
 import network.vonix.viscord.Viscord;
 import network.vonix.viscord.config.ViscordConfig;
+import network.vonix.viscord.utils.DiscordFormatter;
 import dev.architectury.platform.Platform;
 import org.javacord.api.entity.message.Message;
 import org.javacord.api.entity.message.embed.Embed;
@@ -801,10 +802,13 @@ public class DiscordManager {
         String avatarUrl = getAvatarUrl(username);
         String webhookUrl = getMainWebhookUrl();
         
+        // Convert Minecraft formatting codes to Discord markdown
+        String formattedMessage = DiscordFormatter.convertToDiscordFormatting(message);
+        
         // Temporarily update webhook URL if different from current
         if (webhookUrl != null && !webhookUrl.isEmpty()) {
             webhookClient.updateUrl(webhookUrl);
-            webhookClient.sendMessage(formattedUsername, avatarUrl, message);
+            webhookClient.sendMessage(formattedUsername, avatarUrl, formattedMessage);
         }
     }
     

@@ -7,3 +7,19 @@ Releases/
 node_modules/
 .DS_Store
 *.log
+
+# Release folders (uploaded separately)
+2.2.0/
+release-2.0.0/
+release-2.1.0/
+release-2.2.0/
+"Web Docs"/
+
+# Scripts
+*.ps1
+
+# Local dev files
+*.bat
+*.sh
+!gradlew.bat
+!gradlew

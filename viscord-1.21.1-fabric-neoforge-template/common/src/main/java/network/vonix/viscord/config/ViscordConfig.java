@@ -17,6 +17,12 @@ public class ViscordConfig {
         // Platform selection
         public final SimpleConfigValue<String> platform;
         
+        // Tridirectional chat settings
+        public final SimpleConfigValue<Boolean> enableTridirectionalChat;
+        public final SimpleConfigValue<Boolean> discordToFluxer;
+        public final SimpleConfigValue<Boolean> fluxerToDiscord;
+        public final SimpleConfigValue<Boolean> showPlatformSource;
+        
         // Master toggle
         public final SimpleConfigValue<Boolean> enabled;
 
@@ -105,6 +111,33 @@ public class ViscordConfig {
                                 "discord - Full Discord bot with webhooks",
                                 "fluxer - Simple webhook service")
                                 .define("platform", "discord");
+                
+                builder.pop().comment(
+                                "Tridirectional Chat Configuration",
+                                "Settings for 3-way chat between Discord, Fluxer, and Minecraft",
+                                "Requires both Discord and Fluxer to be configured")
+                                .push("tridirectional");
+
+                enableTridirectionalChat = builder.comment(
+                                "Enable tridirectional chat",
+                                "Allows messages to flow between all three platforms",
+                                "Discord ↔ Minecraft ↔ Fluxer")
+                                .define("tridirectional.enabled", false);
+
+                discordToFluxer = builder.comment(
+                                "Bridge Discord messages to Fluxer",
+                                "Messages from Discord will be sent to Fluxer")
+                                .define("tridirectional.discord_to_fluxer", true);
+
+                fluxerToDiscord = builder.comment(
+                                "Bridge Fluxer messages to Discord",
+                                "Messages from Fluxer will be sent to Discord")
+                                .define("tridirectional.fluxer_to_discord", true);
+
+                showPlatformSource = builder.comment(
+                                "Show message source platform",
+                                "Adds platform tags like [Discord] or [Fluxer] to messages")
+                                .define("tridirectional.show_source", true);
                 
                 builder.pop().comment(
                                 "Discord Configuration",
