@@ -70,8 +70,6 @@ public final class Viscord {
                         DiscordManager.getInstance().initialize(server);
                         discordEnabled = true;
                         LOGGER.info("[{}] Discord module enabled", MOD_ID);
-                    } catch (java.util.concurrent.TimeoutException e) {
-                        LOGGER.error("[{}] Discord initialization timed out after 10 seconds!", MOD_ID);
                     } catch (Exception e) {
                         LOGGER.error("[{}] Failed to initialize Discord: {}", MOD_ID, e.getMessage());
                     }

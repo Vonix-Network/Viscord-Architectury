@@ -9,6 +9,9 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [2.4.0] - 2026-03-21
 
+### ⚠️ Compatibility Notes
+- **Minecraft 1.18.2**: Due to major API changes in this version, 1.18.2 builds are based on 2.3.0 codebase. Full 2.4.0 features (reload command, command rebrand) are not available for 1.18.2.
+
 ### 🌟 Added
 - **Full Reload Capability** - New `/viscord reload` command for administrators
   - Disconnects and reconnects Discord/Fluxer bot with new config

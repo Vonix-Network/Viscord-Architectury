@@ -13,6 +13,9 @@ import net.minecraft.network.chat.Component;
 import net.minecraft.network.chat.MutableComponent;
 import net.minecraft.server.level.ServerPlayer;
 import network.vonix.viscord.config.ViscordConfig;
+import network.vonix.viscord.Viscord;
+import network.vonix.viscord.config.simple.SimpleConfigManager;
+import java.nio.file.Path;
 
 /**
  * Minecraft event handler for Discord integration.
@@ -341,8 +344,8 @@ public class DiscordEventHandler {
                                                             "§7Discord: §b/list§7 - Show online players"),
                                                     false);
                                             return 1;
-                                        }));
-        
+                                        }))));
+
         // Backward compatibility alias for /vonix commands
         dispatcher.register(
                 Commands.literal("vonix")

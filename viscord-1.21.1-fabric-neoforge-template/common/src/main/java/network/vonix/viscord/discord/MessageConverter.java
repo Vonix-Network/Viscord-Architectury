@@ -159,6 +159,71 @@ public class MessageConverter {
     }
     
     private static Component formatText(String text) {
-        return Component.literal(text);
+        MutableComponent result = Component.literal("");
+        
+        // Patterns for Discord markdown
+        Pattern boldPattern = Pattern.compile("\\*\\*(.+?)\\*\\*");
+        Pattern italicPattern = Pattern.compile("\\*(.+?)\\*");
+        Pattern underlinePattern = Pattern.compile("__(.+?)__");
+        Pattern strikethroughPattern = Pattern.compile("~~(.+?)~~");
+        Pattern codePattern = Pattern.compile("`(.+?)`");
+        Pattern spoilerPattern = Pattern.compile("\\|\\|(.+?)\\|\\|");
+        
+        // Process bold
+        String processed = text;
+        Matcher boldMatcher = boldPattern.matcher(processed);
+        StringBuffer sb = new StringBuffer();
+        while (boldMatcher.find()) {
+            boldMatcher.appendReplacement(sb, "§l" + boldMatcher.group(1) + "§r");
+        }
+        boldMatcher.appendTail(sb);
+        processed = sb.toString();
+        
+        // Process italic
+        Matcher italicMatcher = italicPattern.matcher(processed);
+        sb = new StringBuffer();
+        while (italicMatcher.find()) {
+            italicMatcher.appendReplacement(sb, "§o" + italicMatcher.group(1) + "§r");
+        }
+        italicMatcher.appendTail(sb);
+        processed = sb.toString();
+        
+        // Process underline
+        Matcher underlineMatcher = underlinePattern.matcher(processed);
+        sb = new StringBuffer();
+        while (underlineMatcher.find()) {
+            underlineMatcher.appendReplacement(sb, "§n" + underlineMatcher.group(1) + "§r");
+        }
+        underlineMatcher.appendTail(sb);
+        processed = sb.toString();
+        
+        // Process strikethrough
+        Matcher strikeMatcher = strikethroughPattern.matcher(processed);
+        sb = new StringBuffer();
+        while (strikeMatcher.find()) {
+            strikeMatcher.appendReplacement(sb, "§m" + strikeMatcher.group(1) + "§r");
+        }
+        strikeMatcher.appendTail(sb);
+        processed = sb.toString();
+        
+        // Process code
+        Matcher codeMatcher = codePattern.matcher(processed);
+        sb = new StringBuffer();
+        while (codeMatcher.find()) {
+            codeMatcher.appendReplacement(sb, "§7" + codeMatcher.group(1) + "§r");
+        }
+        codeMatcher.appendTail(sb);
+        processed = sb.toString();
+        
+        // Process spoiler (show as gray/obfuscated hint)
+        Matcher spoilerMatcher = spoilerPattern.matcher(processed);
+        sb = new StringBuffer();
+        while (spoilerMatcher.find()) {
+            spoilerMatcher.appendReplacement(sb, "§8[Spoiler]§r");
+        }
+        spoilerMatcher.appendTail(sb);
+        processed = sb.toString();
+        
+        return Component.literal(processed);
     }
 }

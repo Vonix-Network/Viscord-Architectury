@@ -60,6 +60,7 @@ public class DiscordManager {
 
     private boolean running = false;
     private String eventChannelId;
+    private String originalDiscordWebhookUrl;
 
     private DiscordManager() {
         this.botClient = new BotClient();
@@ -222,6 +223,7 @@ public class DiscordManager {
         String botToken = ViscordConfig.CONFIG.discordBotToken.get();
         String channelId = ViscordConfig.CONFIG.discordChannelId.get();
 
+        this.originalDiscordWebhookUrl = webhookUrl;
         this.webhookClient.updateUrl(webhookUrl);
 
         // Determine event channel
@@ -394,7 +396,7 @@ public class DiscordManager {
             String fluxerWebhookUrl = ViscordConfig.CONFIG.fluxerWebhookUrl.get();
             if (fluxerWebhookUrl != null && !fluxerWebhookUrl.isEmpty()) {
                 // Temporarily update webhook URL and send message
-                String originalUrl = webhookClient.getWebhookUrl();
+                String originalUrl = originalDiscordWebhookUrl;
                 webhookClient.updateUrl(fluxerWebhookUrl);
                 webhookClient.sendMessage(authorName, "", fluxerMessage);
                 webhookClient.updateUrl(originalUrl); // Restore original URL
@@ -424,7 +426,7 @@ public class DiscordManager {
             String discordWebhookUrl = ViscordConfig.CONFIG.discordWebhookUrl.get();
             if (discordWebhookUrl != null && !discordWebhookUrl.isEmpty()) {
                 // Temporarily update webhook URL and send message
-                String originalUrl = webhookClient.getWebhookUrl();
+                String originalUrl = originalDiscordWebhookUrl;
                 webhookClient.updateUrl(discordWebhookUrl);
                 webhookClient.sendMessage(username, "", discordMessage);
                 webhookClient.updateUrl(originalUrl); // Restore original URL
