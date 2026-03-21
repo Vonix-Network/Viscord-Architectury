@@ -120,12 +120,24 @@ public class DiscordManager {
         // Determine platform
         String platform = ViscordConfig.CONFIG.platform.get();
         boolean useFluxer = "fluxer".equalsIgnoreCase(platform);
+        boolean tridirectional = ViscordConfig.CONFIG.enableTridirectionalChat.get();
         
-        if (useFluxer) {
-            Viscord.LOGGER.info("[Discord] Initializing with Fluxer platform");
+        if (tridirectional) {
+            Viscord.LOGGER.info("[Viscord] Initializing Tridirectional Chat (Discord & Fluxer)");
             initializeFluxer();
+            initializeDiscord();
+        } else if (useFluxer) {
+            Viscord.LOGGER.info("[Viscord] Initializing with Fluxer platform");
+            initializeFluxer();
+            
+            // If user wants bot status, we still need to initialize the Discord bot
+            String token = ViscordConfig.CONFIG.discordBotToken.get();
+            if (ViscordConfig.CONFIG.setBotStatus.get() && token != null && !token.isEmpty() && !token.equals("YOUR_BOT_TOKEN_HERE")) {
+                Viscord.LOGGER.info("[Viscord] Initializing Discord bot for status updates (Fluxer mode)");
+                initializeDiscord();
+            }
         } else {
-            Viscord.LOGGER.info("[Discord] Initializing with Discord platform");
+            Viscord.LOGGER.info("[Viscord] Initializing with Discord platform");
             initializeDiscord();
         }
     }
@@ -179,6 +191,11 @@ public class DiscordManager {
         }
         
         Viscord.LOGGER.info("[Fluxer] Fluxer integration initialized with webhook and receiver.");
+        
+        // 4. Send Startup Message for Fluxer
+        if (!ViscordConfig.CONFIG.enableTridirectionalChat.get()) {
+            sendStartupEmbed(ViscordConfig.CONFIG.serverName.get());
+        }
     }
     
     private void onFluxerMessage(String username, String message, String avatarUrl) {
@@ -250,15 +267,20 @@ public class DiscordManager {
         }
 
         // 3. Connect Bot
+        Viscord.LOGGER.info("[Discord] Attempting to connect bot with token [REDACTED] to channel: {}", channelId);
         this.botClient.setMessageHandler(this::onDiscordMessage);
         this.botClient.connect(botToken, channelId).thenRunAsync(() -> {
             // 4. Send Startup Message (only after connection)
             // Added 5s delay to ensure permissions are cached
-            Viscord.LOGGER.info("[Discord] Bot connected, sending startup embed to channel: {}", eventChannelId);
+            Viscord.LOGGER.info("[Discord] Bot connected successfully, sending startup embed to channel: {}", eventChannelId);
             sendStartupEmbed(ViscordConfig.CONFIG.serverName.get());
             // 5. Set initial bot status
             updateBotStatus();
-        }, CompletableFuture.delayedExecutor(5, TimeUnit.SECONDS));
+        }, CompletableFuture.delayedExecutor(5, TimeUnit.SECONDS)).exceptionally(throwable -> {
+            Viscord.LOGGER.error("[Discord] Failed to connect bot to Discord: {}", throwable.getMessage());
+            Viscord.LOGGER.error("[Discord] Please check: 1) Bot token is correct, 2) Bot is in server, 3) Channel ID is correct, 4) Bot has Message Content Intent enabled");
+            return null;
+        });
 
         Viscord.LOGGER.info("[Discord] Discord integration initialized.");
     }
@@ -1003,13 +1025,22 @@ public class DiscordManager {
             return CompletableFuture.completedFuture(null);
         }
 
+        JsonObject embed = new JsonObject();
+        embedBuilder.accept(embed);
+
+        if (isFluxer()) {
+            String webhookUrl = getEventWebhookUrl();
+            if (webhookUrl != null && !webhookUrl.isEmpty()) {
+                webhookClient.updateUrl(webhookUrl);
+                webhookClient.sendEmbed(ViscordConfig.CONFIG.serverName.get(), null, embed);
+            }
+            return CompletableFuture.completedFuture(null);
+        }
+
         if (eventChannelId == null || eventChannelId.isEmpty()) {
             Viscord.LOGGER.warn("[Discord] Cannot send event embed - event channel ID not set");
             return CompletableFuture.completedFuture(null);
         }
-
-        JsonObject embed = new JsonObject();
-        embedBuilder.accept(embed);
 
         if (ViscordConfig.CONFIG.debugLogging.get()) {
             Viscord.LOGGER.debug("[Discord] Sending event embed to channel: {}", eventChannelId);
@@ -1125,12 +1156,11 @@ public class DiscordManager {
             return;
         }
 
-        JsonObject embed = new JsonObject();
-        embed.addProperty("title", "Player Died");
-        embed.addProperty("description", message);
-        embed.addProperty("color", 0xF04747);
-
-        botClient.sendEmbed(eventChannelId, embed).whenComplete((msg, error) -> {
+        sendEventEmbedInternal(embed -> {
+            embed.addProperty("title", "Player Died");
+            embed.addProperty("description", message);
+            embed.addProperty("color", 0xF04747);
+        }).whenComplete((msg, error) -> {
             if (error != null) {
                 Viscord.LOGGER.error("[Discord] Failed to send death embed", error);
             } else if (ViscordConfig.CONFIG.debugLogging.get()) {
@@ -1235,9 +1265,23 @@ public class DiscordManager {
     // =================================================================================
 
     public String generateLinkCode(ServerPlayer player) {
-        return linkedAccountsManager != null
-                ? linkedAccountsManager.generateLinkCode(player.getUUID(), player.getName().getString())
-                : null;
+        if (linkedAccountsManager == null) {
+            Viscord.LOGGER.error("[Viscord] Cannot generate link code - linkedAccountsManager is null. Account linking may be disabled or Discord bot not initialized.");
+            return null;
+        }
+        
+        if (!ViscordConfig.CONFIG.enableAccountLinking.get()) {
+            Viscord.LOGGER.warn("[Viscord] Account linking is disabled in configuration");
+            return null;
+        }
+        
+        if (!running) {
+            Viscord.LOGGER.warn("[Viscord] Cannot generate link code - Discord bot is not running. Please check bot configuration and connection.");
+            return null;
+        }
+        
+        Viscord.LOGGER.info("[Viscord] Generating link code for player: {}", player.getName().getString());
+        return linkedAccountsManager.generateLinkCode(player.getUUID(), player.getName().getString());
     }
 
     public boolean unlinkAccount(UUID uuid) {

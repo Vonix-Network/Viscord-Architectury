@@ -245,8 +245,21 @@ public class DiscordEventHandler {
                                                         false);
                                                 return 1;
                                             } else {
-                                                context.getSource().sendFailure(
-                                                        new TextComponent("§cFailed to generate link code."));
+                                                // Provide more specific error messages
+                                                DiscordManager discordManager = DiscordManager.getInstance();
+                                                if (!discordManager.isRunning()) {
+                                                    context.getSource().sendFailure(
+                                                            new TextComponent("§cDiscord bot is not connected. Please contact an administrator."));
+                                                    Viscord.LOGGER.warn("[Viscord] Link code generation failed - Discord bot is not running");
+                                                } else if (!ViscordConfig.CONFIG.enableAccountLinking.get()) {
+                                                    context.getSource().sendFailure(
+                                                            new TextComponent("§cAccount linking is disabled in configuration."));
+                                                } else {
+                                                    context.getSource().sendFailure(
+                                                            new TextComponent("§cFailed to generate link code. You may already have an account linked."));
+                                                    Viscord.LOGGER.error("[Viscord] Link code generation failed for player: {}", 
+                                                        player.getName().getString());
+                                                }
                                                 return 0;
                                             }
                                         }))

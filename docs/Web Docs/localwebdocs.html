@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Viscord 2.4.0 - Complete Documentation</title>
+    <title>Viscord 2.4.1 - Complete Documentation</title>
     <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&display=swap" rel="stylesheet">
     <link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css" rel="stylesheet">
     <style>
@@ -326,7 +326,7 @@
     <div class="container">
         <header>
             <div class="logo">Viscord</div>
-            <div class="version">Version 2.4.0</div>
+            <div class="version">Version 2.4.1</div>
             <p style="font-size: 1.2rem; color: var(--text-secondary); margin-bottom: 20px;">
                 The Ultimate Cross-Platform Minecraft Chat Solution
             </p>
@@ -362,8 +362,8 @@
         <!-- Overview Tab -->
         <div id="overview" class="tab-content active">
             <div class="card">
-                <h2><i class="fas fa-rocket"></i> Welcome to Viscord 2.4.0</h2>
-                <p>Viscord is the most advanced Minecraft chat integration mod, enabling seamless communication between Minecraft, Discord, and Fluxer platforms. With version 2.4.0, we've introduced full reload capability and command rebranding for better usability.</p>
+                <h2><i class="fas fa-rocket"></i> Welcome to Viscord 2.4.1</h2>
+                <p>Viscord is the most advanced Minecraft chat integration mod, enabling seamless communication between Minecraft, Discord, and Fluxer platforms. With version 2.4.1, we've introduced full account linking support and fixed compatibility issues across all supported Minecraft versions.</p>
                 
                 <div class="feature-grid">
                     <div class="feature-card">
@@ -379,8 +379,8 @@
                         <p>Support for Fabric, Forge, and NeoForge across multiple Minecraft versions.</p>
                     </div>
                     <div class="feature-card">
-                        <h4><i class="fas fa-shield-alt"></i> Secure & Reliable</h4>
-                        <p>Enterprise-grade security with robust error handling and recovery.</p>
+                        <h4><i class="fas fa-link"></i> Account Linking</h4>
+                        <p>Secure Discord-Minecraft account linking with code-based verification system.</p>
                     </div>
                 </div>
             </div>
@@ -406,7 +406,7 @@
                     <div class="download-card">
                         <h4>Minecraft 1.18.2</h4>
                         <div class="loader">Fabric + Forge</div>
-                        <p>Legacy version with core features</p>
+                        <p>Full 2.4.1 feature support with account linking</p>
                     </div>
                 </div>
             </div>
@@ -464,30 +464,220 @@
             <div class="card">
                 <h2><i class="fas fa-plug"></i> Platform-Specific Setup</h2>
                 
-                <h3>Discord Setup</h3>
+                <h3>Discord Bot Setup - Complete Guide</h3>
+                
                 <div class="step">
                     <div class="step-number">1</div>
                     <div class="step-content">
-                        <p>Create a Discord Bot at <a href="https://discord.com/developers/applications" target="_blank" style="color: var(--primary);">discord.com/developers/applications</a></p>
+                        <h3>Create Discord Application</h3>
+                        <p>Visit <a href="https://discord.com/developers/applications" target="_blank" style="color: var(--primary);">discord.com/developers/applications</a> and create a new application:</p>
+                        <ul style="padding-left: 20px; margin-top: 10px;">
+                            <li>Click "New Application"</li>
+                            <li>Enter your server name (e.g., "My Server Viscord Bot")</li>
+                            <li>Agree to Discord's Terms of Service</li>
+                            <li>Click "Create"</li>
+                        </ul>
                     </div>
                 </div>
+
                 <div class="step">
                     <div class="step-number">2</div>
                     <div class="step-content">
-                        <p>Enable Message Content Intent in the Bot settings</p>
+                        <h3>Create Bot Account</h3>
+                        <p>In your application dashboard:</p>
+                        <ul style="padding-left: 20px; margin-top: 10px;">
+                            <li>Go to "Bot" tab in the left sidebar</li>
+                            <li>Click "Add Bot" and confirm</li>
+                            <li>Click "Yes, do it!" when prompted</li>
+                        </ul>
                     </div>
                 </div>
+
                 <div class="step">
                     <div class="step-number">3</div>
                     <div class="step-content">
-                        <p>Create a Webhook in your Discord channel</p>
+                        <h3>Configure Bot Intents (CRITICAL)</h3>
+                        <p>Enable the required intents for Viscord to function properly:</p>
+                        <ul style="padding-left: 20px; margin-top: 10px;">
+                            <li>Scroll down to "Privileged Gateway Intents"</li>
+                            <li><strong>Enable "MESSAGE CONTENT INTENT"</strong> - Required for reading messages</li>
+                            <li><strong>Enable "SERVER MEMBERS INTENT"</strong> - Required for account linking</li>
+                            <li>Save changes</li>
+                        </ul>
+                        <div class="warning">
+                            <i class="fas fa-exclamation-triangle"></i> <strong>IMPORTANT:</strong> Message Content Intent must be enabled or the bot cannot read chat messages!
+                        </div>
                     </div>
                 </div>
+
                 <div class="step">
                     <div class="step-number">4</div>
                     <div class="step-content">
-                        <p>Copy the Bot Token, Channel ID, and Webhook URL to your config</p>
+                        <h3>Get Bot Token</h3>
+                        <p>Copy your bot token:</p>
+                        <ul style="padding-left: 20px; margin-top: 10px;">
+                            <li>Under the bot's username, click "Reset Token"</li>
+                            <li>Click "Copy" to copy the token to clipboard</li>
+                            <li><strong>Keep this token secure and private!</strong></li>
+                            <li>This token goes in your Viscord config as <code>bot_token</code></li>
+                        </ul>
+                        <div class="danger">
+                            <i class="fas fa-lock"></i> <strong>SECURITY WARNING:</strong> Never share your bot token publicly or commit it to version control!
+                        </div>
                     </div>
+                </div>
+
+                <div class="step">
+                    <div class="step-number">5</div>
+                    <div class="step-content">
+                        <h3>Invite Bot to Server</h3>
+                        <p>Generate an invite link and add the bot to your server:</p>
+                        <ul style="padding-left: 20px; margin-top: 10px;">
+                            <li>Go to "OAuth2" → "URL Generator" in the left sidebar</li>
+                            <li>Under "Scopes", select <strong>bot</strong> and <strong>applications.commands</strong></li>
+                            <li>Under "Bot Permissions", select these permissions:</li>
+                        </ul>
+                        
+                        <div class="code-block">
+                            <pre>REQUIRED PERMISSIONS:
+✓ Send Messages
+✓ Embed Links  
+✓ Attach Files
+✓ Read Message History
+✓ Use External Emojis
+✓ Add Reactions
+
+OPTIONAL BUT RECOMMENDED:
+✓ Manage Messages (for better formatting)
+✓ Manage Webhooks (for webhook management)</pre>
+                            <button class="copy-btn" onclick="copyCode(this)">Copy</button>
+                        </div>
+                        
+                        <ul style="padding-left: 20px; margin-top: 10px;">
+                            <li>Copy the generated URL at the bottom</li>
+                            <li>Paste it into your browser and select your server</li>
+                            <li>Click "Authorize" to add the bot</li>
+                        </ul>
+                    </div>
+                </div>
+
+                <div class="step">
+                    <div class="step-number">6</div>
+                    <div class="step-content">
+                        <h3>Create Discord Webhook</h3>
+                        <p>Create a webhook for sending messages to Discord:</p>
+                        <ul style="padding-left: 20px; margin-top: 10px;">
+                            <li>In your Discord server, go to the channel where you want messages to appear</li>
+                            <li>Click the gear icon (Channel Settings) next to the channel name</li>
+                            <li>Go to "Integrations" → "Webhooks"</li>
+                            <li>Click "New Webhook"</li>
+                            <li>Name it something recognizable (e.g., "Minecraft Chat")</li>
+                            <li>Optionally set an avatar for the webhook</li>
+                            <li>Click "Copy Webhook URL"</li>
+                            <li>This URL goes in your Viscord config as <code>webhook_url</code></li>
+                        </ul>
+                        <div class="success">
+                            <i class="fas fa-info-circle"></i> <strong>Pro Tip:</strong> You can create multiple webhooks for different channels (e.g., one for chat, one for server events).
+                        </div>
+                    </div>
+                </div>
+
+                <div class="step">
+                    <div class="step-number">7</div>
+                    <div class="step-content">
+                        <h3>Get Channel ID</h3>
+                        <p>Find your Discord channel ID:</p>
+                        <ul style="padding-left: 20px; margin-top: 10px;">
+                            <li>In Discord, go to User Settings → Advanced</li>
+                            <li><strong>Enable "Developer Mode"</strong></li>
+                            <li>Right-click on your target channel</li>
+                            <li>Click "Copy Channel ID" from the context menu</li>
+                            <li>This ID goes in your Viscord config as <code>channel_id</code></li>
+                        </ul>
+                    </div>
+                </div>
+
+                <div class="step">
+                    <div class="step-number">8</div>
+                    <div class="step-content">
+                        <h3>Configure Viscord</h3>
+                        <p>Update your Viscord configuration with the Discord details:</p>
+                        <div class="code-block">
+                            <pre>{
+  "discord": {
+    "bot_token": "YOUR_BOT_TOKEN_HERE",
+    "channel_id": "YOUR_CHANNEL_ID_HERE", 
+    "webhook_url": "YOUR_WEBHOOK_URL_HERE",
+    "webhook_id": "",
+    "invite_url": "https://discord.gg/yourserver"
+  }
+}</pre>
+                            <button class="copy-btn" onclick="copyCode(this)">Copy</button>
+                        </div>
+                    </div>
+                </div>
+
+                <div class="step">
+                    <div class="step-number">9</div>
+                    <div class="step-content">
+                        <h3>Test Your Setup</h3>
+                        <p>Verify everything is working:</p>
+                        <ul style="padding-left: 20px; margin-top: 10px;">
+                            <li>Set <code>enabled: true</code> in your Viscord config</li>
+                            <li>Restart your Minecraft server</li>
+                            <li>Type a message in Minecraft - it should appear in Discord</li>
+                            <li>Type a message in Discord - it should appear in Minecraft</li>
+                            <li>Check server logs for any error messages</li>
+                        </ul>
+                    </div>
+                </div>
+
+                <div class="card" style="margin-top: 30px;">
+                    <h3><i class="fas fa-shield-alt"></i> Security Best Practices</h3>
+                    <ul style="padding-left: 20px;">
+                        <li><strong>Never share your bot token</strong> - treat it like a password</li>
+                        <li><strong>Use environment variables</strong> for sensitive data in production</li>
+                        <li><strong>Enable only necessary permissions</strong> - principle of least privilege</li>
+                        <li><strong>Regularly rotate your bot token</strong> if you suspect it's compromised</li>
+                        <li><strong>Keep your bot application private</strong> - don't make it public unless necessary</li>
+                        <li><strong>Monitor bot activity</strong> for unusual behavior</li>
+                    </ul>
+                </div>
+
+                <div class="card">
+                    <h3><i class="fas fa-tools"></i> Troubleshooting Bot Issues</h3>
+                    
+                    <h4>Bot Not Connecting</h4>
+                    <ul style="padding-left: 20px;">
+                        <li>Verify Message Content Intent is enabled in Discord Developer Portal</li>
+                        <li>Check that the bot token is correct and not expired</li>
+                        <li>Ensure the bot is actually in your Discord server</li>
+                        <li>Check server logs for specific error messages</li>
+                    </ul>
+
+                    <h4>Bot Can't Read Messages</h4>
+                    <ul style="padding-left: 20px;">
+                        <li><strong>Message Content Intent must be enabled</strong> (most common issue)</li>
+                        <li>Verify bot has "Read Message History" permission</li>
+                        <li>Check that the channel ID is correct</li>
+                        <li>Ensure the bot is actually in the target channel</li>
+                    </ul>
+
+                    <h4>Bot Can't Send Messages</h4>
+                    <ul style="padding-left: 20px;">
+                        <li>Check webhook URL is valid and not expired</li>
+                        <li>Verify bot has "Send Messages" permission</li>
+                        <li>Ensure webhook hasn't been deleted from Discord</li>
+                        <li>Test the webhook URL manually using a tool like Postman</li>
+                    </ul>
+
+                    <h4>Account Linking Not Working</h4>
+                    <ul style="padding-left: 20px;">
+                        <li>Ensure Server Members Intent is enabled</li>
+                        <li>Verify bot has "Read Message History" permission</li>
+                        <li>Check that linking is enabled in config: <code>"linking": {"enabled": true}</code></li>
+                        <li>Ensure Discord-side /link command is implemented in your bot</li>
+                    </ul>
                 </div>
 
                 <h3>Fluxer Setup</h3>
@@ -1084,7 +1274,7 @@ Output: 🟡 **Golden** 🔵 *Italic* 🔴 __and__ **~~underlined strikethrough~
         </div>
 
         <div class="footer">
-            <p>&copy; 2026 Viscord - Version 2.4.0</p>
+            <p>&copy; 2026 Viscord - Version 2.4.1</p>
             <p>The Ultimate Cross-Platform Minecraft Chat Solution</p>
             <p style="margin-top: 10px; font-size: 0.9rem;">
                 Made with ❤️ for the Minecraft community

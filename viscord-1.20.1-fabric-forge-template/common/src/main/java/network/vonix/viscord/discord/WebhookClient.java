@@ -73,8 +73,8 @@ public class WebhookClient {
                         Viscord.LOGGER.debug("Response: {}", response.body().string());
                     }
                 }
-            } catch (IOException e) {
-                Viscord.LOGGER.error("Error sending webhook payload", e);
+            } catch (Exception e) {
+                Viscord.LOGGER.error("Error sending webhook payload to {}: {}", webhookUrl, e.getMessage());
             }
         });
     }

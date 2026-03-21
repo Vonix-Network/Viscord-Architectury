@@ -7,6 +7,17 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [2.4.2] - 2026-03-21
+
+### 🐛 Fixed
+- Fixed an issue where the Discord bot would not turn on when using the Fluxer platform with Tridirectional Chat enabled.
+- Fixed a bug where the Discord bot would not connect to show the server online status ("Playing X/Y") when using the Fluxer platform without Tridirectional Chat. The bot will now connect solely for status updates if a token is provided and status updates are enabled.
+- Fixed server startup, join, and leave embeds not being sent when using the Fluxer platform.
+- Fixed a bug where configuring a Fluxer webhook could result in an invalid channel ID format error ("Fluxer webhooks have IDs" exception).
+- Fixed an issue where Achievements and Death events were not being sent to Fluxer. Events are now correctly bridged to the configured Fluxer webhook.
+- Improved error messages for account linking in Minecraft when the bot is disabled or not running.
+- Prevented silent thread crashes when configuring an invalid webhook URL.
+
 ## [2.4.1] - 2026-03-21
 
 ### 🔗 Account Linking System
