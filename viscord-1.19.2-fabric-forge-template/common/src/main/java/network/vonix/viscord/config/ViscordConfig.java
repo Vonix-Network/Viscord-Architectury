@@ -17,6 +17,12 @@ public class ViscordConfig {
         // Platform selection
         public final SimpleConfigValue<String> platform;
         
+        // Tridirectional chat settings
+        public final SimpleConfigValue<Boolean> enableTridirectionalChat;
+        public final SimpleConfigValue<Boolean> discordToFluxer;
+        public final SimpleConfigValue<Boolean> fluxerToDiscord;
+        public final SimpleConfigValue<Boolean> showPlatformSource;
+        
         // Master toggle
         public final SimpleConfigValue<Boolean> enabled;
 
@@ -107,6 +113,33 @@ public class ViscordConfig {
                                 .define("platform", "discord");
                 
                 builder.pop().comment(
+                                "Tridirectional Chat Configuration",
+                                "Settings for 3-way chat between Discord, Fluxer, and Minecraft",
+                                "Requires both Discord and Fluxer to be configured")
+                                .push("tridirectional");
+
+                enableTridirectionalChat = builder.comment(
+                                "Enable tridirectional chat",
+                                "Allows messages to flow between all three platforms",
+                                "Discord ↔ Minecraft ↔ Fluxer")
+                                .define("enabled", false);
+
+                discordToFluxer = builder.comment(
+                                "Bridge Discord messages to Fluxer",
+                                "Messages from Discord will be sent to Fluxer")
+                                .define("discord_to_fluxer", true);
+
+                fluxerToDiscord = builder.comment(
+                                "Bridge Fluxer messages to Discord",
+                                "Messages from Fluxer will be sent to Discord")
+                                .define("fluxer_to_discord", true);
+
+                showPlatformSource = builder.comment(
+                                "Show message source platform",
+                                "Adds platform tags like [Discord] or [Fluxer] to messages")
+                                .define("show_source", true);
+                
+                builder.pop().comment(
                                 "Discord Configuration",
                                 "Required only when platform is set to 'discord'")
                                 .push("discord");
@@ -116,28 +149,28 @@ public class ViscordConfig {
                                 "Get from: https://discord.com/developers/applications",
                                 "Bot tab -> Copy Token",
                                 "\nIMPORTANT: Keep this secret!")
-                                .define("discord.bot_token", "YOUR_BOT_TOKEN_HERE");
+                                .define("bot_token", "YOUR_BOT_TOKEN_HERE");
 
                 discordChannelId = builder.comment(
                                 "Discord Channel ID",
                                 "Right-click channel -> Copy Channel ID",
                                 "(Enable Developer Mode in Discord settings)")
-                                .define("discord.channel_id", "YOUR_CHANNEL_ID_HERE");
+                                .define("channel_id", "YOUR_CHANNEL_ID_HERE");
 
                 discordWebhookUrl = builder.comment(
                                 "Discord Webhook URL",
                                 "Channel Settings -> Integrations -> Webhooks -> Copy URL")
-                                .define("discord.webhook_url", "");
+                                .define("webhook_url", "");
 
                 discordWebhookId = builder.comment(
                                 "Webhook ID (optional)",
                                 "Auto-extracted from URL if left empty")
-                                .define("discord.webhook_id", "");
+                                .define("webhook_id", "");
 
                 discordInviteUrl = builder.comment(
                                 "Discord Invite URL",
                                 "Shown when players use /discord command")
-                                .define("discord.invite_url", "");
+                                .define("invite_url", "");
                 
                 builder.pop().comment(
                                 "Fluxer Configuration",
@@ -147,37 +180,37 @@ public class ViscordConfig {
                 fluxerWebhookUrl = builder.comment(
                                 "Fluxer Webhook URL",
                                 "Get this from your Fluxer dashboard")
-                                .define("fluxer.webhook_url", "");
+                                .define("webhook_url", "");
                 
                 fluxerEventWebhookUrl = builder.comment(
                                 "Event Webhook URL (optional)",
                                 "Separate webhook for server events",
                                 "Leave empty to use main webhook")
-                                .define("fluxer.event_webhook_url", "");
+                                .define("event_webhook_url", "");
                 
                 fluxerApiKey = builder.comment(
                                 "Fluxer API Key",
                                 "Get this from your Fluxer dashboard",
                                 "\nIMPORTANT: Keep this secret!")
-                                .define("fluxer.api_key", "YOUR_FLUXER_API_KEY");
+                                .define("api_key", "YOUR_FLUXER_API_KEY");
                 
                 fluxerReceiverPort = builder.comment(
                                 "Receiver Port",
                                 "Port for receiving Fluxer messages",
                                 "Default: 8080",
                                 "Must be open in your firewall")
-                                .defineInRange("fluxer.port", 8080, 1024, 65535);
+                                .defineInRange("port", 8080, 1024, 65535);
                 
                 fluxerReceiverPath = builder.comment(
                                 "Receiver Path",
                                 "Fluxer sends messages to: http://your-server:PORT/PATH",
                                 "Default: webhook")
-                                .define("fluxer.path", "webhook");
+                                .define("path", "webhook");
 
                 builder.pop().comment(
                                 "Server Identity",
                                 "How your server appears in Discord")
-                                .push("server_identity");
+                                .push("server");
 
                 serverPrefix = builder.comment(
                                 "Server prefix shown in Discord messages",
@@ -196,12 +229,12 @@ public class ViscordConfig {
                 builder.pop().comment(
                                 "Message Formats",
                                 "Customize how messages appear")
-                                .push("message_formats");
+                                .push("formats");
 
                 discordToMinecraftFormat = builder.comment(
                                 "Format for Discord -> Minecraft messages",
                                 "Placeholders: {username}, {message}")
-                                .define("discord_to_minecraft", "§b[Discord] §f{username}: {message}");
+                                .define("discord_to_minecraft", "[Discord] {username}: {message}");
 
                 minecraftToDiscordFormat = builder.comment(
                                 "Format for Minecraft -> Discord messages",
@@ -211,7 +244,7 @@ public class ViscordConfig {
                 webhookUsernameFormat = builder.comment(
                                 "Webhook display name format",
                                 "Placeholders: {prefix}, {username}")
-                                .define("webhook_username", "{prefix}{username}");
+                                .define("webhook_username", "{prefix} {username}");
 
                 avatarUrl = builder.comment(
                                 "Player avatar URL template",
@@ -246,15 +279,15 @@ public class ViscordConfig {
                                 .define("event_webhook_url", "");
 
                 builder.pop().comment(
-                                "Loop Prevention",
-                                "Prevent message loops in multi-server setups")
-                                .push("loop_prevention");
+                                "Chat Filters & Loop Prevention",
+                                "Prevent message loops and filter content")
+                                .push("filters");
 
-                ignoreBots = builder.comment("Ignore messages from Discord bots")
-                                .define("ignore_bots", false);
+                ignoreBots = builder.comment("Ignore Discord bot messages")
+                                .define("ignore_bots", true);
 
-                ignoreWebhooks = builder.comment("Ignore messages from other webhooks")
-                                .define("ignore_webhooks", false);
+                ignoreWebhooks = builder.comment("Ignore other webhook messages")
+                                .define("ignore_webhooks", true);
 
                 filterByPrefix = builder.comment(
                                 "Filter webhooks by server prefix",
@@ -278,8 +311,8 @@ public class ViscordConfig {
 
                 builder.pop().comment(
                                 "Bot Status",
-                                "Configure the bot's Discord presence")
-                                .push("bot_status");
+                                "Discord bot presence configuration")
+                                .push("bot");
 
                 setBotStatus = builder.comment("Update bot status with player count")
                                 .define("enabled", true);
@@ -291,8 +324,8 @@ public class ViscordConfig {
 
                 builder.pop().comment(
                                 "Account Linking",
-                                "Allow players to link Minecraft and Discord accounts")
-                                .push("account_linking");
+                                "Link Minecraft and Discord accounts")
+                                .push("linking");
 
                 enableAccountLinking = builder.comment("Enable Discord account linking")
                                 .define("enabled", true);
@@ -306,18 +339,18 @@ public class ViscordConfig {
                                 "Performance and debugging options")
                                 .push("advanced");
 
-                debugLogging = builder.comment("Enable verbose debug logging")
+                debugLogging = builder.comment("Enable debug logging")
                                 .define("debug_logging", false);
 
                 messageQueueSize = builder.comment(
-                                "Maximum queued messages before dropping",
-                                "Increase if messages are being lost during high traffic")
-                                .defineInRange("message_queue_size", 100, 10, 1000);
+                                "Message queue size",
+                                "Increase if losing messages during high traffic")
+                                .defineInRange("queue_size", 100, 10, 1000);
 
                 rateLimitDelay = builder.comment(
-                                "Minimum delay between webhook messages (ms)",
-                                "Prevents rate limiting from Discord")
-                                .defineInRange("rate_limit_delay", 1000, 100, 5000);
+                                "Rate limit delay (milliseconds)",
+                                "Prevents Discord rate limiting")
+                                .defineInRange("rate_limit", 1000, 100, 5000);
 
                 builder.pop();
         }

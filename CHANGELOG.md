@@ -49,6 +49,24 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - Updated version to 2.2.0 to reflect major formatting enhancement
 - Enhanced message processing pipeline for formatting support
 
+## [2.3.0] - 2026-03-21
+
+### 🌟 Added
+- **Clean Configuration Structure** - Reorganized config sections for better readability
+  - Renamed `server_identity` → `server`
+  - Renamed `message_formats` → `formats`
+  - Renamed `loop_prevention` → `filters`
+  - Renamed `bot_status` → `bot`
+  - Renamed `account_linking` → `linking`
+- **Simplified Config Keys** - Removed redundant prefixes within sections
+- **Improved Defaults** - Better out-of-box experience with sensible defaults
+- **Standardized Naming** - Consistent section naming convention across all config files
+
+### Changed
+- Updated version to 2.3.0 for configuration improvements
+- Enhanced config documentation with clearer comments
+- Improved config file organization and readability
+
 ## [2.1.0] - 2026-03-21
 
 ### 🌟 Added

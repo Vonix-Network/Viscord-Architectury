@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Viscord 2.2.0 - Complete Documentation</title>
+    <title>Viscord 2.3.0 - Complete Documentation</title>
     <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&display=swap" rel="stylesheet">
     <link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css" rel="stylesheet">
     <style>
@@ -326,12 +326,12 @@
     <div class="container">
         <header>
             <div class="logo">Viscord</div>
-            <div class="version">Version 2.2.0</div>
+            <div class="version">Version 2.3.0</div>
             <p style="font-size: 1.2rem; color: var(--text-secondary); margin-bottom: 20px;">
                 The Ultimate Cross-Platform Minecraft Chat Solution
             </p>
             <p style="color: var(--text-muted);">
-                Discord ↔ Minecraft ↔ Fluxer Tridirectional Chat with Rich Formatting Support
+                Discord ↔ Minecraft ↔ Fluxer Tridirectional Chat with Rich Formatting & Clean Config
             </p>
         </header>
 
@@ -523,8 +523,10 @@
 
                 <div class="code-block">
                     <pre>{
-  "enabled": false,
-  "platform": "discord",
+  "general": {
+    "enabled": false,
+    "platform": "discord"
+  },
   
   "tridirectional": {
     "enabled": false,
@@ -544,21 +546,56 @@
   "fluxer": {
     "webhook_url": "",
     "event_webhook_url": "",
-    "api_key": "",
-    "receiver_port": 8080,
-    "receiver_path": "/webhook"
+    "api_key": "YOUR_API_KEY_HERE",
+    "port": 8080,
+    "path": "/webhook"
   },
   
   "server": {
-    "prefix": "Server",
-    "name": "My Minecraft Server",
+    "prefix": "[MC]",
+    "name": "Minecraft Server",
     "avatar_url": ""
   },
   
   "formats": {
     "discord_to_minecraft": "[Discord] {username}: {message}",
-    "minecraft_to_discord": "{username}: {message}",
-    "webhook_username": "{prefix} {username}"
+    "minecraft_to_discord": "{message}",
+    "webhook_username": "{prefix}{username}",
+    "avatar_url": "https://minotar.net/armor/bust/{username}/100.png"
+  },
+  
+  "events": {
+    "send_join": true,
+    "send_leave": true,
+    "send_death": true,
+    "send_advancement": true,
+    "event_channel_id": "",
+    "event_webhook_url": ""
+  },
+  
+  "filters": {
+    "ignore_bots": true,
+    "ignore_webhooks": true,
+    "filter_by_prefix": true,
+    "show_other_server_events": true,
+    "enable_chat_filter": false,
+    "chat_filter_prefix": "!"
+  },
+  
+  "bot": {
+    "enabled": true,
+    "format": "{online}/{max} players"
+  },
+  
+  "linking": {
+    "enabled": true,
+    "code_expiry": 300
+  },
+  
+  "advanced": {
+    "debug_logging": false,
+    "queue_size": 100,
+    "rate_limit": 1000
   }
 }</pre>
                     <button class="copy-btn" onclick="copyCode(this)">Copy</button>
@@ -974,7 +1011,7 @@ Output: 🟡 **Golden** 🔵 *Italic* 🔴 __and__ **~~underlined strikethrough~
         </div>
 
         <div class="footer">
-            <p>&copy; 2026 Viscord - Version 2.2.0</p>
+            <p>&copy; 2026 Viscord - Version 2.3.0</p>
             <p>The Ultimate Cross-Platform Minecraft Chat Solution</p>
             <p style="margin-top: 10px; font-size: 0.9rem;">
                 Made with ❤️ for the Minecraft community
