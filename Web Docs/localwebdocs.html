@@ -1,0 +1,1035 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Viscord 2.2.0 - Complete Documentation</title>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&display=swap" rel="stylesheet">
+    <link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css" rel="stylesheet">
+    <style>
+        :root {
+            --primary: #5865F2;
+            --primary-dark: #4752C4;
+            --secondary: #57F287;
+            --danger: #ED4245;
+            --warning: #FEE75C;
+            --bg-dark: #2C2F33;
+            --bg-darker: #23272A;
+            --bg-light: #36393F;
+            --text-primary: #FFFFFF;
+            --text-secondary: #B9BBBE;
+            --text-muted: #72767D;
+            --border: #40444B;
+            --shadow: rgba(0, 0, 0, 0.3);
+        }
+
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        body {
+            font-family: 'Inter', sans-serif;
+            background: linear-gradient(135deg, var(--bg-darker) 0%, var(--bg-dark) 100%);
+            color: var(--text-primary);
+            line-height: 1.6;
+            min-height: 100vh;
+        }
+
+        .container {
+            max-width: 1200px;
+            margin: 0 auto;
+            padding: 20px;
+        }
+
+        header {
+            background: var(--bg-light);
+            border-radius: 12px;
+            padding: 40px;
+            margin-bottom: 30px;
+            box-shadow: 0 8px 32px var(--shadow);
+            border: 1px solid var(--border);
+            text-align: center;
+        }
+
+        .logo {
+            font-size: 3rem;
+            font-weight: 700;
+            background: linear-gradient(135deg, var(--primary) 0%, var(--secondary) 100%);
+            -webkit-background-clip: text;
+            -webkit-text-fill-color: transparent;
+            margin-bottom: 10px;
+        }
+
+        .version {
+            display: inline-block;
+            background: var(--primary);
+            color: white;
+            padding: 8px 16px;
+            border-radius: 20px;
+            font-weight: 600;
+            margin-bottom: 20px;
+        }
+
+        .nav-tabs {
+            display: flex;
+            background: var(--bg-light);
+            border-radius: 12px;
+            padding: 8px;
+            margin-bottom: 30px;
+            box-shadow: 0 4px 16px var(--shadow);
+            border: 1px solid var(--border);
+            overflow-x: auto;
+        }
+
+        .nav-tab {
+            flex: 1;
+            padding: 12px 20px;
+            background: transparent;
+            border: none;
+            color: var(--text-secondary);
+            cursor: pointer;
+            border-radius: 8px;
+            font-weight: 500;
+            transition: all 0.3s ease;
+            white-space: nowrap;
+        }
+
+        .nav-tab:hover {
+            background: var(--bg-darker);
+            color: var(--text-primary);
+        }
+
+        .nav-tab.active {
+            background: var(--primary);
+            color: white;
+        }
+
+        .tab-content {
+            display: none;
+        }
+
+        .tab-content.active {
+            display: block;
+        }
+
+        .card {
+            background: var(--bg-light);
+            border-radius: 12px;
+            padding: 30px;
+            margin-bottom: 20px;
+            box-shadow: 0 4px 16px var(--shadow);
+            border: 1px solid var(--border);
+        }
+
+        .card h2 {
+            color: var(--primary);
+            margin-bottom: 20px;
+            font-size: 1.5rem;
+            display: flex;
+            align-items: center;
+            gap: 10px;
+        }
+
+        .card h3 {
+            color: var(--secondary);
+            margin: 20px 0 15px 0;
+            font-size: 1.2rem;
+        }
+
+        .feature-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(300px, 1fr));
+            gap: 20px;
+            margin: 20px 0;
+        }
+
+        .feature-card {
+            background: var(--bg-darker);
+            padding: 20px;
+            border-radius: 8px;
+            border: 1px solid var(--border);
+        }
+
+        .feature-card h4 {
+            color: var(--secondary);
+            margin-bottom: 10px;
+        }
+
+        .code-block {
+            background: var(--bg-darker);
+            border: 1px solid var(--border);
+            border-radius: 8px;
+            padding: 20px;
+            margin: 15px 0;
+            overflow-x: auto;
+            font-family: 'Courier New', monospace;
+            position: relative;
+        }
+
+        .code-block pre {
+            margin: 0;
+            color: var(--text-primary);
+        }
+
+        .copy-btn {
+            position: absolute;
+            top: 10px;
+            right: 10px;
+            background: var(--primary);
+            color: white;
+            border: none;
+            padding: 5px 10px;
+            border-radius: 4px;
+            cursor: pointer;
+            font-size: 0.8rem;
+        }
+
+        .copy-btn:hover {
+            background: var(--primary-dark);
+        }
+
+        .warning {
+            background: rgba(254, 231, 92, 0.1);
+            border: 1px solid var(--warning);
+            border-radius: 8px;
+            padding: 15px;
+            margin: 15px 0;
+            color: var(--warning);
+        }
+
+        .success {
+            background: rgba(87, 242, 135, 0.1);
+            border: 1px solid var(--secondary);
+            border-radius: 8px;
+            padding: 15px;
+            margin: 15px 0;
+            color: var(--secondary);
+        }
+
+        .danger {
+            background: rgba(237, 66, 69, 0.1);
+            border: 1px solid var(--danger);
+            border-radius: 8px;
+            padding: 15px;
+            margin: 15px 0;
+            color: var(--danger);
+        }
+
+        .formatting-table {
+            width: 100%;
+            border-collapse: collapse;
+            margin: 20px 0;
+            background: var(--bg-darker);
+            border-radius: 8px;
+            overflow: hidden;
+        }
+
+        .formatting-table th,
+        .formatting-table td {
+            padding: 12px;
+            text-align: left;
+            border-bottom: 1px solid var(--border);
+        }
+
+        .formatting-table th {
+            background: var(--primary);
+            color: white;
+            font-weight: 600;
+        }
+
+        .formatting-table tr:hover {
+            background: var(--bg-light);
+        }
+
+        .step {
+            display: flex;
+            align-items: flex-start;
+            margin: 20px 0;
+            gap: 15px;
+        }
+
+        .step-number {
+            background: var(--primary);
+            color: white;
+            width: 30px;
+            height: 30px;
+            border-radius: 50%;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-weight: 600;
+            flex-shrink: 0;
+        }
+
+        .step-content {
+            flex: 1;
+        }
+
+        .download-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(250px, 1fr));
+            gap: 15px;
+            margin: 20px 0;
+        }
+
+        .download-card {
+            background: var(--bg-darker);
+            border: 1px solid var(--border);
+            border-radius: 8px;
+            padding: 20px;
+            text-align: center;
+            transition: transform 0.3s ease, box-shadow 0.3s ease;
+        }
+
+        .download-card:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 8px 24px var(--shadow);
+        }
+
+        .download-card h4 {
+            color: var(--primary);
+            margin-bottom: 10px;
+        }
+
+        .download-card .loader {
+            color: var(--secondary);
+            font-size: 0.9rem;
+            margin-bottom: 10px;
+        }
+
+        .footer {
+            text-align: center;
+            padding: 40px;
+            color: var(--text-muted);
+            border-top: 1px solid var(--border);
+            margin-top: 40px;
+        }
+
+        @media (max-width: 768px) {
+            .container {
+                padding: 10px;
+            }
+            
+            .nav-tabs {
+                flex-direction: column;
+            }
+            
+            .feature-grid {
+                grid-template-columns: 1fr;
+            }
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <header>
+            <div class="logo">Viscord</div>
+            <div class="version">Version 2.2.0</div>
+            <p style="font-size: 1.2rem; color: var(--text-secondary); margin-bottom: 20px;">
+                The Ultimate Cross-Platform Minecraft Chat Solution
+            </p>
+            <p style="color: var(--text-muted);">
+                Discord ↔ Minecraft ↔ Fluxer Tridirectional Chat with Rich Formatting Support
+            </p>
+        </header>
+
+        <div class="nav-tabs">
+            <button class="nav-tab active" onclick="showTab('overview')">
+                <i class="fas fa-home"></i> Overview
+            </button>
+            <button class="nav-tab" onclick="showTab('installation')">
+                <i class="fas fa-download"></i> Installation
+            </button>
+            <button class="nav-tab" onclick="showTab('configuration')">
+                <i class="fas fa-cog"></i> Configuration
+            </button>
+            <button class="nav-tab" onclick="showTab('features')">
+                <i class="fas fa-star"></i> Features
+            </button>
+            <button class="nav-tab" onclick="showTab('formatting')">
+                <i class="fas fa-palette"></i> Formatting
+            </button>
+            <button class="nav-tab" onclick="showTab('troubleshooting')">
+                <i class="fas fa-wrench"></i> Troubleshooting
+            </button>
+        </div>
+
+        <!-- Overview Tab -->
+        <div id="overview" class="tab-content active">
+            <div class="card">
+                <h2><i class="fas fa-rocket"></i> Welcome to Viscord 2.2.0</h2>
+                <p>Viscord is the most advanced Minecraft chat integration mod, enabling seamless communication between Minecraft, Discord, and Fluxer platforms. With version 2.2.0, we've introduced revolutionary features including tridirectional chat and rich formatting support.</p>
+                
+                <div class="feature-grid">
+                    <div class="feature-card">
+                        <h4><i class="fas fa-comments"></i> Tridirectional Chat</h4>
+                        <p>Real-time message synchronization between Discord, Minecraft, and Fluxer platforms.</p>
+                    </div>
+                    <div class="feature-card">
+                        <h4><i class="fas fa-palette"></i> Rich Formatting</h4>
+                        <p>Support for Minecraft formatting codes converted to Discord markdown.</p>
+                    </div>
+                    <div class="feature-card">
+                        <h4><i class="fas fa-server"></i> Multi-Loader</h4>
+                        <p>Support for Fabric, Forge, and NeoForge across multiple Minecraft versions.</p>
+                    </div>
+                    <div class="feature-card">
+                        <h4><i class="fas fa-shield-alt"></i> Secure & Reliable</h4>
+                        <p>Enterprise-grade security with robust error handling and recovery.</p>
+                    </div>
+                </div>
+            </div>
+
+            <div class="card">
+                <h2><i class="fas fa-gamepad"></i> Supported Versions</h2>
+                <div class="download-grid">
+                    <div class="download-card">
+                        <h4>Minecraft 1.21.1</h4>
+                        <div class="loader">Fabric + NeoForge</div>
+                        <p>Latest version with full feature support</p>
+                    </div>
+                    <div class="download-card">
+                        <h4>Minecraft 1.20.1</h4>
+                        <div class="loader">Fabric + Forge</div>
+                        <p>Stable version with all features</p>
+                    </div>
+                    <div class="download-card">
+                        <h4>Minecraft 1.19.2</h4>
+                        <div class="loader">Fabric + Forge</div>
+                        <p>LTS version with complete support</p>
+                    </div>
+                    <div class="download-card">
+                        <h4>Minecraft 1.18.2</h4>
+                        <div class="loader">Fabric + Forge</div>
+                        <p>Legacy version with core features</p>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Installation Tab -->
+        <div id="installation" class="tab-content">
+            <div class="card">
+                <h2><i class="fas fa-download"></i> Quick Installation</h2>
+                
+                <div class="step">
+                    <div class="step-number">1</div>
+                    <div class="step-content">
+                        <h3>Download the Correct JAR</h3>
+                        <p>Choose the appropriate JAR file for your Minecraft version and mod loader from the downloads section.</p>
+                    </div>
+                </div>
+
+                <div class="step">
+                    <div class="step-number">2</div>
+                    <div class="step-content">
+                        <h3>Install to Server</h3>
+                        <p>Place the JAR file in your server's <code>mods</code> folder.</p>
+                        <div class="code-block">
+                            <pre>server/
+├── mods/
+│   └── Viscord-2.2.0-Fabric-1.21.1.jar
+└── ...</pre>
+                            <button class="copy-btn" onclick="copyCode(this)">Copy</button>
+                        </div>
+                    </div>
+                </div>
+
+                <div class="step">
+                    <div class="step-number">3</div>
+                    <div class="step-content">
+                        <h3>Restart Server</h3>
+                        <p>Restart your Minecraft server to load Viscord. A configuration file will be generated automatically.</p>
+                    </div>
+                </div>
+
+                <div class="step">
+                    <div class="step-number">4</div>
+                    <div class="step-content">
+                        <h3>Configure Platform</h3>
+                        <p>Edit the generated <code>config/viscord.json</code> file to set up your preferred platform (Discord or Fluxer).</p>
+                    </div>
+                </div>
+
+                <div class="success">
+                    <i class="fas fa-check-circle"></i> <strong>Success!</strong> Viscord is now installed and ready to configure.
+                </div>
+            </div>
+
+            <div class="card">
+                <h2><i class="fas fa-plug"></i> Platform-Specific Setup</h2>
+                
+                <h3>Discord Setup</h3>
+                <div class="step">
+                    <div class="step-number">1</div>
+                    <div class="step-content">
+                        <p>Create a Discord Bot at <a href="https://discord.com/developers/applications" target="_blank" style="color: var(--primary);">discord.com/developers/applications</a></p>
+                    </div>
+                </div>
+                <div class="step">
+                    <div class="step-number">2</div>
+                    <div class="step-content">
+                        <p>Enable Message Content Intent in the Bot settings</p>
+                    </div>
+                </div>
+                <div class="step">
+                    <div class="step-number">3</div>
+                    <div class="step-content">
+                        <p>Create a Webhook in your Discord channel</p>
+                    </div>
+                </div>
+                <div class="step">
+                    <div class="step-number">4</div>
+                    <div class="step-content">
+                        <p>Copy the Bot Token, Channel ID, and Webhook URL to your config</p>
+                    </div>
+                </div>
+
+                <h3>Fluxer Setup</h3>
+                <div class="step">
+                    <div class="step-number">1</div>
+                    <div class="step-content">
+                        <p>Set <code>platform: "fluxer"</code> in your config</p>
+                    </div>
+                </div>
+                <div class="step">
+                    <div class="step-number">2</div>
+                    <div class="step-content">
+                        <p>Configure your Fluxer webhook URLs</p>
+                    </div>
+                </div>
+                <div class="step">
+                    <div class="step-number">3</div>
+                    <div class="step-content">
+                        <p>Set the receiver port (default: 8080)</p>
+                    </div>
+                </div>
+                <div class="step">
+                    <div class="step-number">4</div>
+                    <div class="step-content">
+                        <p>Point Fluxer to <code>http://your-server:8080/webhook</code></p>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Configuration Tab -->
+        <div id="configuration" class="tab-content">
+            <div class="card">
+                <h2><i class="fas fa-cog"></i> Configuration Guide</h2>
+                <p>Viscord uses a JSON configuration file located at <code>config/viscord.json</code>. The file is automatically generated on first run.</p>
+
+                <div class="code-block">
+                    <pre>{
+  "enabled": false,
+  "platform": "discord",
+  
+  "tridirectional": {
+    "enabled": false,
+    "discord_to_fluxer": true,
+    "fluxer_to_discord": true,
+    "show_source": true
+  },
+  
+  "discord": {
+    "bot_token": "YOUR_BOT_TOKEN_HERE",
+    "channel_id": "YOUR_CHANNEL_ID_HERE",
+    "webhook_url": "YOUR_WEBHOOK_URL_HERE",
+    "webhook_id": "",
+    "invite_url": ""
+  },
+  
+  "fluxer": {
+    "webhook_url": "",
+    "event_webhook_url": "",
+    "api_key": "",
+    "receiver_port": 8080,
+    "receiver_path": "/webhook"
+  },
+  
+  "server": {
+    "prefix": "Server",
+    "name": "My Minecraft Server",
+    "avatar_url": ""
+  },
+  
+  "formats": {
+    "discord_to_minecraft": "[Discord] {username}: {message}",
+    "minecraft_to_discord": "{username}: {message}",
+    "webhook_username": "{prefix} {username}"
+  }
+}</pre>
+                    <button class="copy-btn" onclick="copyCode(this)">Copy</button>
+                </div>
+            </div>
+
+            <div class="card">
+                <h2><i class="fas fa-sliders-h"></i> Configuration Options</h2>
+                
+                <h3>Basic Settings</h3>
+                <table style="width: 100%; border-collapse: collapse;">
+                    <tr style="background: var(--bg-darker);">
+                        <th style="padding: 12px; text-align: left; border: 1px solid var(--border);">Setting</th>
+                        <th style="padding: 12px; text-align: left; border: 1px solid var(--border);">Description</th>
+                        <th style="padding: 12px; text-align: left; border: 1px solid var(--border);">Default</th>
+                    </tr>
+                    <tr>
+                        <td style="padding: 12px; border: 1px solid var(--border);"><code>enabled</code></td>
+                        <td style="padding: 12px; border: 1px solid var(--border);">Master toggle for Viscord</td>
+                        <td style="padding: 12px; border: 1px solid var(--border);"><code>false</code></td>
+                    </tr>
+                    <tr style="background: var(--bg-darker);">
+                        <td style="padding: 12px; border: 1px solid var(--border);"><code>platform</code></td>
+                        <td style="padding: 12px; border: 1px solid var(--border);">Chat platform to use</td>
+                        <td style="padding: 12px; border: 1px solid var(--border);"><code>"discord"</code></td>
+                    </tr>
+                </table>
+
+                <h3>Tridirectional Chat Settings</h3>
+                <table style="width: 100%; border-collapse: collapse;">
+                    <tr style="background: var(--bg-darker);">
+                        <th style="padding: 12px; text-align: left; border: 1px solid var(--border);">Setting</th>
+                        <th style="padding: 12px; text-align: left; border: 1px solid var(--border);">Description</th>
+                        <th style="padding: 12px; text-align: left; border: 1px solid var(--border);">Default</th>
+                    </tr>
+                    <tr>
+                        <td style="padding: 12px; border: 1px solid var(--border);"><code>tridirectional.enabled</code></td>
+                        <td style="padding: 12px; border: 1px solid var(--border);">Enable 3-way chat sync</td>
+                        <td style="padding: 12px; border: 1px solid var(--border);"><code>false</code></td>
+                    </tr>
+                    <tr style="background: var(--bg-darker);">
+                        <td style="padding: 12px; border: 1px solid var(--border);"><code>tridirectional.discord_to_fluxer</code></td>
+                        <td style="padding: 12px; border: 1px solid var(--border);">Bridge Discord to Fluxer</td>
+                        <td style="padding: 12px; border: 1px solid var(--border);"><code>true</code></td>
+                    </tr>
+                    <tr>
+                        <td style="padding: 12px; border: 1px solid var(--border);"><code>tridirectional.fluxer_to_discord</code></td>
+                        <td style="padding: 12px; border: 1px solid var(--border);">Bridge Fluxer to Discord</td>
+                        <td style="padding: 12px; border: 1px solid var(--border);"><code>true</code></td>
+                    </tr>
+                    <tr style="background: var(--bg-darker);">
+                        <td style="padding: 12px; border: 1px solid var(--border);"><code>tridirectional.show_source</code></td>
+                        <td style="padding: 12px; border: 1px solid var(--border);">Show platform source tags</td>
+                        <td style="padding: 12px; border: 1px solid var(--border);"><code>true</code></td>
+                    </tr>
+                </table>
+
+                <div class="warning">
+                    <i class="fas fa-exclamation-triangle"></i> <strong>Important:</strong> For tridirectional chat, you must configure both Discord AND Fluxer settings, even if you primarily use one platform.
+                </div>
+            </div>
+        </div>
+
+        <!-- Features Tab -->
+        <div id="features" class="tab-content">
+            <div class="card">
+                <h2><i class="fas fa-star"></i> Core Features</h2>
+                
+                <div class="feature-grid">
+                    <div class="feature-card">
+                        <h4><i class="fas fa-comments"></i> Tridirectional Chat</h4>
+                        <p>Revolutionary 3-way message synchronization between Discord, Minecraft, and Fluxer platforms.</p>
+                        <ul style="margin-top: 10px; padding-left: 20px;">
+                            <li>Real-time message bridging</li>
+                            <li>Platform source identification</li>
+                            <li>Configurable routing options</li>
+                        </ul>
+                    </div>
+                    
+                    <div class="feature-card">
+                        <h4><i class="fas fa-palette"></i> Rich Formatting Support</h4>
+                        <p>Complete Minecraft formatting code conversion to Discord markdown.</p>
+                        <ul style="margin-top: 10px; padding-left: 20px;">
+                            <li>Bold, Italic, Underline, Strikethrough</li>
+                            <li>Color indicators with emojis</li>
+                            <li>Magic/obfuscated text support</li>
+                        </ul>
+                    </div>
+                    
+                    <div class="feature-card">
+                        <h4><i class="fas fa-server"></i> Multi-Platform Support</h4>
+                        <p>Works across multiple mod loaders and Minecraft versions.</p>
+                        <ul style="margin-top: 10px; padding-left: 20px;">
+                            <li>Fabric, Forge, NeoForge</li>
+                            <li>1.18.2 - 1.21.1 support</li>
+                            <li>Unified configuration</li>
+                        </ul>
+                    </div>
+                    
+                    <div class="feature-card">
+                        <h4><i class="fas fa-shield-alt"></i> Advanced Security</h4>
+                        <p>Enterprise-grade security with robust error handling.</p>
+                        <ul style="margin-top: 10px; padding-left: 20px;">
+                            <li>API key validation</li>
+                            <li>Input sanitization</li>
+                            <li>Secure webhook handling</li>
+                        </ul>
+                    </div>
+                </div>
+            </div>
+
+            <div class="card">
+                <h2><i class="fas fa-cogs"></i> Advanced Features</h2>
+                
+                <h3>Event Notifications</h3>
+                <p>Automatically send server events to your chat platform:</p>
+                <ul style="padding-left: 20px;">
+                    <li>Player join/leave notifications</li>
+                    <li>Death messages with custom formatting</li>
+                    <li>Advancement completions</li>
+                    <li>Server startup/shutdown status</li>
+                </ul>
+
+                <h3>Account Linking</h3>
+                <p>Link Discord accounts to Minecraft players for enhanced features:</p>
+                <ul style="padding-left: 20px;">
+                    <li>Secure code-based linking</li>
+                    <li>Persistent account storage</li>
+                    <li>Privacy-focused design</li>
+                    <li>Cross-server identity sync</li>
+                </ul>
+
+                <h3>Player Preferences</h3>
+                <p>Allow players to customize their chat experience:</p>
+                <ul style="padding-left: 20px;">
+                    <li>Enable/disable chat bridging per player</li>
+                    <li>Filter system messages</li>
+                    <li>Event notification preferences</li>
+                    <li>In-game command controls</li>
+                </ul>
+            </div>
+        </div>
+
+        <!-- Formatting Tab -->
+        <div id="formatting" class="tab-content">
+            <div class="card">
+                <h2><i class="fas fa-palette"></i> Formatting Support</h2>
+                <p>Viscord 2.2.0 introduces comprehensive formatting support, converting Minecraft formatting codes to Discord markdown automatically.</p>
+
+                <h3>Supported Formatting Codes</h3>
+                <table class="formatting-table">
+                    <thead>
+                        <tr>
+                            <th>Minecraft Code</th>
+                            <th>Discord Result</th>
+                            <th>Example Input</th>
+                            <th>Discord Output</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        <tr>
+                            <td><code>§l</code> or <code>&l</code></td>
+                            <td><strong>Bold</strong></td>
+                            <td><code>§lHello World</code></td>
+                            <td><strong>Hello World</strong></td>
+                        </tr>
+                        <tr>
+                            <td><code>§o</code> or <code>&o</code></td>
+                            <td><em>Italic</em></td>
+                            <td><code>§oHello World</code></td>
+                            <td><em>Hello World</em></td>
+                        </tr>
+                        <tr>
+                            <td><code>§n</code> or <code>&n</code></td>
+                            <td><u>Underline</u></td>
+                            <td><code>§nHello World</code></td>
+                            <td><u>Hello World</u></td>
+                        </tr>
+                        <tr>
+                            <td><code>§m</code> or <code>&m</code></td>
+                            <td><s>Strikethrough</s></td>
+                            <td><code>§mHello World</code></td>
+                            <td><s>Hello World</s></td>
+                        </tr>
+                        <tr>
+                            <td><code>§k</code> or <code>&k</code></td>
+                            <td>✨Magic✨</td>
+                            <td><code>§kHello World</code></td>
+                            <td>✨Hello World✨</td>
+                        </tr>
+                        <tr>
+                            <td><code>§r</code> or <code>&r</code></td>
+                            <td>Reset</td>
+                            <td><code>§lBold§r Normal</code></td>
+                            <td><strong>Bold</strong> Normal</td>
+                        </tr>
+                    </tbody>
+                </table>
+
+                <h3>Color Support</h3>
+                <p>Since Discord doesn't support text colors directly, Minecraft colors are converted to emoji indicators:</p>
+                <table class="formatting-table">
+                    <thead>
+                        <tr>
+                            <th>Color Code</th>
+                            <th>Color Name</th>
+                            <th>Emoji Indicator</th>
+                            <th>Example</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        <tr>
+                            <td><code>§0</code></td>
+                            <td>Black</td>
+                            <td>⚫</td>
+                            <td>⚫ Black text</td>
+                        </tr>
+                        <tr>
+                            <td><code>§1</code></td>
+                            <td>Dark Blue</td>
+                            <td>🟦</td>
+                            <td>🟦 Dark Blue text</td>
+                        </tr>
+                        <tr>
+                            <td><code>§2</code></td>
+                            <td>Dark Green</td>
+                            <td>🟩</td>
+                            <td>🟩 Dark Green text</td>
+                        </tr>
+                        <tr>
+                            <td><code>§3</code></td>
+                            <td>Dark Aqua</td>
+                            <td>🟨</td>
+                            <td>🟨 Dark Aqua text</td>
+                        </tr>
+                        <tr>
+                            <td><code>§4</code></td>
+                            <td>Dark Red</td>
+                            <td>🟥</td>
+                            <td>🟥 Dark Red text</td>
+                        </tr>
+                        <tr>
+                            <td><code>§5</code></td>
+                            <td>Dark Purple</td>
+                            <td>🟪</td>
+                            <td>🟪 Dark Purple text</td>
+                        </tr>
+                        <tr>
+                            <td><code>§6</code></td>
+                            <td>Gold</td>
+                            <td>🟧</td>
+                            <td>🟧 Gold text</td>
+                        </tr>
+                        <tr>
+                            <td><code>§7</code></td>
+                            <td>Gray</td>
+                            <td>⚪</td>
+                            <td>⚪ Gray text</td>
+                        </tr>
+                        <tr>
+                            <td><code>§8</code></td>
+                            <td>Dark Gray</td>
+                            <td>⚫</td>
+                            <td>⚫ Dark Gray text</td>
+                        </tr>
+                        <tr>
+                            <td><code>§9</code></td>
+                            <td>Blue</td>
+                            <td>🔵</td>
+                            <td>🔵 Blue text</td>
+                        </tr>
+                        <tr>
+                            <td><code>§a</code></td>
+                            <td>Green</td>
+                            <td>🟢</td>
+                            <td>🟢 Green text</td>
+                        </tr>
+                        <tr>
+                            <td><code>§b</code></td>
+                            <td>Aqua</td>
+                            <td>🔷</td>
+                            <td>🔷 Aqua text</td>
+                        </tr>
+                        <tr>
+                            <td><code>§c</code></td>
+                            <td>Red</td>
+                            <td>🔴</td>
+                            <td>🔴 Red text</td>
+                        </tr>
+                        <tr>
+                            <td><code>§d</code></td>
+                            <td>Light Purple</td>
+                            <td>🟠</td>
+                            <td>🟠 Light Purple text</td>
+                        </tr>
+                        <tr>
+                            <td><code>§e</code></td>
+                            <td>Yellow</td>
+                            <td>🟡</td>
+                            <td>🟡 Yellow text</td>
+                        </tr>
+                        <tr>
+                            <td><code>§f</code></td>
+                            <td>White</td>
+                            <td>⚪</td>
+                            <td>⚪ White text</td>
+                        </tr>
+                    </tbody>
+                </table>
+
+                <h3>Complex Formatting Examples</h3>
+                <div class="code-block">
+                    <pre>Input:  §6§lGolden§r §9§oItalic§r §c§nand §l§munderlined strikethrough§r
+Output: 🟡 **Golden** 🔵 *Italic* 🔴 __and__ **~~underlined strikethrough~~**</pre>
+                    <button class="copy-btn" onclick="copyCode(this)">Copy</button>
+                </div>
+
+                <div class="success">
+                    <i class="fas fa-info-circle"></i> <strong>Pro Tip:</strong> Both § and & codes are supported for maximum compatibility with different plugins and command systems.
+                </div>
+            </div>
+        </div>
+
+        <!-- Troubleshooting Tab -->
+        <div id="troubleshooting" class="tab-content">
+            <div class="card">
+                <h2><i class="fas fa-wrench"></i> Common Issues & Solutions</h2>
+                
+                <h3>Connection Issues</h3>
+                <div class="danger">
+                    <strong>Issue:</strong> Discord bot not connecting
+                </div>
+                <p><strong>Solution:</strong></p>
+                <ul style="padding-left: 20px;">
+                    <li>Verify your bot token is correct</li>
+                    <li>Ensure Message Content Intent is enabled</li>
+                    <li>Check that the bot has proper permissions</li>
+                    <li>Verify the channel ID is correct</li>
+                </ul>
+
+                <div class="danger">
+                    <strong>Issue:</strong> Messages not appearing in Discord
+                </div>
+                <p><strong>Solution:</strong></p>
+                <ul style="padding-left: 20px;">
+                    <li>Check webhook URL is valid</li>
+                    <li>Ensure <code>enabled: true</code> in config</li>
+                    <li>Verify bot has send messages permission</li>
+                    <li>Check server logs for errors</li>
+                </ul>
+
+                <h3>Configuration Issues</h3>
+                <div class="danger">
+                    <strong>Issue:</strong> Configuration file not generating
+                </div>
+                <p><strong>Solution:</strong></p>
+                <ul style="padding-left: 20px;">
+                    <li>Ensure server has write permissions</li>
+                    <li>Check that the JAR is properly installed</li>
+                    <li>Restart the server completely</li>
+                    <li>Verify Java version compatibility</li>
+                </ul>
+
+                <div class="danger">
+                    <strong>Issue:</strong> Tridirectional chat not working
+                </div>
+                <p><strong>Solution:</strong></p>
+                <ul style="padding-left: 20px;">
+                    <li>Ensure both Discord AND Fluxer are configured</li>
+                    <li>Set <code>tridirectional.enabled: true</code></li>
+                    <li>Check webhook URLs for both platforms</li>
+                    <li>Verify port forwarding for Fluxer receiver</li>
+                </ul>
+
+                <h3>Performance Issues</h3>
+                <div class="danger">
+                    <strong>Issue:</strong> Server lag when using Viscord
+                </div>
+                <p><strong>Solution:</strong></p>
+                <ul style="padding-left: 20px;">
+                    <li>Enable debug logging to identify bottlenecks</li>
+                    <li>Check network connectivity to Discord/Fluxer</li>
+                    <li>Consider rate limiting if sending many messages</li>
+                    <li>Monitor server resources usage</li>
+                </ul>
+            </div>
+
+            <div class="card">
+                <h2><i class="fas fa-tools"></i> Debug Mode</h2>
+                <p>Enable debug logging to troubleshoot issues:</p>
+                
+                <div class="code-block">
+                    <pre>{
+  "debug_logging": true,
+  "verbose_errors": true
+}</pre>
+                    <button class="copy-btn" onclick="copyCode(this)">Copy</button>
+                </div>
+
+                <div class="warning">
+                    <i class="fas fa-exclamation-triangle"></i> <strong>Warning:</strong> Debug mode generates extensive logs. Use only when troubleshooting and disable in production.
+                </div>
+
+                <h3>Getting Help</h3>
+                <p>If you're still experiencing issues:</p>
+                <ul style="padding-left: 20px;">
+                    <li>Check the server logs for error messages</li>
+                    <li>Verify your configuration syntax</li>
+                    <li>Test with a minimal configuration first</li>
+                    <li>Consult our community support channels</li>
+                </ul>
+            </div>
+        </div>
+
+        <div class="footer">
+            <p>&copy; 2026 Viscord - Version 2.2.0</p>
+            <p>The Ultimate Cross-Platform Minecraft Chat Solution</p>
+            <p style="margin-top: 10px; font-size: 0.9rem;">
+                Made with ❤️ for the Minecraft community
+            </p>
+        </div>
+    </div>
+
+    <script>
+        function showTab(tabName) {
+            // Hide all tabs
+            const tabs = document.querySelectorAll('.tab-content');
+            tabs.forEach(tab => tab.classList.remove('active'));
+            
+            // Remove active class from all nav tabs
+            const navTabs = document.querySelectorAll('.nav-tab');
+            navTabs.forEach(tab => tab.classList.remove('active'));
+            
+            // Show selected tab
+            document.getElementById(tabName).classList.add('active');
+            
+            // Add active class to clicked nav tab
+            event.target.classList.add('active');
+        }
+
+        function copyCode(button) {
+            const codeBlock = button.parentElement.querySelector('pre');
+            const text = codeBlock.textContent;
+            
+            navigator.clipboard.writeText(text).then(() => {
+                const originalText = button.textContent;
+                button.textContent = 'Copied!';
+                button.style.background = 'var(--secondary)';
+                
+                setTimeout(() => {
+                    button.textContent = originalText;
+                    button.style.background = 'var(--primary)';
+                }, 2000);
+            }).catch(err => {
+                console.error('Failed to copy text: ', err);
+            });
+        }
+
+        // Add smooth scrolling
+        document.querySelectorAll('a[href^="#"]').forEach(anchor => {
+            anchor.addEventListener('click', function (e) {
+                e.preventDefault();
+                const target = document.querySelector(this.getAttribute('href'));
+                if (target) {
+                    target.scrollIntoView({
+                        behavior: 'smooth',
+                        block: 'start'
+                    });
+                }
+            });
+        });
+    </script>
+</body>
+</html>

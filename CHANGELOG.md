@@ -7,6 +7,87 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [2.2.0] - 2026-03-21
+
+### 🌟 Added
+- **Discord Formatting Support** - Minecraft formatting codes now convert to Discord markdown
+- **Dual Code Support** - Both § codes and & codes are supported for maximum compatibility
+- **Rich Text Formatting** - Bold (§l), Italic (§o), Underline (§n), Strikethrough (§m) support
+- **Color Indicators** - Minecraft colors converted to emoji indicators since Discord doesn't support text colors
+- **Magic/Obfuscated** - Converted to sparkle emoji (✨) for visual indication
+- **Reset Codes** - Properly handled to close formatting tags
+- **Cross-Platform Formatting** - Works in tridirectional chat and all message routing
+
+### 🎨 Formatting Conversions
+- **§l / &l** → **Bold text** (Discord: `**text**`)
+- **§o / &o** → *Italic text* (Discord: `*text*`)
+- **§n / &n** → __Underlined text__ (Discord: `__text__`)
+- **§m / &m** → ~~Strikethrough text~~ (Discord: `~~text~~`)
+- **§k / &k** → ✨Magic text✨ (Discord: sparkle emoji)
+- **§r / &r** → Reset all formatting
+- **Colors (0-9, a-f)** → Color emoji indicators (⚫🟦🟩🟨🟥🟪🟧⚪🔵🟢🔷🔴🟠🟡)
+
+### 🔧 Technical Implementation
+- **DiscordFormatter Utility** - New utility class for formatting conversion
+- **Smart Tag Management** - Proper opening and closing of Discord markdown tags
+- **Nested Formatting** - Supports multiple formatting codes in same message
+- **Performance Optimized** - Efficient regex-based parsing
+- **Error Resilient** - Graceful handling of malformed formatting codes
+
+### 📝 Usage Examples
+- `§6§lGolden§r text` → 🟡 **Golden** text
+- `§oItalic §nand §lunderlined§r` → *Italic __and **underlined**__*
+- `§kMagic text§r` → ✨Magic text✨
+
+### 🌐 Integration
+- **Minecraft → Discord**: Full formatting conversion
+- **Tridirectional Chat**: Formatting preserved across platforms
+- **Event Messages**: System messages also support formatting
+- **Backward Compatible**: Existing messages without formatting work unchanged
+
+### Changed
+- Updated version to 2.2.0 to reflect major formatting enhancement
+- Enhanced message processing pipeline for formatting support
+
+## [2.1.0] - 2026-03-21
+
+### 🌟 Added
+- **Revolutionary Tridirectional Chat System** - Complete 3-way message synchronization between Discord ↔ Minecraft ↔ Fluxer
+- **Platform Source Identification** - Optional tags showing message origin ([Discord], [Fluxer], [Minecraft])
+- **Configurable Message Bridging** - Fine-grained control over which platforms bridge to each other
+- **Real-time Cross-Platform Communication** - Messages flow seamlessly across all connected platforms
+- **Advanced Tridirectional Configuration** - New config section for 3-way chat settings
+- **Mobile Accessibility** - Participate in server chat via Fluxer when away from PC
+- **Unified Chat Experience** - Type anywhere, appear everywhere across all platforms
+
+### 🔧 Technical Changes
+- **Enhanced DiscordManager** - Added bridging methods for cross-platform message routing
+- **Improved Configuration System** - New tridirectional chat settings with detailed explanations
+- **Message Formatting System** - Platform-aware message formatting with source identification
+- **Configuration Validation** - Checks for proper Discord and Fluxer setup before enabling bridging
+- **Error Handling** - Robust error handling for cross-platform message failures
+
+### 📋 Configuration Options
+- `tridirectional.enabled` - Enable/disable 3-way chat synchronization
+- `tridirectional.discord_to_fluxer` - Bridge Discord messages to Fluxer
+- `tridirectional.fluxer_to_discord` - Bridge Fluxer messages to Discord  
+- `tridirectional.show_source` - Show platform source tags in messages
+
+### 🎯 Use Cases Enabled
+- **Multi-platform communities** - Engage users wherever they are
+- **Server management** - Monitor chat from Discord while away from game
+- **Mobile gaming** - Use Fluxer app when away from computer
+- **Community bridging** - Connect different Discord servers via Fluxer
+- **Stream integration** - Let viewers participate from multiple platforms
+
+### ⚠️ Requirements
+- Both Discord and Fluxer must be properly configured for tridirectional chat
+- Requires webhooks for both platforms to be functional
+- Recommended for servers with active multi-platform communities
+
+### Changed
+- Updated version to 2.1.0 to reflect major new feature addition
+
 ### Added
 - Fluxer webhook service support as alternative to Discord
 - Configurable HTTP receiver for bidirectional Fluxer communication
