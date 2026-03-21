@@ -44,10 +44,9 @@ public class DiscordEventHandler {
         EntityEvent.LIVING_DEATH.register((entity, source) -> {
             if (entity instanceof ServerPlayer) {
                 ServerPlayer player = (ServerPlayer) entity;
-                if (DiscordManager.getInstance().isRunning() && ViscordConfig.CONFIG.sendDeath.get()) {
-                    // 1.19.2 API: getLocalizedDeathMessage takes player as parameter
+                if (ViscordConfig.CONFIG.sendDeath.get()) {
                     String deathMessage = source.getLocalizedDeathMessage(player).getString();
-                    DiscordManager.getInstance().sendServerStatusMessage("Player Died", "💀 " + deathMessage, 0x000000);
+                    DiscordManager.getInstance().sendDeathEmbed(deathMessage);
                 }
             }
             return EventResult.pass();
@@ -63,7 +62,7 @@ public class DiscordEventHandler {
                 Commands.literal("discord")
                         .requires(source -> source.hasPermission(0))
                         .executes(context -> {
-                            String invite = ViscordConfig.CONFIG.inviteUrl.get();
+                            String invite = ViscordConfig.CONFIG.discordInviteUrl.get();
                             CommandSourceStack source = context.getSource();
 
                             if (invite == null || invite.isEmpty()) {

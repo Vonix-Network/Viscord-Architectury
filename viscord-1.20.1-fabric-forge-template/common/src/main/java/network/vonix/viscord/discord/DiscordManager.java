@@ -38,6 +38,7 @@ public class DiscordManager {
     private final BotClient botClient;
     private final WebhookClient webhookClient;
     private final MessageConverter messageConverter;
+    private FluxerReceiver fluxerReceiver;
 
     // Embed detection and processing
     private final EventEmbedDetector eventDetector = new EventEmbedDetector();
@@ -73,7 +74,31 @@ public class DiscordManager {
     }
 
     public boolean isRunning() {
-        return running && botClient.isConnected();
+        if (!running) return false;
+        String platform = ViscordConfig.CONFIG.platform.get();
+        if ("fluxer".equalsIgnoreCase(platform)) {
+            return true; // Fluxer only uses webhooks, no bot connection needed
+        }
+        return botClient.isConnected();
+    }
+    
+    private boolean isFluxer() {
+        return "fluxer".equalsIgnoreCase(ViscordConfig.CONFIG.platform.get());
+    }
+    
+    private String getMainWebhookUrl() {
+        if (isFluxer()) {
+            return ViscordConfig.CONFIG.fluxerWebhookUrl.get();
+        }
+        return ViscordConfig.CONFIG.discordWebhookUrl.get();
+    }
+    
+    private String getEventWebhookUrl() {
+        if (isFluxer()) {
+            String eventUrl = ViscordConfig.CONFIG.fluxerEventWebhookUrl.get();
+            return eventUrl != null && !eventUrl.isEmpty() ? eventUrl : ViscordConfig.CONFIG.fluxerWebhookUrl.get();
+        }
+        return ViscordConfig.CONFIG.discordWebhookUrl.get();
     }
 
     public void initialize(MinecraftServer server) {
@@ -90,11 +115,101 @@ public class DiscordManager {
 
         this.server = server;
         this.running = true;
-
-        // 1. Initialize Clients
-        String webhookUrl = ViscordConfig.CONFIG.webhookUrl.get();
-        String botToken = ViscordConfig.CONFIG.botToken.get();
-        String channelId = ViscordConfig.CONFIG.channelId.get();
+        
+        // Determine platform
+        String platform = ViscordConfig.CONFIG.platform.get();
+        boolean useFluxer = "fluxer".equalsIgnoreCase(platform);
+        
+        if (useFluxer) {
+            Viscord.LOGGER.info("[Discord] Initializing with Fluxer platform");
+            initializeFluxer();
+        } else {
+            Viscord.LOGGER.info("[Discord] Initializing with Discord platform");
+            initializeDiscord();
+        }
+    }
+    
+    private void initializeFluxer() {
+        // 1. Initialize Fluxer webhook URLs
+        String fluxerWebhookUrl = ViscordConfig.CONFIG.fluxerWebhookUrl.get();
+        String fluxerEventWebhookUrl = ViscordConfig.CONFIG.fluxerEventWebhookUrl.get();
+        String apiKey = ViscordConfig.CONFIG.fluxerApiKey.get();
+        
+        if (fluxerWebhookUrl == null || fluxerWebhookUrl.isEmpty()) {
+            Viscord.LOGGER.error("[Fluxer] No webhook URL configured! Please set fluxer.webhook_url in config.");
+            this.running = false;
+            return;
+        }
+        
+        this.webhookClient.updateUrl(fluxerWebhookUrl);
+        
+        // Store event webhook for later use (Fluxer uses separate webhooks)
+        if (fluxerEventWebhookUrl != null && !fluxerEventWebhookUrl.isEmpty()) {
+            this.eventChannelId = "fluxer_events"; // Marker for Fluxer event mode
+        } else {
+            this.eventChannelId = "fluxer_main";
+        }
+        
+        // 2. Start Fluxer receiver for incoming messages
+        int port = ViscordConfig.CONFIG.fluxerReceiverPort.get();
+        String path = ViscordConfig.CONFIG.fluxerReceiverPath.get();
+        
+        try {
+            this.fluxerReceiver = new FluxerReceiver(port, path, this::onFluxerMessage);
+            this.fluxerReceiver.start();
+            Viscord.LOGGER.info("[Fluxer] Receiver started on http://localhost:{}{}", port, path);
+        } catch (Exception e) {
+            Viscord.LOGGER.error("[Fluxer] Failed to start HTTP receiver", e);
+            this.running = false;
+            return;
+        }
+        
+        // 3. Initialize Sub-systems (player preferences work regardless of platform)
+        Path configDir = dev.architectury.platform.Platform.getConfigFolder();
+        try {
+            this.playerPreferences = new PlayerPreferences(configDir);
+            // Account linking is Discord-specific, skip for Fluxer
+        } catch (IOException e) {
+            Viscord.LOGGER.error("[Fluxer] Failed to load data managers", e);
+        }
+        
+        Viscord.LOGGER.info("[Fluxer] Fluxer integration initialized with webhook and receiver.");
+    }
+    
+    private void onFluxerMessage(String username, String message, String avatarUrl) {
+        if (server == null) return;
+        
+        // Apply similar filtering as Discord messages
+        if (ViscordConfig.CONFIG.filterByPrefix.get()) {
+            String serverPrefix = ViscordConfig.CONFIG.serverPrefix.get();
+            if (serverPrefix != null && !serverPrefix.isEmpty()) {
+                if (username.startsWith(serverPrefix)) {
+                    return;
+                }
+            }
+        }
+        
+        // Format message for Minecraft
+        String rawFormat = ViscordConfig.CONFIG.discordToMinecraftFormat.get()
+                .replace("{username}", username)
+                .replace("{message}", message);
+        
+        // Replace [Discord] with [Fluxer] for clarity
+        String formatted = rawFormat.replace("[Discord]", "[Fluxer]");
+        
+        Component finalComponent = toMinecraftComponentWithLinks(formatted);
+        
+        // Broadcast to server with player preference filtering
+        server.execute(() -> {
+            broadcastSystemMessageRespectingFilters(finalComponent);
+        });
+    }
+    
+    private void initializeDiscord() {
+        // 1. Initialize Discord Clients
+        String webhookUrl = ViscordConfig.CONFIG.discordWebhookUrl.get();
+        String botToken = ViscordConfig.CONFIG.discordBotToken.get();
+        String channelId = ViscordConfig.CONFIG.discordChannelId.get();
 
         this.webhookClient.updateUrl(webhookUrl);
 
@@ -105,7 +220,7 @@ public class DiscordManager {
             Viscord.LOGGER.info("[Discord] Using separate channel for events: {}", pEventChannelId);
         } else {
             this.eventChannelId = channelId;
-            Viscord.LOGGER.info("[Discord] Using main channel for events.");
+            Viscord.LOGGER.info("[Discord] Using main channel for events: {}", channelId);
         }
 
         // 2. Initialize Sub-systems
@@ -121,14 +236,16 @@ public class DiscordManager {
 
         // 3. Connect Bot
         this.botClient.setMessageHandler(this::onDiscordMessage);
-        this.botClient.connect(botToken, channelId).thenRun(() -> {
+        this.botClient.connect(botToken, channelId).thenRunAsync(() -> {
             // 4. Send Startup Message (only after connection)
+            // Added 5s delay to ensure permissions are cached
+            Viscord.LOGGER.info("[Discord] Bot connected, sending startup embed to channel: {}", eventChannelId);
             sendStartupEmbed(ViscordConfig.CONFIG.serverName.get());
             // 5. Set initial bot status
             updateBotStatus();
-        });
+        }, CompletableFuture.delayedExecutor(5, TimeUnit.SECONDS));
 
-        Viscord.LOGGER.info("[Discord] Integration initialized.");
+        Viscord.LOGGER.info("[Discord] Discord integration initialized.");
     }
 
     public void shutdown() {
@@ -163,6 +280,15 @@ public class DiscordManager {
     }
     
     private void continueShutdown() {
+        // Stop Fluxer receiver if running
+        if (fluxerReceiver != null) {
+            try {
+                fluxerReceiver.stop();
+            } catch (Exception e) {
+                Viscord.LOGGER.error("[Fluxer] Error stopping receiver: {}", e.getMessage());
+            }
+        }
+        
         // Disconnect bot client with error handling
         if (botClient != null) {
             try {
@@ -171,7 +297,7 @@ public class DiscordManager {
                 Viscord.LOGGER.error("[Discord] Error disconnecting bot client: {}", e.getMessage());
             }
         }
-        
+
         // Shutdown webhook client with error handling
         if (webhookClient != null) {
             try {
@@ -191,7 +317,7 @@ public class DiscordManager {
 
         Message message = event.getMessage();
         String msgChannelId = message.getChannel().getIdAsString();
-        String mainChannelId = ViscordConfig.CONFIG.channelId.get();
+        String mainChannelId = ViscordConfig.CONFIG.discordChannelId.get();
         String eventChannelId = ViscordConfig.CONFIG.eventChannelId.get();
 
         boolean isMainChannel = mainChannelId != null && mainChannelId.equals(msgChannelId);
@@ -346,7 +472,7 @@ public class DiscordManager {
                 finalComponent.append(toMinecraftComponentWithLinks(formattedMessage));
             } else {
                 // Regular Discord user: make [Discord] clickable
-                String inviteUrl = ViscordConfig.CONFIG.inviteUrl.get();
+                String inviteUrl = ViscordConfig.CONFIG.discordInviteUrl.get();
                 String rawFormat = ViscordConfig.CONFIG.discordToMinecraftFormat.get()
                         .replace("{username}", authorName)
                         .replace("{message}", content);
@@ -362,7 +488,7 @@ public class DiscordManager {
                     // Clickable [Discord] with aqua color
                     finalComponent.append(Component.literal("[Discord]")
                             .setStyle(Style.EMPTY
-                                    .withColor(TextColor.parseColor("aqua"))
+                                    .withColor(ChatFormatting.AQUA)
                                     .withClickEvent(new ClickEvent(ClickEvent.Action.OPEN_URL, inviteUrl))
                                     .withHoverEvent(new HoverEvent(HoverEvent.Action.SHOW_TEXT,
                                             Component.literal("Click to join our Discord!")))));
@@ -673,8 +799,31 @@ public class DiscordManager {
                 .replace("{username}", username);
 
         String avatarUrl = getAvatarUrl(username);
+        String webhookUrl = getMainWebhookUrl();
+        
+        // Temporarily update webhook URL if different from current
+        if (webhookUrl != null && !webhookUrl.isEmpty()) {
+            webhookClient.updateUrl(webhookUrl);
+            webhookClient.sendMessage(formattedUsername, avatarUrl, message);
+        }
+    }
+    
+    public void sendMinecraftMessageToEventWebhook(String username, String message) {
+        if (!running || webhookClient == null)
+            return;
 
-        webhookClient.sendMessage(formattedUsername, avatarUrl, message);
+        String prefix = ViscordConfig.CONFIG.serverPrefix.get();
+        String formattedUsername = ViscordConfig.CONFIG.webhookUsernameFormat.get()
+                .replace("{prefix}", prefix)
+                .replace("{username}", username);
+
+        String avatarUrl = getAvatarUrl(username);
+        String eventWebhookUrl = getEventWebhookUrl();
+        
+        if (eventWebhookUrl != null && !eventWebhookUrl.isEmpty()) {
+            webhookClient.updateUrl(eventWebhookUrl);
+            webhookClient.sendMessage(formattedUsername, avatarUrl, message);
+        }
     }
 
     public void sendSystemMessage(String message) {
@@ -698,19 +847,19 @@ public class DiscordManager {
             Viscord.LOGGER.debug("[Discord] Cannot send event embed - Discord not running");
             return CompletableFuture.completedFuture(null);
         }
-        
+
         if (eventChannelId == null || eventChannelId.isEmpty()) {
             Viscord.LOGGER.warn("[Discord] Cannot send event embed - event channel ID not set");
             return CompletableFuture.completedFuture(null);
         }
-        
+
         JsonObject embed = new JsonObject();
         embedBuilder.accept(embed);
-        
+
         if (ViscordConfig.CONFIG.debugLogging.get()) {
             Viscord.LOGGER.debug("[Discord] Sending event embed to channel: {}", eventChannelId);
         }
-        
+
         return botClient.sendEmbed(eventChannelId, embed).whenComplete((msg, error) -> {
             if (error != null) {
                 Viscord.LOGGER.error("[Discord] Failed to send event embed to channel {}", eventChannelId, error);
@@ -752,14 +901,13 @@ public class DiscordManager {
                 username,
                 ViscordConfig.CONFIG.serverName.get(),
                 "Join",
-                getAvatarUrl(username)
-        )).whenComplete((msg, error) -> {
-            if (error != null) {
-                Viscord.LOGGER.error("[Discord] Failed to send join embed for {}", username, error);
-            } else if (ViscordConfig.CONFIG.debugLogging.get()) {
-                Viscord.LOGGER.debug("[Discord] Sent join embed for {}", username);
-            }
-        });
+                getAvatarUrl(username))).whenComplete((msg, error) -> {
+                    if (error != null) {
+                        Viscord.LOGGER.error("[Discord] Failed to send join embed for {}", username, error);
+                    } else if (ViscordConfig.CONFIG.debugLogging.get()) {
+                        Viscord.LOGGER.debug("[Discord] Sent join embed for {}", username);
+                    }
+                });
     }
 
     public void sendLeaveEmbed(String username, String uuid) {
@@ -778,14 +926,13 @@ public class DiscordManager {
                 username,
                 ViscordConfig.CONFIG.serverName.get(),
                 "Leave",
-                getAvatarUrl(username)
-        )).whenComplete((msg, error) -> {
-            if (error != null) {
-                Viscord.LOGGER.error("[Discord] Failed to send leave embed for {}", username, error);
-            } else if (ViscordConfig.CONFIG.debugLogging.get()) {
-                Viscord.LOGGER.debug("[Discord] Sent leave embed for {}", username);
-            }
-        });
+                getAvatarUrl(username))).whenComplete((msg, error) -> {
+                    if (error != null) {
+                        Viscord.LOGGER.error("[Discord] Failed to send leave embed for {}", username, error);
+                    } else if (ViscordConfig.CONFIG.debugLogging.get()) {
+                        Viscord.LOGGER.debug("[Discord] Sent leave embed for {}", username);
+                    }
+                });
     }
 
     // Deprecated single-arg methods for compatibility if needed
@@ -1015,61 +1162,40 @@ public class DiscordManager {
         try {
             // Extract Server Name logic
             String serverName = "Unknown Server";
-            if (embed.getTitle().isPresent()) {
-                // Title is like "📋 ServerName"
-                serverName = embed.getTitle().get().replaceAll("^📋\\s*", "").trim();
-            } else if (embed.getAuthor().isPresent()) {
+            if (embed.getAuthor().isPresent()) {
                 serverName = embed.getAuthor().get().getName();
+            } else if (embed.getTitle().isPresent()) {
+                serverName = embed.getTitle().get();
             }
 
-            String message;
+            // Extract content logic
             String description = embed.getDescription().orElse("");
+            String message;
 
-            // Check if no players online (message is in description)
-            if (description.contains("No players") || description.contains("no players")) {
+            if (description.contains("No players are currently online")) {
                 message = "0 Players: No players online";
             } else {
-                // Players are in embed fields, not description
-                // Field format: name="Players X/Y", value="• Player1\n• Player2"
+                String[] lines = description.split("\n");
+                String countStr = "";
                 List<String> players = new ArrayList<>();
-                String countInfo = "";
 
-                for (org.javacord.api.entity.message.embed.EmbedField field : embed.getFields()) {
-                    String fieldName = field.getName();
-                    String fieldValue = field.getValue();
-
-                    // Check for player list field (e.g., "Players 3/20")
-                    if (fieldName != null && fieldName.startsWith("Players")) {
-                        // Extract count from field name
-                        countInfo = fieldName.replace("Players", "").trim();
-
-                        // Parse player names from field value (bullet list)
-                        if (fieldValue != null && !fieldValue.isEmpty()) {
-                            String[] lines = fieldValue.split("\n");
-                            for (String line : lines) {
-                                String cleaned = line.trim()
-                                        .replaceAll("^[•\\-*]\\s*", "") // Remove bullet points
-                                        .trim();
-                                if (!cleaned.isEmpty()) {
-                                    players.add(cleaned);
-                                }
-                            }
-                        }
+                for (String line : lines) {
+                    if (line.trim().startsWith("Players")) {
+                        countStr = line.trim().replace("Players", "").trim();
+                    } else if (line.trim().startsWith("-")) {
+                        players.add(line.trim().substring(1).trim());
                     }
                 }
 
-                if (!players.isEmpty()) {
+                if (!countStr.isEmpty()) {
                     String playerList = String.join(", ", players);
-                    message = countInfo + " Players: " + playerList;
-                } else if (!countInfo.isEmpty()) {
-                    message = countInfo + " Players: No players online";
+                    message = countStr + ": " + playerList;
                 } else {
-                    // Ultimate fallback - just show description
-                    message = description.isEmpty() ? "Player list unavailable" : description;
+                    message = "Online: " + description;
                 }
             }
 
-            String formatted = "§a[📋 " + serverName + "] §f" + message;
+            String formatted = "§a[" + serverName + "] §f" + message;
 
             if (server != null) {
                 server.execute(() -> {

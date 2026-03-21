@@ -9,8 +9,9 @@ import net.minecraft.ChatFormatting;
 import net.minecraft.commands.CommandSourceStack;
 import net.minecraft.commands.Commands;
 import net.minecraft.network.chat.ClickEvent;
-import net.minecraft.network.chat.TextComponent;
+import net.minecraft.network.chat.Component;
 import net.minecraft.network.chat.MutableComponent;
+import net.minecraft.network.chat.TextComponent;
 import net.minecraft.server.level.ServerPlayer;
 import network.vonix.viscord.config.ViscordConfig;
 
@@ -62,7 +63,7 @@ public class DiscordEventHandler {
                 Commands.literal("discord")
                         .requires(source -> source.hasPermission(0))
                         .executes(context -> {
-                            String invite = ViscordConfig.CONFIG.inviteUrl.get();
+                            String invite = ViscordConfig.CONFIG.discordInviteUrl.get();
                             CommandSourceStack source = context.getSource();
 
                             if (invite == null || invite.isEmpty()) {
@@ -274,7 +275,7 @@ public class DiscordEventHandler {
                         .then(Commands.literal("help")
                                 .executes(context -> {
                                     context.getSource().sendSuccess(new TextComponent(
-                                            "§6§l=== Viscord Discord Commands ===\n" +
+                                            "§6§l=== VonixCore Discord Commands ===\n" +
                                                     "§b/discord§7 - Show Discord invite link\n" +
                                                     "§b/vonix discord link§7 - Generate account link code\n" +
                                                     "§b/vonix discord unlink§7 - Unlink your Discord\n" +
