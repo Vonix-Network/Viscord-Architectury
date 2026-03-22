@@ -3,38 +3,116 @@
 
 function Get-InstalledJavaVersions {
     $javaVersions = @()
-    $checkedPaths = @()
     
-    # Helper function to check if path was already checked
-    function IsChecked($path) {
-        foreach ($checked in $checkedPaths) {
-            if ($path -eq $checked -or $path -like "$checked\*") {
-                return $true
+    # Check Eclipse Adoptium (most common)
+    $adoptiumPath = "$env:LOCALAPPDATA\Programs\Eclipse Adoptium"
+    if (Test-Path $adoptiumPath) {
+        Get-ChildItem $adoptiumPath -Directory -ErrorAction SilentlyContinue | ForEach-Object {
+            $javaExe = Join-Path $_.FullName "bin\java.exe"
+            if (Test-Path $javaExe) {
+                try {
+                    $version = & $javaExe -version 2>&1 | Select-Object -First 1
+                    if ($version -match '"([0-9.]+)"') {
+                        $fullVersion = $matches[1]
+                        $majorVersion = $fullVersion.Split('.')[0]
+                        
+                        $javaVersions += @{
+                            Path = $javaExe
+                            Version = [int]$majorVersion
+                            FullPath = $_.FullName
+                            DisplayName = "Java $majorVersion ($($_.Name))"
+                            FullVersion = $fullVersion
+                        }
+                    }
+                } catch {
+                    # Ignore errors
+                }
             }
         }
-        return $false
     }
     
-    # Helper function to add Java version
-    function AddJavaVersion($javaExe, $source) {
-        if (-not (Test-Path $javaExe)) { return }
-        if (IsChecked (Split-Path $javaExe -Parent)) { return }
-        
-        try {
-            $versionOutput = & $javaExe -version 2>&1
-            $versionString = $versionOutput | Select-Object -First 1
-            
-            # Extract version number (handles both old 1.x format and new format)
-            if ($versionString -match '"([0-9.]+)"') {
-                $fullVersion = $matches[1]
-                if ($fullVersion -match "^1\.([0-9]+)") {
-                    $majorVersion = $matches[1]  # Old format: 1.8 -> 8
-                } else {
-                    $majorVersion = $fullVersion.Split('.')[0]  # New format: 17.0.2 -> 17
+    # Check Program Files Java
+    $programFilesJava = "$env:ProgramFiles\Java"
+    if (Test-Path $programFilesJava) {
+        Get-ChildItem $programFilesJava -Directory -ErrorAction SilentlyContinue | ForEach-Object {
+            $javaExe = Join-Path $_.FullName "bin\java.exe"
+            if (Test-Path $javaExe) {
+                try {
+                    $version = & $javaExe -version 2>&1 | Select-Object -First 1
+                    if ($version -match '"([0-9.]+)"') {
+                        $fullVersion = $matches[1]
+                        $majorVersion = $fullVersion.Split('.')[0]
+                        
+                        # Check for duplicates
+                        $exists = $false
+                        foreach ($existing in $javaVersions) {
+                            if ($existing.FullPath -eq $_.FullName) {
+                                $exists = $true
+                                break
+                            }
+                        }
+                        
+                        if (-not $exists) {
+                            $javaVersions += @{
+                                Path = $javaExe
+                                Version = [int]$majorVersion
+                                FullPath = $_.FullName
+                                DisplayName = "Java $majorVersion ($($_.Name))"
+                                FullVersion = $fullVersion
+                            }
+                        }
+                    }
+                } catch {
+                    # Ignore errors
                 }
-                
-                $javaHome = Split-Path (Split-Path $javaExe -Parent) -Parent
-                $display = "Java $majorVersion ($source)"
+            }
+        }
+    }
+    
+    # Check JAVA_HOME
+    if ($env:JAVA_HOME -and (Test-Path $env:JAVA_HOME)) {
+        $javaExe = Join-Path $env:JAVA_HOME "bin\java.exe"
+        if (Test-Path $javaExe) {
+            try {
+                $version = & $javaExe -version 2>&1 | Select-Object -First 1
+                if ($version -match '"([0-9.]+)"') {
+                    $fullVersion = $matches[1]
+                    $majorVersion = $fullVersion.Split('.')[0]
+                    
+                    # Check for duplicates
+                    $exists = $false
+                    foreach ($existing in $javaVersions) {
+                        if ($existing.FullPath -eq $env:JAVA_HOME) {
+                            $exists = $true
+                            break
+                        }
+                    }
+                    
+                    if (-not $exists) {
+                        $javaVersions += @{
+                            Path = $javaExe
+                            Version = [int]$majorVersion
+                            FullPath = $env:JAVA_HOME
+                            DisplayName = "Java $majorVersion (JAVA_HOME)"
+                            FullVersion = $fullVersion
+                        }
+                    }
+                }
+            } catch {
+                # Ignore errors
+            }
+        }
+    }
+    
+    # Check PATH
+    $javaCmd = Get-Command java -ErrorAction SilentlyContinue
+    if ($javaCmd) {
+        try {
+            $version = & java -version 2>&1 | Select-Object -First 1
+            if ($version -match '"([0-9.]+)"') {
+                $fullVersion = $matches[1]
+                $majorVersion = $fullVersion.Split('.')[0]
+                $javaHome = Split-Path (Split-Path $javaCmd.Source -Parent) -Parent
                 
                 # Check for duplicates
                 $exists = $false
@@ -46,101 +124,70 @@ function Get-InstalledJavaVersions {
                 }
                 
                 if (-not $exists) {
-                    $checkedPaths += $javaHome
                     $javaVersions += @{
-                        Path = $javaExe
+                        Path = $javaCmd.Source
                         Version = [int]$majorVersion
                         FullPath = $javaHome
-                        DisplayName = $display
+                        DisplayName = "Java $majorVersion (PATH)"
                         FullVersion = $fullVersion
                     }
                 }
             }
         } catch {
-            Write-Verbose "Failed to get version for $javaExe : $_"
+            # Ignore errors
         }
     }
     
-    # 1. Check JAVA_HOME environment variable first
-    if ($env:JAVA_HOME -and (Test-Path $env:JAVA_HOME)) {
-        $javaExe = Join-Path $env:JAVA_HOME "bin\java.exe"
-        AddJavaVersion $javaExe "JAVA_HOME"
-    }
-    
-    # 2. Check common installation paths
-    $commonPaths = @(
-        "$env:ProgramFiles\Java"
-        "$env:ProgramFiles(x86)\Java"
-        "$env:LOCALAPPDATA\Programs\Microsoft\jdk"
-        "$env:LOCALAPPDATA\Programs\Eclipse Adoptium"
-        "$env:ProgramFiles\Eclipse Adoptium"
-        "$env:ProgramFiles\Microsoft\jdk"
-        "$env:ProgramFiles\Amazon Corretto"
-        "$env:ProgramFiles\BellSoft\LibericaJDK"
-        "$env:ProgramFiles\AdoptOpenJDK"
-        "C:\Program Files\Java"
-        "C:\Program Files (x86)\Java"
-    )
-    
-    foreach ($basePath in $commonPaths) {
-        if (Test-Path $basePath) {
-            # Look for jdk* directories
-            Get-ChildItem -Path $basePath -Directory -Name "jdk*" -ErrorAction SilentlyContinue | ForEach-Object {
-                $javaExe = Join-Path $basePath "$_\bin\java.exe"
-                AddJavaVersion $javaExe $_
-            }
-            
-            # Look for jre* directories
-            Get-ChildItem -Path $basePath -Directory -Name "jre*" -ErrorAction SilentlyContinue | ForEach-Object {
-                $javaExe = Join-Path $basePath "$_\bin\java.exe"
-                AddJavaVersion $javaExe $_
-            }
-            
-            # Look for version-specific directories (e.g., jdk-17, jdk-21.0.1)
-            Get-ChildItem -Path $basePath -Directory -ErrorAction SilentlyContinue | Where-Object { 
-                $_.Name -match "^jdk-[0-9]" -or $_.Name -match "^[0-9]+\.[0-9]+"
-            } | ForEach-Object {
-                $javaExe = Join-Path $_.FullName "bin\java.exe"
-                AddJavaVersion $javaExe $_.Name
-            }
-            
-            # Check if there's a java.exe directly in this path (some installations)
-            $directJava = Join-Path $basePath "bin\java.exe"
-            if (Test-Path $directJava) {
-                AddJavaVersion $directJava (Split-Path $basePath -Leaf)
-            }
-        }
-    }
-    
-    # 3. Check Windows Registry for installed Java versions
-    $regPaths = @(
-        "HKLM:\SOFTWARE\JavaSoft\Java Development Kit",
-        "HKLM:\SOFTWARE\JavaSoft\Java Runtime Environment",
-        "HKLM:\SOFTWARE\JavaSoft\JDK",
-        "HKLM:\SOFTWARE\JavaSoft\JRE",
-        "HKLM:\SOFTWARE\Microsoft\JDK"
-    )
-    
-    foreach ($regPath in $regPaths) {
-        if (Test-Path $regPath) {
-            Get-ChildItem -Path $regPath -ErrorAction SilentlyContinue | ForEach-Object {
-                $javaHome = $_.GetValue("JavaHome", $null)
-                if ($javaHome -and (Test-Path $javaHome)) {
-                    $javaExe = Join-Path $javaHome "bin\java.exe"
-                    AddJavaVersion $javaExe "Registry:$($_.PSChildName)"
-                }
-            }
-        }
-    }
-    
-    # 4. Check if java is in PATH (but only if we haven't found it already)
-    $javaCmd = Get-Command java -ErrorAction SilentlyContinue
-    if ($javaCmd) {
-        AddJavaVersion $javaCmd.Source "PATH"
-    }
-    
-    # Sort by version (newer first) and return
     return $javaVersions | Sort-Object Version -Descending
+}
+
+function Write-CenterText {
+    param(
+        [string]$Text,
+        [ConsoleColor]$ForegroundColor = $Host.UI.RawUI.ForegroundColor,
+        [ConsoleColor]$BackgroundColor = $Host.UI.RawUI.BackgroundColor,
+        [int]$Width = $Host.UI.RawUI.WindowSize.Width
+    )
+    
+    $padding = [math]::Max(0, ($Width - $Text.Length) / 2)
+    $paddedText = " " * [math]::Floor($padding) + $Text + " " * [math]::Ceiling($padding)
+    Write-Host $paddedText -ForegroundColor $ForegroundColor -BackgroundColor $BackgroundColor
+}
+
+function Write-CenterLine {
+    param(
+        [string]$Char = "=",
+        [ConsoleColor]$ForegroundColor = $Host.UI.RawUI.ForegroundColor,
+        [int]$Width = $Host.UI.RawUI.WindowSize.Width
+    )
+    
+    $line = $Char * $Width
+    Write-Host $line -ForegroundColor $ForegroundColor
+}
+
+function Show-MainMenu {
+    Clear-Host
+    $width = $Host.UI.RawUI.WindowSize.Width
+    
+    Write-CenterLine "=" -ForegroundColor Cyan
+    Write-CenterText "VISCORD BUILD MENU" -ForegroundColor White -BackgroundColor Blue
+    Write-CenterLine "=" -ForegroundColor Cyan
+    Write-CenterText " " -ForegroundColor Cyan
+    Write-CenterText "[1] -> Build all versions and copy to Releases folder" -ForegroundColor Green
+    Write-CenterText " " -ForegroundColor Cyan
+    Write-CenterText "[2] -> Build all versions and copy to versioned folder" -ForegroundColor Green
+    Write-CenterText " " -ForegroundColor Cyan
+    Write-CenterText "[3] -> Build specific version" -ForegroundColor Green
+    Write-CenterText " " -ForegroundColor Cyan
+    Write-CenterText "[4] -> Build and move to custom release folder" -ForegroundColor Green
+    Write-CenterText " " -ForegroundColor Cyan
+    Write-CenterText "[5] -> Select Java version (Current: $($script:SelectedJavaDisplayName))" -ForegroundColor Yellow
+    Write-CenterText " " -ForegroundColor Cyan
+    Write-CenterText "[6] -> Exit" -ForegroundColor Red
+    Write-CenterText " " -ForegroundColor Cyan
+    Write-CenterLine "=" -ForegroundColor Cyan
+    Write-Host ""
+    Write-Host "Enter your choice: " -ForegroundColor Cyan -NoNewline
 }
 
 function Select-JavaVersion {
@@ -185,55 +232,6 @@ function Select-JavaVersion {
     return $null
 }
 
-function Write-CenterText {
-    param(
-        [string]$Text,
-        [ConsoleColor]$ForegroundColor = $Host.UI.RawUI.ForegroundColor,
-        [ConsoleColor]$BackgroundColor = $Host.UI.RawUI.BackgroundColor,
-        [int]$Width = $Host.UI.RawUI.WindowSize.Width
-    )
-    
-    $padding = [math]::Max(0, ($Width - $Text.Length) / 2)
-    $paddedText = " " * [math]::Floor($padding) + $Text + " " * [math]::Ceiling($padding)
-    Write-Host $paddedText -ForegroundColor $ForegroundColor -BackgroundColor $BackgroundColor
-}
-
-function Write-CenterLine {
-    param(
-        [string]$Char = "=",
-        [ConsoleColor]$ForegroundColor = $Host.UI.RawUI.ForegroundColor,
-        [int]$Width = $Host.UI.RawUI.WindowSize.Width
-    )
-    
-    $line = $Char * $Width
-    Write-Host $line -ForegroundColor $ForegroundColor
-}
-
-function Show-MainMenu {
-    Clear-Host
-    $width = $Host.UI.RawUI.WindowSize.Width
-    
-    Write-CenterLine "=" -ForegroundColor Cyan
-    Write-CenterText "VISCORD BUILD MENU" -ForegroundColor White -BackgroundColor Blue
-    Write-CenterLine "=" -ForegroundColor Cyan
-    Write-CenterText " " -ForegroundColor Cyan
-    Write-CenterText "[1] -> Build all versions and copy to Releases folder" -ForegroundColor Green
-    Write-CenterText " " -ForegroundColor Cyan
-    Write-CenterText "[2] -> Build all versions and copy to versioned folder" -ForegroundColor Green
-    Write-CenterText " " -ForegroundColor Cyan
-    Write-CenterText "[3] -> Build specific version" -ForegroundColor Green
-    Write-CenterText " " -ForegroundColor Cyan
-    Write-CenterText "[4] -> Build and move to custom release folder" -ForegroundColor Green
-    Write-CenterText " " -ForegroundColor Cyan
-    Write-CenterText "[5] -> Select Java version (Current: $script:SelectedJavaDisplayName)" -ForegroundColor Yellow
-    Write-CenterText " " -ForegroundColor Cyan
-    Write-CenterText "[6] -> Exit" -ForegroundColor Red
-    Write-CenterText " " -ForegroundColor Cyan
-    Write-CenterLine "=" -ForegroundColor Cyan
-    Write-Host ""
-    Write-Host "Enter your choice: " -ForegroundColor Cyan -NoNewline
-}
-
 function Build-AllReleases {
     Clear-Host
     Write-CenterLine "=" -ForegroundColor Cyan
@@ -265,7 +263,7 @@ function Build-AllReleases {
             $originalPath = $env:PATH
             if ($script:SelectedJava) {
                 $env:JAVA_HOME = $script:SelectedJava.FullPath
-                $env:PATH = "$($script:SelectedJava.FullPath)\bin;$env:PATH"
+                $env:PATH = $script:SelectedJava.FullPath + "\bin;" + $env:PATH
                 Write-Host "Using Java $($script:SelectedJava.Version)" -ForegroundColor Yellow
             }
             
@@ -317,336 +315,6 @@ function Build-AllReleases {
     $null = $Host.UI.RawUI.ReadKey("NoEcho,IncludeKeyDown")
 }
 
-function Build-AllVersioned {
-    Clear-Host
-    Write-CenterLine "=" -ForegroundColor Cyan
-    Write-CenterText "BUILDING ALL VERSIONS TO VERSIONED FOLDERS" -ForegroundColor Green
-    Write-CenterLine "=" -ForegroundColor Cyan
-    Write-Host ""
-
-    $rootDir = Get-Location
-
-    $versions = @("1.18.2", "1.19.2", "1.20.1", "1.21.1")
-    
-    foreach ($version in $versions) {
-        Write-Host "Processing Minecraft $version..." -ForegroundColor Yellow
-        Write-Host "------------------------------------------------------------" -ForegroundColor Cyan
-        
-        $verDir = Get-ChildItem -Path $rootDir -Directory -Name "viscord-$version-*" | Select-Object -First 1
-        
-        if ($verDir) {
-            Set-Location (Join-Path $rootDir $verDir)
-            Write-Host "Building $version..." -ForegroundColor Blue
-            
-            # Set JAVA_HOME if a specific Java version is selected
-            $originalJavaHome = $env:JAVA_HOME
-            $originalPath = $env:PATH
-            if ($script:SelectedJava) {
-                $env:JAVA_HOME = $script:SelectedJava.FullPath
-                $env:PATH = "$($script:SelectedJava.FullPath)\bin;$env:PATH"
-                Write-Host "Using Java $($script:SelectedJava.Version)" -ForegroundColor Yellow
-            }
-            
-            $buildResult = & .\gradlew build 2>&1
-            
-            # Restore original environment
-            if ($script:SelectedJava) {
-                $env:JAVA_HOME = $originalJavaHome
-                $env:PATH = $originalPath
-            }
-            
-            if ($LASTEXITCODE -ne 0) {
-                Write-Host "X Failed to build $version!" -ForegroundColor Red
-            } else {
-                Write-Host "+ Build $version successful. Copying jars to versioned folder..." -ForegroundColor Green
-                
-                $versionDir = Join-Path $rootDir $version
-                if (-not (Test-Path $versionDir)) {
-                    New-Item -ItemType Directory -Path $versionDir | Out-Null
-                }
-                
-                $fabricJars = Get-ChildItem -Path "fabric\build\libs\viscord-*-fabric.jar" -ErrorAction SilentlyContinue
-                foreach ($jar in $fabricJars) {
-                    Copy-Item $jar.FullName $versionDir -Force
-                    Write-Host "  + Fabric jar copied to $version folder" -ForegroundColor Green
-                }
-                
-                $forgeJars = Get-ChildItem -Path "forge\build\libs\viscord-*-forge.jar" -ErrorAction SilentlyContinue
-                foreach ($jar in $forgeJars) {
-                    Copy-Item $jar.FullName $versionDir -Force
-                    Write-Host "  + Forge jar copied to $version folder" -ForegroundColor Green
-                }
-                
-                $neoforgeJars = Get-ChildItem -Path "neoforge\build\libs\viscord-*-neoforge.jar" -ErrorAction SilentlyContinue
-                foreach ($jar in $neoforgeJars) {
-                    Copy-Item $jar.FullName $versionDir -Force
-                    Write-Host "  + NeoForge jar copied to $version folder" -ForegroundColor Green
-                }
-            }
-        } else {
-            Write-Host "X Could not find directory for version $version" -ForegroundColor Red
-        }
-        Write-Host ""
-    }
-
-    Set-Location $rootDir
-    
-    Write-CenterLine "=" -ForegroundColor Cyan
-    Write-CenterText "BUILD PROCESS COMPLETED SUCCESSFULLY!" -ForegroundColor Green
-    Write-CenterText "Jars copied to versioned folders." -ForegroundColor Cyan
-    Write-CenterLine "=" -ForegroundColor Cyan
-    
-    Write-Host "`nPress any key to continue..." -ForegroundColor Cyan
-    $null = $Host.UI.RawUI.ReadKey("NoEcho,IncludeKeyDown")
-}
-
-function Build-SpecificVersion {
-    Clear-Host
-    Write-CenterLine "=" -ForegroundColor Cyan
-    Write-CenterText "BUILD SPECIFIC VERSION" -ForegroundColor Yellow
-    Write-CenterLine "=" -ForegroundColor Cyan
-    Write-Host ""
-    Write-CenterText "Available Minecraft versions:" -ForegroundColor Cyan
-    Write-CenterText "[1] -> Minecraft 1.18.2" -ForegroundColor Green
-    Write-CenterText "[2] -> Minecraft 1.19.2" -ForegroundColor Green
-    Write-CenterText "[3] -> Minecraft 1.20.1" -ForegroundColor Green
-    Write-CenterText "[4] -> Minecraft 1.21.1" -ForegroundColor Green
-    Write-CenterText "[5] -> Back to main menu" -ForegroundColor Red
-    Write-Host ""
-    Write-Host "Enter your choice: " -ForegroundColor Cyan -NoNewline
-    
-    $choice = Read-Host
-    
-    if ($choice -eq "5") { return }
-    
-    $versionMap = @{
-        "1" = "1.18.2"
-        "2" = "1.19.2"
-        "3" = "1.20.1"
-        "4" = "1.21.1"
-    }
-    
-    if (-not $versionMap.ContainsKey($choice)) {
-        Write-Host "Invalid choice. Please try again." -ForegroundColor Red
-        Write-Host "`nPress any key to continue..." -ForegroundColor Cyan
-        $null = $Host.UI.RawUI.ReadKey("NoEcho,IncludeKeyDown")
-        return Build-SpecificVersion
-    }
-    
-    $buildVer = $versionMap[$choice]
-    
-    Write-Host ""
-    Write-Host "Building Minecraft $buildVer..." -ForegroundColor Yellow
-    Write-Host "------------------------------------------------------------" -ForegroundColor Cyan
-
-    $rootDir = Get-Location
-    $verDir = Get-ChildItem -Path $rootDir -Directory -Name "viscord-$buildVer-*" | Select-Object -First 1
-    
-    if ($verDir) {
-        Set-Location (Join-Path $rootDir $verDir)
-        Write-Host "Starting build process..." -ForegroundColor Blue
-        
-        # Set JAVA_HOME if a specific Java version is selected
-        $originalJavaHome = $env:JAVA_HOME
-        $originalPath = $env:PATH
-        if ($script:SelectedJava) {
-            $env:JAVA_HOME = $script:SelectedJava.FullPath
-            $env:PATH = "$($script:SelectedJava.FullPath)\bin;$env:PATH"
-            Write-Host "Using Java $($script:SelectedJava.Version)" -ForegroundColor Yellow
-        }
-        
-        $buildResult = & .\gradlew build 2>&1
-        
-        # Restore original environment
-        if ($script:SelectedJava) {
-            $env:JAVA_HOME = $originalJavaHome
-            $env:PATH = $originalPath
-        }
-        
-        if ($LASTEXITCODE -ne 0) {
-            Write-Host "X Failed to build $buildVer!" -ForegroundColor Red
-        } else {
-            Write-Host "+ Build $buildVer successful!" -ForegroundColor Green
-            
-            Write-Host ""
-            Write-Host "Where would you like to copy the jars?" -ForegroundColor Cyan
-            Write-Host "[1] -> Releases folder" -ForegroundColor Green
-            Write-Host "[2] -> Versioned folder ($buildVer)" -ForegroundColor Green
-            Write-Host "[3] -> Don't copy" -ForegroundColor Green
-            Write-Host ""
-            Write-Host "Enter your choice: " -ForegroundColor Cyan -NoNewline
-            
-            $copyChoice = Read-Host
-            
-            if ($copyChoice -eq "1") {
-                $releasesDir = Join-Path $rootDir "Releases"
-                if (-not (Test-Path $releasesDir)) {
-                    New-Item -ItemType Directory -Path $releasesDir | Out-Null
-                }
-                
-                $fabricJars = Get-ChildItem -Path "fabric\build\libs\viscord-*-fabric.jar" -ErrorAction SilentlyContinue
-                foreach ($jar in $fabricJars) {
-                    Copy-Item $jar.FullName $releasesDir -Force
-                    Write-Host "  + Fabric jar copied to Releases" -ForegroundColor Green
-                }
-                
-                $forgeJars = Get-ChildItem -Path "forge\build\libs\viscord-*-forge.jar" -ErrorAction SilentlyContinue
-                foreach ($jar in $forgeJars) {
-                    Copy-Item $jar.FullName $releasesDir -Force
-                    Write-Host "  + Forge jar copied to Releases" -ForegroundColor Green
-                }
-                
-                $neoforgeJars = Get-ChildItem -Path "neoforge\build\libs\viscord-*-neoforge.jar" -ErrorAction SilentlyContinue
-                foreach ($jar in $neoforgeJars) {
-                    Copy-Item $jar.FullName $releasesDir -Force
-                    Write-Host "  + NeoForge jar copied to Releases" -ForegroundColor Green
-                }
-                
-                Write-Host "+ All jars copied to Releases folder." -ForegroundColor Green
-            }
-            
-            if ($copyChoice -eq "2") {
-                $versionDir = Join-Path $rootDir $buildVer
-                if (-not (Test-Path $versionDir)) {
-                    New-Item -ItemType Directory -Path $versionDir | Out-Null
-                }
-                
-                $fabricJars = Get-ChildItem -Path "fabric\build\libs\viscord-*-fabric.jar" -ErrorAction SilentlyContinue
-                foreach ($jar in $fabricJars) {
-                    Copy-Item $jar.FullName $versionDir -Force
-                    Write-Host "  + Fabric jar copied to $buildVer folder" -ForegroundColor Green
-                }
-                
-                $forgeJars = Get-ChildItem -Path "forge\build\libs\viscord-*-forge.jar" -ErrorAction SilentlyContinue
-                foreach ($jar in $forgeJars) {
-                    Copy-Item $jar.FullName $versionDir -Force
-                    Write-Host "  + Forge jar copied to $buildVer folder" -ForegroundColor Green
-                }
-                
-                $neoforgeJars = Get-ChildItem -Path "neoforge\build\libs\viscord-*-neoforge.jar" -ErrorAction SilentlyContinue
-                foreach ($jar in $neoforgeJars) {
-                    Copy-Item $jar.FullName $versionDir -Force
-                    Write-Host "  + NeoForge jar copied to $buildVer folder" -ForegroundColor Green
-                }
-                
-                Write-Host "+ All jars copied to $buildVer folder." -ForegroundColor Green
-            }
-            
-            if ($copyChoice -eq "3") {
-                Write-Host "+ Jars not copied." -ForegroundColor Yellow
-            }
-        }
-    } else {
-        Write-Host "X Could not find directory for version $buildVer" -ForegroundColor Red
-    }
-
-    Set-Location $rootDir
-    
-    Write-Host ""
-    Write-CenterLine "=" -ForegroundColor Cyan
-    Write-CenterText "BUILD PROCESS COMPLETED" -ForegroundColor Green
-    Write-CenterLine "=" -ForegroundColor Cyan
-    
-    Write-Host "`nPress any key to continue..." -ForegroundColor Cyan
-    $null = $Host.UI.RawUI.ReadKey("NoEcho,IncludeKeyDown")
-}
-
-function Build-CustomFolder {
-    Clear-Host
-    Write-CenterLine "=" -ForegroundColor Cyan
-    Write-CenterText "BUILD TO CUSTOM RELEASE FOLDER" -ForegroundColor Yellow
-    Write-CenterLine "=" -ForegroundColor Cyan
-    Write-Host ""
-    Write-Host "Enter custom release folder name: " -ForegroundColor Cyan -NoNewline
-    
-    $customFolder = Read-Host
-    
-    if ([string]::IsNullOrWhiteSpace($customFolder)) {
-        Write-Host "Folder name cannot be empty." -ForegroundColor Red
-        Write-Host "`nPress any key to continue..." -ForegroundColor Cyan
-        $null = $Host.UI.RawUI.ReadKey("NoEcho,IncludeKeyDown")
-        return Build-CustomFolder
-    }
-
-    $rootDir = Get-Location
-    $customDir = Join-Path $rootDir $customFolder
-    
-    if (-not (Test-Path $customDir)) {
-        New-Item -ItemType Directory -Path $customDir | Out-Null
-    }
-
-    Write-Host ""
-    Write-Host "Building all versions and copying to $customFolder folder..." -ForegroundColor Yellow
-    Write-Host "------------------------------------------------------------" -ForegroundColor Cyan
-
-    $versions = @("1.18.2", "1.19.2", "1.20.1", "1.21.1")
-    
-    foreach ($version in $versions) {
-        Write-Host "Processing Minecraft $version..." -ForegroundColor Yellow
-        
-        $verDir = Get-ChildItem -Path $rootDir -Directory -Name "viscord-$version-*" | Select-Object -First 1
-        
-        if ($verDir) {
-            Set-Location (Join-Path $rootDir $verDir)
-            Write-Host "Building $version..." -ForegroundColor Blue
-            
-            # Set JAVA_HOME if a specific Java version is selected
-            $originalJavaHome = $env:JAVA_HOME
-            $originalPath = $env:PATH
-            if ($script:SelectedJava) {
-                $env:JAVA_HOME = $script:SelectedJava.FullPath
-                $env:PATH = "$($script:SelectedJava.FullPath)\bin;$env:PATH"
-                Write-Host "Using Java $($script:SelectedJava.Version)" -ForegroundColor Yellow
-            }
-            
-            $buildResult = & .\gradlew build 2>&1
-            
-            # Restore original environment
-            if ($script:SelectedJava) {
-                $env:JAVA_HOME = $originalJavaHome
-                $env:PATH = $originalPath
-            }
-            
-            if ($LASTEXITCODE -ne 0) {
-                Write-Host "X Failed to build $version!" -ForegroundColor Red
-            } else {
-                Write-Host "+ Build $version successful. Copying to $customFolder..." -ForegroundColor Green
-                
-                $fabricJars = Get-ChildItem -Path "fabric\build\libs\viscord-*-fabric.jar" -ErrorAction SilentlyContinue
-                foreach ($jar in $fabricJars) {
-                    Copy-Item $jar.FullName $customDir -Force
-                    Write-Host "  + Fabric jar copied" -ForegroundColor Green
-                }
-                
-                $forgeJars = Get-ChildItem -Path "forge\build\libs\viscord-*-forge.jar" -ErrorAction SilentlyContinue
-                foreach ($jar in $forgeJars) {
-                    Copy-Item $jar.FullName $customDir -Force
-                    Write-Host "  + Forge jar copied" -ForegroundColor Green
-                }
-                
-                $neoforgeJars = Get-ChildItem -Path "neoforge\build\libs\viscord-*-neoforge.jar" -ErrorAction SilentlyContinue
-                foreach ($jar in $neoforgeJars) {
-                    Copy-Item $jar.FullName $customDir -Force
-                    Write-Host "  + NeoForge jar copied" -ForegroundColor Green
-                }
-            }
-        } else {
-            Write-Host "X Could not find directory for version $version" -ForegroundColor Red
-        }
-        Write-Host ""
-    }
-
-    Set-Location $rootDir
-    
-    Write-CenterLine "=" -ForegroundColor Cyan
-    Write-CenterText "BUILD PROCESS COMPLETED SUCCESSFULLY!" -ForegroundColor Green
-    Write-CenterText "Jars copied to $customFolder folder." -ForegroundColor Cyan
-    Write-CenterLine "=" -ForegroundColor Cyan
-    
-    Write-Host "`nPress any key to continue..." -ForegroundColor Cyan
-    $null = $Host.UI.RawUI.ReadKey("NoEcho,IncludeKeyDown")
-}
-
 function Show-ExitScreen {
     Clear-Host
     Write-CenterLine "=" -ForegroundColor Cyan
@@ -669,9 +337,9 @@ do {
     
     switch ($choice) {
         "1" { Build-AllReleases }
-        "2" { Build-AllVersioned }
-        "3" { Build-SpecificVersion }
-        "4" { Build-CustomFolder }
+        "2" { Write-Host "Feature coming soon..." -ForegroundColor Yellow; Start-Sleep -Seconds 2 }
+        "3" { Write-Host "Feature coming soon..." -ForegroundColor Yellow; Start-Sleep -Seconds 2 }
+        "4" { Write-Host "Feature coming soon..." -ForegroundColor Yellow; Start-Sleep -Seconds 2 }
         "5" { 
             $selectedJava = Select-JavaVersion
             if ($selectedJava) {
