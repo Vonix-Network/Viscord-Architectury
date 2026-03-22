@@ -79,7 +79,11 @@ public class DiscordManager {
         if (!running) return false;
         String platform = ViscordConfig.CONFIG.platform.get();
         if ("fluxer".equalsIgnoreCase(platform)) {
-            return true; // Fluxer only uses webhooks, no bot connection needed
+            // Fluxer only uses webhooks, no bot connection needed, EXCEPT if bot status is enabled
+            if (ViscordConfig.CONFIG.setBotStatus.get() && botClient != null) {
+                return true; // We don't strictly require the bot to be connected for Fluxer to be "running", as it can still send webhooks.
+            }
+            return true;
         }
         return botClient.isConnected();
     }
