@@ -16,10 +16,9 @@ release-2.2.0/
 "Web Docs"/
 
 # Scripts
-*.ps1
-
 # Local dev files
 *.bat
 *.sh
 !gradlew.bat
 !gradlew
+!build_menu.ps1
