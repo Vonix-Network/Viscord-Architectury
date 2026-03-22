@@ -60,6 +60,7 @@ public class DiscordManager {
 
     private boolean running = false;
     private String eventChannelId;
+    private String originalDiscordWebhookUrl;
 
     private DiscordManager() {
         this.botClient = new BotClient();
@@ -125,7 +126,7 @@ public class DiscordManager {
         if (tridirectional) {
             Viscord.LOGGER.info("[Viscord] Initializing Tridirectional Chat (Discord & Fluxer)");
             initializeFluxer();
-            initializeDiscord();
+            initializeDiscord(false);
         } else if (useFluxer) {
             Viscord.LOGGER.info("[Viscord] Initializing with Fluxer platform");
             initializeFluxer();
@@ -134,11 +135,11 @@ public class DiscordManager {
             String token = ViscordConfig.CONFIG.discordBotToken.get();
             if (ViscordConfig.CONFIG.setBotStatus.get() && token != null && !token.isEmpty() && !token.equals("YOUR_BOT_TOKEN_HERE")) {
                 Viscord.LOGGER.info("[Viscord] Initializing Discord bot for status updates (Fluxer mode)");
-                initializeDiscord();
+                initializeDiscord(true);
             }
         } else {
             Viscord.LOGGER.info("[Viscord] Initializing with Discord platform");
-            initializeDiscord();
+            initializeDiscord(false);
         }
     }
     
@@ -233,13 +234,18 @@ public class DiscordManager {
         }
     }
     
-    private void initializeDiscord() {
+    private void initializeDiscord(boolean isStatusOnly) {
         // 1. Initialize Discord Clients
         String webhookUrl = ViscordConfig.CONFIG.discordWebhookUrl.get();
         String botToken = ViscordConfig.CONFIG.discordBotToken.get();
         String channelId = ViscordConfig.CONFIG.discordChannelId.get();
 
-        this.webhookClient.updateUrl(webhookUrl);
+        this.originalDiscordWebhookUrl = webhookUrl;
+        
+        // Only update webhook URL if we're not exclusively using Fluxer for webhooks
+        if (!isFluxer() || ViscordConfig.CONFIG.enableTridirectionalChat.get()) {
+            this.webhookClient.updateUrl(webhookUrl);
+        }
 
         // Determine event channel
         String pEventChannelId = ViscordConfig.CONFIG.eventChannelId.get();
@@ -270,10 +276,14 @@ public class DiscordManager {
         Viscord.LOGGER.info("[Discord] Attempting to connect bot with token [REDACTED] to channel: {}", channelId);
         this.botClient.setMessageHandler(this::onDiscordMessage);
         this.botClient.connect(botToken, channelId).thenRunAsync(() -> {
-            // 4. Send Startup Message (only after connection)
+            // 4. Send Startup Message (only after connection and if not status-only)
             // Added 5s delay to ensure permissions are cached
-            Viscord.LOGGER.info("[Discord] Bot connected successfully, sending startup embed to channel: {}", eventChannelId);
-            sendStartupEmbed(ViscordConfig.CONFIG.serverName.get());
+            if (!isStatusOnly) {
+                Viscord.LOGGER.info("[Discord] Bot connected successfully, sending startup embed to channel: {}", eventChannelId);
+                sendStartupEmbed(ViscordConfig.CONFIG.serverName.get());
+            } else {
+                Viscord.LOGGER.info("[Discord] Bot connected successfully for status updates only.");
+            }
             // 5. Set initial bot status
             updateBotStatus();
         }, CompletableFuture.delayedExecutor(5, TimeUnit.SECONDS)).exceptionally(throwable -> {
@@ -1025,10 +1035,18 @@ public class DiscordManager {
         if (isFluxer()) {
             String webhookUrl = getEventWebhookUrl();
             if (webhookUrl != null && !webhookUrl.isEmpty()) {
+                String originalUrl = webhookClient.getWebhookUrl();
                 webhookClient.updateUrl(webhookUrl);
                 webhookClient.sendEmbed(ViscordConfig.CONFIG.serverName.get(), null, embed);
+                if (originalUrl != null) {
+                    webhookClient.updateUrl(originalUrl);
+                }
             }
-            return CompletableFuture.completedFuture(null);
+            
+            // Stop here if not tridirectional
+            if (!ViscordConfig.CONFIG.enableTridirectionalChat.get()) {
+                return CompletableFuture.completedFuture(null);
+            }
         }
 
         if (eventChannelId == null || eventChannelId.isEmpty()) {

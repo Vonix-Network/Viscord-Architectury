@@ -7,6 +7,12 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [2.4.3] - 2026-03-21
+
+### 🐛 Fixed
+- Fixed an issue where the Discord bot would duplicate the startup embed when status updates were enabled in Fluxer mode.
+- Fixed Tridirectional Chat routing where event embeds (e.g. Advancements, Death, Server Startup) were only being sent to Fluxer and not being bridged back to Discord. They are now correctly sent to both platforms when Tridirectional Chat is enabled.
+
 ## [2.4.2] - 2026-03-21
 
 ### 🐛 Fixed
