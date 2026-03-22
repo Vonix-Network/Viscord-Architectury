@@ -1,6 +1,108 @@
 # Viscord Build Menu - PowerShell Version
 # Modern, colorful CLI interface for building Viscord mods
 
+function Get-InstalledJavaVersions {
+    $javaVersions = @()
+    
+    # Check common Java installation paths
+    $commonPaths = @(
+        "$env:ProgramFiles\Java",
+        "$env:ProgramFiles(x86)\Java",
+        "$env:LOCALAPPDATA\Programs\Microsoft\jdk"
+    )
+    
+    foreach ($path in $commonPaths) {
+        if (Test-Path $path) {
+            $jdkDirs = Get-ChildItem -Path $path -Directory -Name "jdk*" -ErrorAction SilentlyContinue
+            foreach ($jdkDir in $jdkDirs) {
+                $fullPath = Join-Path $path $jdkDir
+                $javaExe = Join-Path $fullPath "bin\java.exe"
+                if (Test-Path $javaExe) {
+                    try {
+                        $version = & $javaExe -version 2>&1 | Select-Object -First 1
+                        if ($version -match 'version "([0-9]+)') {
+                            $majorVersion = $matches[1]
+                            $javaVersions += @{
+                                Path = $javaExe
+                                Version = $majorVersion
+                                FullPath = $fullPath
+                                DisplayName = "Java $majorVersion ($jdkDir)"
+                            }
+                        }
+                    } catch {
+                        # Ignore errors for version detection
+                    }
+                }
+            }
+        }
+    }
+    
+    # Check if java is in PATH
+    try {
+        $pathJava = Get-Command java -ErrorAction SilentlyContinue
+        if ($pathJava) {
+            $version = & java -version 2>&1 | Select-Object -First 1
+            if ($version -match 'version "([0-9]+)') {
+                $majorVersion = $matches[1]
+                $javaVersions += @{
+                    Path = $pathJava.Source
+                    Version = $majorVersion
+                    FullPath = Split-Path $pathJava.Source -Parent
+                    DisplayName = "Java $majorVersion (PATH)"
+                }
+            }
+        }
+    } catch {
+        # Ignore if java not in PATH
+    }
+    
+    # Remove duplicates and sort by version (newer first)
+    $javaVersions = $javaVersions | Sort-Object Version -Descending | Get-Unique
+    return $javaVersions
+}
+
+function Select-JavaVersion {
+    $javaVersions = Get-InstalledJavaVersions
+    
+    if ($javaVersions.Count -eq 0) {
+        Write-CenterText "No Java installations found!" -ForegroundColor Red
+        Write-CenterText "Please install Java 17 or Java 21 to continue." -ForegroundColor Yellow
+        Write-Host "`nPress any key to exit..." -ForegroundColor Cyan
+        $null = $Host.UI.RawUI.ReadKey("NoEcho,IncludeKeyDown")
+        return $null
+    }
+    
+    Clear-Host
+    Write-CenterLine "=" -ForegroundColor Cyan
+    Write-CenterText "SELECT JAVA VERSION" -ForegroundColor Yellow
+    Write-CenterLine "=" -ForegroundColor Cyan
+    Write-Host ""
+    
+    for ($i = 0; $i -lt $javaVersions.Count; $i++) {
+        $java = $javaVersions[$i]
+        Write-CenterText "[$($i + 1)] -> $($java.DisplayName)" -ForegroundColor Green
+    }
+    
+    Write-CenterText "[0] -> Use system default Java" -ForegroundColor Yellow
+    Write-Host ""
+    Write-Host "Enter your choice: " -ForegroundColor Cyan -NoNewline
+    
+    $choice = Read-Host
+    $choiceNum = 0
+    
+    if ([int]::TryParse($choice, [ref]$choiceNum)) {
+        if ($choiceNum -eq 0) {
+            return $null  # Use system default
+        } elseif ($choiceNum -ge 1 -and $choiceNum -le $javaVersions.Count) {
+            return $javaVersions[$choiceNum - 1]
+        }
+    }
+    
+    Write-Host "Invalid choice. Using system default Java." -ForegroundColor Red
+    Start-Sleep -Seconds 2
+    return $null
+}
+
 function Write-CenterText {
     param(
         [string]$Text,
@@ -41,7 +143,9 @@ function Show-MainMenu {
     Write-CenterText " " -ForegroundColor Cyan
     Write-CenterText "[4] -> Build and move to custom release folder" -ForegroundColor Green
     Write-CenterText " " -ForegroundColor Cyan
-    Write-CenterText "[5] -> Exit" -ForegroundColor Red
+    Write-CenterText "[5] -> Select Java version (Current: $script:SelectedJavaDisplayName)" -ForegroundColor Yellow
+    Write-CenterText " " -ForegroundColor Cyan
+    Write-CenterText "[6] -> Exit" -ForegroundColor Red
     Write-CenterText " " -ForegroundColor Cyan
     Write-CenterLine "=" -ForegroundColor Cyan
     Write-Host ""
@@ -74,7 +178,22 @@ function Build-AllReleases {
             Set-Location (Join-Path $rootDir $verDir)
             Write-Host "Building $version..." -ForegroundColor Blue
             
+            # Set JAVA_HOME if a specific Java version is selected
+            $originalJavaHome = $env:JAVA_HOME
+            $originalPath = $env:PATH
+            if ($script:SelectedJava) {
+                $env:JAVA_HOME = $script:SelectedJava.FullPath
+                $env:PATH = "$($script:SelectedJava.FullPath)\bin;$env:PATH"
+                Write-Host "Using Java $($script:SelectedJava.Version)" -ForegroundColor Yellow
+            }
+            
             $buildResult = & .\gradlew build 2>&1
+            
+            # Restore original environment
+            if ($script:SelectedJava) {
+                $env:JAVA_HOME = $originalJavaHome
+                $env:PATH = $originalPath
+            }
             
             if ($LASTEXITCODE -ne 0) {
                 Write-Host "X Failed to build $version!" -ForegroundColor Red
@@ -137,7 +256,22 @@ function Build-AllVersioned {
             Set-Location (Join-Path $rootDir $verDir)
             Write-Host "Building $version..." -ForegroundColor Blue
             
+            # Set JAVA_HOME if a specific Java version is selected
+            $originalJavaHome = $env:JAVA_HOME
+            $originalPath = $env:PATH
+            if ($script:SelectedJava) {
+                $env:JAVA_HOME = $script:SelectedJava.FullPath
+                $env:PATH = "$($script:SelectedJava.FullPath)\bin;$env:PATH"
+                Write-Host "Using Java $($script:SelectedJava.Version)" -ForegroundColor Yellow
+            }
+            
             $buildResult = & .\gradlew build 2>&1
+            
+            # Restore original environment
+            if ($script:SelectedJava) {
+                $env:JAVA_HOME = $originalJavaHome
+                $env:PATH = $originalPath
+            }
             
             if ($LASTEXITCODE -ne 0) {
                 Write-Host "X Failed to build $version!" -ForegroundColor Red
@@ -230,7 +364,22 @@ function Build-SpecificVersion {
         Set-Location (Join-Path $rootDir $verDir)
         Write-Host "Starting build process..." -ForegroundColor Blue
         
+        # Set JAVA_HOME if a specific Java version is selected
+        $originalJavaHome = $env:JAVA_HOME
+        $originalPath = $env:PATH
+        if ($script:SelectedJava) {
+            $env:JAVA_HOME = $script:SelectedJava.FullPath
+            $env:PATH = "$($script:SelectedJava.FullPath)\bin;$env:PATH"
+            Write-Host "Using Java $($script:SelectedJava.Version)" -ForegroundColor Yellow
+        }
+        
         $buildResult = & .\gradlew build 2>&1
+        
+        # Restore original environment
+        if ($script:SelectedJava) {
+            $env:JAVA_HOME = $originalJavaHome
+            $env:PATH = $originalPath
+        }
         
         if ($LASTEXITCODE -ne 0) {
             Write-Host "X Failed to build $buildVer!" -ForegroundColor Red
@@ -359,7 +508,22 @@ function Build-CustomFolder {
             Set-Location (Join-Path $rootDir $verDir)
             Write-Host "Building $version..." -ForegroundColor Blue
             
+            # Set JAVA_HOME if a specific Java version is selected
+            $originalJavaHome = $env:JAVA_HOME
+            $originalPath = $env:PATH
+            if ($script:SelectedJava) {
+                $env:JAVA_HOME = $script:SelectedJava.FullPath
+                $env:PATH = "$($script:SelectedJava.FullPath)\bin;$env:PATH"
+                Write-Host "Using Java $($script:SelectedJava.Version)" -ForegroundColor Yellow
+            }
+            
             $buildResult = & .\gradlew build 2>&1
+            
+            # Restore original environment
+            if ($script:SelectedJava) {
+                $env:JAVA_HOME = $originalJavaHome
+                $env:PATH = $originalPath
+            }
             
             if ($LASTEXITCODE -ne 0) {
                 Write-Host "X Failed to build $version!" -ForegroundColor Red
@@ -412,6 +576,10 @@ function Show-ExitScreen {
     Start-Sleep -Seconds 2
 }
 
+# Initialize script variables
+$script:SelectedJava = $null
+$script:SelectedJavaDisplayName = "System Default"
+
 # Main program loop
 do {
     Show-MainMenu
@@ -423,6 +591,13 @@ do {
         "3" { Build-SpecificVersion }
         "4" { Build-CustomFolder }
         "5" { 
+            $selectedJava = Select-JavaVersion
+            if ($selectedJava) {
+                $script:SelectedJava = $selectedJava
+                $script:SelectedJavaDisplayName = $selectedJava.DisplayName
+            }
+        }
+        "6" { 
             Show-ExitScreen
             break
         }
@@ -432,4 +607,4 @@ do {
             $null = $Host.UI.RawUI.ReadKey("NoEcho,IncludeKeyDown")
         }
     }
-} while ($choice -ne "5")
+} while ($choice -ne "6")
