@@ -3,62 +3,144 @@
 
 function Get-InstalledJavaVersions {
     $javaVersions = @()
+    $checkedPaths = @()
     
-    # Check common Java installation paths
-    $commonPaths = @(
-        "$env:ProgramFiles\Java",
-        "$env:ProgramFiles(x86)\Java",
-        "$env:LOCALAPPDATA\Programs\Microsoft\jdk"
-    )
+    # Helper function to check if path was already checked
+    function IsChecked($path) {
+        foreach ($checked in $checkedPaths) {
+            if ($path -eq $checked -or $path -like "$checked\*") {
+                return $true
+            }
+        }
+        return $false
+    }
     
-    foreach ($path in $commonPaths) {
-        if (Test-Path $path) {
-            $jdkDirs = Get-ChildItem -Path $path -Directory -Name "jdk*" -ErrorAction SilentlyContinue
-            foreach ($jdkDir in $jdkDirs) {
-                $fullPath = Join-Path $path $jdkDir
-                $javaExe = Join-Path $fullPath "bin\java.exe"
-                if (Test-Path $javaExe) {
-                    try {
-                        $version = & $javaExe -version 2>&1 | Select-Object -First 1
-                        if ($version -match 'version "([0-9]+)') {
-                            $majorVersion = $matches[1]
-                            $javaVersions += @{
-                                Path = $javaExe
-                                Version = $majorVersion
-                                FullPath = $fullPath
-                                DisplayName = "Java $majorVersion ($jdkDir)"
-                            }
-                        }
-                    } catch {
-                        # Ignore errors for version detection
+    # Helper function to add Java version
+    function AddJavaVersion($javaExe, $source) {
+        if (-not (Test-Path $javaExe)) { return }
+        if (IsChecked (Split-Path $javaExe -Parent)) { return }
+        
+        try {
+            $versionOutput = & $javaExe -version 2>&1
+            $versionString = $versionOutput | Select-Object -First 1
+            
+            # Extract version number (handles both old 1.x format and new format)
+            if ($versionString -match '"([0-9.]+)"') {
+                $fullVersion = $matches[1]
+                if ($fullVersion -match "^1\.([0-9]+)") {
+                    $majorVersion = $matches[1]  # Old format: 1.8 -> 8
+                } else {
+                    $majorVersion = $fullVersion.Split('.')[0]  # New format: 17.0.2 -> 17
+                }
+                
+                $javaHome = Split-Path (Split-Path $javaExe -Parent) -Parent
+                $display = "Java $majorVersion ($source)"
+                
+                # Check for duplicates
+                $exists = $false
+                foreach ($existing in $javaVersions) {
+                    if ($existing.FullPath -eq $javaHome) {
+                        $exists = $true
+                        break
+                    }
+                }
+                
+                if (-not $exists) {
+                    $checkedPaths += $javaHome
+                    $javaVersions += @{
+                        Path = $javaExe
+                        Version = [int]$majorVersion
+                        FullPath = $javaHome
+                        DisplayName = $display
+                        FullVersion = $fullVersion
                     }
                 }
             }
+        } catch {
+            Write-Verbose "Failed to get version for $javaExe : $_"
         }
     }
     
-    # Check if java is in PATH
-    try {
-        $pathJava = Get-Command java -ErrorAction SilentlyContinue
-        if ($pathJava) {
-            $version = & java -version 2>&1 | Select-Object -First 1
-            if ($version -match 'version "([0-9]+)') {
-                $majorVersion = $matches[1]
-                $javaVersions += @{
-                    Path = $pathJava.Source
-                    Version = $majorVersion
-                    FullPath = Split-Path $pathJava.Source -Parent
-                    DisplayName = "Java $majorVersion (PATH)"
+    # 1. Check JAVA_HOME environment variable first
+    if ($env:JAVA_HOME -and (Test-Path $env:JAVA_HOME)) {
+        $javaExe = Join-Path $env:JAVA_HOME "bin\java.exe"
+        AddJavaVersion $javaExe "JAVA_HOME"
+    }
+    
+    # 2. Check common installation paths
+    $commonPaths = @(
+        "$env:ProgramFiles\Java"
+        "$env:ProgramFiles(x86)\Java"
+        "$env:LOCALAPPDATA\Programs\Microsoft\jdk"
+        "$env:LOCALAPPDATA\Programs\Eclipse Adoptium"
+        "$env:ProgramFiles\Eclipse Adoptium"
+        "$env:ProgramFiles\Microsoft\jdk"
+        "$env:ProgramFiles\Amazon Corretto"
+        "$env:ProgramFiles\BellSoft\LibericaJDK"
+        "$env:ProgramFiles\AdoptOpenJDK"
+        "C:\Program Files\Java"
+        "C:\Program Files (x86)\Java"
+    )
+    
+    foreach ($basePath in $commonPaths) {
+        if (Test-Path $basePath) {
+            # Look for jdk* directories
+            Get-ChildItem -Path $basePath -Directory -Name "jdk*" -ErrorAction SilentlyContinue | ForEach-Object {
+                $javaExe = Join-Path $basePath "$_\bin\java.exe"
+                AddJavaVersion $javaExe $_
+            }
+            
+            # Look for jre* directories
+            Get-ChildItem -Path $basePath -Directory -Name "jre*" -ErrorAction SilentlyContinue | ForEach-Object {
+                $javaExe = Join-Path $basePath "$_\bin\java.exe"
+                AddJavaVersion $javaExe $_
+            }
+            
+            # Look for version-specific directories (e.g., jdk-17, jdk-21.0.1)
+            Get-ChildItem -Path $basePath -Directory -ErrorAction SilentlyContinue | Where-Object { 
+                $_.Name -match "^jdk-[0-9]" -or $_.Name -match "^[0-9]+\.[0-9]+"
+            } | ForEach-Object {
+                $javaExe = Join-Path $_.FullName "bin\java.exe"
+                AddJavaVersion $javaExe $_.Name
+            }
+            
+            # Check if there's a java.exe directly in this path (some installations)
+            $directJava = Join-Path $basePath "bin\java.exe"
+            if (Test-Path $directJava) {
+                AddJavaVersion $directJava (Split-Path $basePath -Leaf)
+            }
+        }
+    }
+    
+    # 3. Check Windows Registry for installed Java versions
+    $regPaths = @(
+        "HKLM:\SOFTWARE\JavaSoft\Java Development Kit",
+        "HKLM:\SOFTWARE\JavaSoft\Java Runtime Environment",
+        "HKLM:\SOFTWARE\JavaSoft\JDK",
+        "HKLM:\SOFTWARE\JavaSoft\JRE",
+        "HKLM:\SOFTWARE\Microsoft\JDK"
+    )
+    
+    foreach ($regPath in $regPaths) {
+        if (Test-Path $regPath) {
+            Get-ChildItem -Path $regPath -ErrorAction SilentlyContinue | ForEach-Object {
+                $javaHome = $_.GetValue("JavaHome", $null)
+                if ($javaHome -and (Test-Path $javaHome)) {
+                    $javaExe = Join-Path $javaHome "bin\java.exe"
+                    AddJavaVersion $javaExe "Registry:$($_.PSChildName)"
                 }
             }
         }
-    } catch {
-        # Ignore if java not in PATH
     }
     
-    # Remove duplicates and sort by version (newer first)
-    $javaVersions = $javaVersions | Sort-Object Version -Descending | Get-Unique
-    return $javaVersions
+    # 4. Check if java is in PATH (but only if we haven't found it already)
+    $javaCmd = Get-Command java -ErrorAction SilentlyContinue
+    if ($javaCmd) {
+        AddJavaVersion $javaCmd.Source "PATH"
+    }
+    
+    # Sort by version (newer first) and return
+    return $javaVersions | Sort-Object Version -Descending
 }
 
 function Select-JavaVersion {
