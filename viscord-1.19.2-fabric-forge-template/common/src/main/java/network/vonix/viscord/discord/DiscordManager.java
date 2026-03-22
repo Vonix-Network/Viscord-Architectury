@@ -40,6 +40,7 @@ public class DiscordManager {
     private final WebhookClient webhookClient;
     private final MessageConverter messageConverter;
     private FluxerReceiver fluxerReceiver;
+    private final FluxerBotClient fluxerBotClient;
 
     // Embed detection and processing
     private final EventEmbedDetector eventDetector = new EventEmbedDetector();
@@ -66,6 +67,7 @@ public class DiscordManager {
         this.botClient = new BotClient();
         this.webhookClient = new WebhookClient();
         this.messageConverter = new MessageConverter();
+        this.fluxerBotClient = new FluxerBotClient();
     }
 
     public static DiscordManager getInstance() {
@@ -130,20 +132,13 @@ public class DiscordManager {
         if (tridirectional) {
             Viscord.LOGGER.info("[Viscord] Initializing Tridirectional Chat (Discord & Fluxer)");
             initializeFluxer();
-            initializeDiscord();
+            initializeDiscord(false);
         } else if (useFluxer) {
             Viscord.LOGGER.info("[Viscord] Initializing with Fluxer platform");
             initializeFluxer();
-            
-            // If user wants bot status, we still need to initialize the Discord bot
-            String token = ViscordConfig.CONFIG.discordBotToken.get();
-            if (ViscordConfig.CONFIG.setBotStatus.get() && token != null && !token.isEmpty() && !token.equals("YOUR_BOT_TOKEN_HERE")) {
-                Viscord.LOGGER.info("[Viscord] Initializing Discord bot for status updates (Fluxer mode)");
-                initializeDiscord();
-            }
         } else {
             Viscord.LOGGER.info("[Viscord] Initializing with Discord platform");
-            initializeDiscord();
+            initializeDiscord(false);
         }
     }
     
@@ -197,7 +192,19 @@ public class DiscordManager {
         
         Viscord.LOGGER.info("[Fluxer] Fluxer integration initialized with webhook and receiver.");
         
-        // 4. Send Startup Message for Fluxer
+        // 4. Connect Fluxer Bot for status if enabled
+        if (ViscordConfig.CONFIG.setBotStatus.get()) {
+            String token = ViscordConfig.CONFIG.fluxerApiKey.get();
+            if (token != null && !token.isEmpty() && !token.equals("YOUR_FLUXER_API_KEY")) {
+                this.fluxerBotClient.connect(token).thenRun(() -> {
+                    updateBotStatus();
+                });
+            } else {
+                Viscord.LOGGER.warn("[Fluxer] set_bot_status is enabled but fluxer.api_key (Bot Token) is not configured!");
+            }
+        }
+        
+        // 5. Send Startup Message for Fluxer
         if (!ViscordConfig.CONFIG.enableTridirectionalChat.get()) {
             sendStartupEmbed(ViscordConfig.CONFIG.serverName.get());
         }
@@ -1045,7 +1052,7 @@ public class DiscordManager {
         if (isFluxer()) {
             String webhookUrl = getEventWebhookUrl();
             if (webhookUrl != null && !webhookUrl.isEmpty()) {
-                String originalUrl = webhookClient.getWebhookUrl();
+                String originalUrl = webhookClient.getUrl();
                 webhookClient.updateUrl(webhookUrl);
                 webhookClient.sendEmbed(ViscordConfig.CONFIG.serverName.get(), null, embed);
                 if (originalUrl != null) {

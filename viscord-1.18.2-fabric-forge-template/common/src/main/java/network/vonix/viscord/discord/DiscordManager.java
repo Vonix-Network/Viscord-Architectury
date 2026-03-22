@@ -430,7 +430,7 @@ public class DiscordManager {
             String fluxerWebhookUrl = ViscordConfig.CONFIG.fluxerWebhookUrl.get();
             if (fluxerWebhookUrl != null && !fluxerWebhookUrl.isEmpty()) {
                 // Temporarily update webhook URL and send message
-                String originalUrl = webhookClient.getWebhookUrl();
+                String originalUrl = webhookClient.getUrl();
                 webhookClient.updateUrl(fluxerWebhookUrl);
                 webhookClient.sendMessage(authorName, "", fluxerMessage);
                 webhookClient.updateUrl(originalUrl); // Restore original URL
@@ -460,7 +460,7 @@ public class DiscordManager {
             String discordWebhookUrl = ViscordConfig.CONFIG.discordWebhookUrl.get();
             if (discordWebhookUrl != null && !discordWebhookUrl.isEmpty()) {
                 // Temporarily update webhook URL and send message
-                String originalUrl = webhookClient.getWebhookUrl();
+                String originalUrl = webhookClient.getUrl();
                 webhookClient.updateUrl(discordWebhookUrl);
                 webhookClient.sendMessage(username, "", discordMessage);
                 webhookClient.updateUrl(originalUrl); // Restore original URL
@@ -1039,7 +1039,7 @@ public class DiscordManager {
         if (isFluxer()) {
             String webhookUrl = getEventWebhookUrl();
             if (webhookUrl != null && !webhookUrl.isEmpty()) {
-                String originalUrl = webhookClient.getWebhookUrl();
+                String originalUrl = webhookClient.getUrl();
                 webhookClient.updateUrl(webhookUrl);
                 webhookClient.sendEmbed(ViscordConfig.CONFIG.serverName.get(), null, embed);
                 if (originalUrl != null) {

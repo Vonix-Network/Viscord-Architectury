@@ -32,8 +32,8 @@ public class WebhookClient {
     public void updateUrl(String webhookUrl) {
         this.webhookUrl = webhookUrl;
     }
-
-    public String getWebhookUrl() {
+    
+    public String getUrl() {
         return webhookUrl;
     }
 

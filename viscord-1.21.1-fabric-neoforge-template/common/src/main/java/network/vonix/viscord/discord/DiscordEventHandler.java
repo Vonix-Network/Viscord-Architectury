@@ -354,8 +354,39 @@ public class DiscordEventHandler {
                                                             "§b/viscord discord events§7 - Toggle event messages\n" +
                                                             "§b/viscord reload§7 - Reload Viscord config (admin)\n" +
                                                             "§b/viscord status§7 - Show Viscord status\n" +
+                                                            "§b/viscord fluxer invite§7 - Show Fluxer bot invite link\n" +
                                                             "§7Discord: §b/list§7 - Show online players"),
                                                     false);
+                                            return 1;
+                                        }))
+                        .then(Commands.literal("fluxer")
+                                .then(Commands.literal("invite")
+                                        .executes(context -> {
+                                            String appId = ViscordConfig.CONFIG.fluxerApplicationId.get();
+                                            CommandSourceStack source = context.getSource();
+                                            
+                                            if (appId == null || appId.isEmpty() || appId.equals("YOUR_APPLICATION_ID")) {
+                                                source.sendFailure(Component.literal(
+                                                        "§cFluxer Application ID is not configured.\n" +
+                                                        "§7Please set 'application_id' in the [fluxer] section of viscord.json"));
+                                                return 0;
+                                            }
+                                            
+                                            String inviteUrl = "https://fluxer.app/oauth2/authorize?client_id=" + appId + "&scope=bot";
+                                            
+                                            MutableComponent clickable = Component
+                                                    .literal("§aClick here to invite the Fluxer bot to your server!")
+                                                    .withStyle(style -> style
+                                                            .withClickEvent(new ClickEvent(ClickEvent.Action.OPEN_URL, inviteUrl))
+                                                            .withUnderlined(true)
+                                                            .withColor(ChatFormatting.GREEN));
+                                            source.sendSuccess(() -> clickable, false);
+                                            
+                                            if (ViscordConfig.CONFIG.debugLogging.get()) {
+                                                source.sendSuccess(() -> Component.literal(
+                                                        "§7URL: " + inviteUrl), false);
+                                            }
+                                            
                                             return 1;
                                         }))));
 

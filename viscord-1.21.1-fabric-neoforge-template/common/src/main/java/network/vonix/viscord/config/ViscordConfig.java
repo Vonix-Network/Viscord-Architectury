@@ -37,8 +37,11 @@ public class ViscordConfig {
         public final SimpleConfigValue<String> fluxerWebhookUrl;
         public final SimpleConfigValue<String> fluxerEventWebhookUrl;
         public final SimpleConfigValue<String> fluxerApiKey;
+        public final SimpleConfigValue<String> fluxerApplicationId;
+        public final SimpleConfigValue<String> fluxerClientSecret;
         public final SimpleConfigValue<Integer> fluxerReceiverPort;
         public final SimpleConfigValue<String> fluxerReceiverPath;
+        public final SimpleConfigValue<Boolean> fluxerUseBotApi;
 
         // Server identity
         public final SimpleConfigValue<String> serverPrefix;
@@ -189,16 +192,36 @@ public class ViscordConfig {
                                 .define("event_webhook_url", "");
                 
                 fluxerApiKey = builder.comment(
-                                "Fluxer API Key",
+                                "Fluxer API Key (Bot Token)",
                                 "Get this from your Fluxer dashboard",
                                 "\nIMPORTANT: Keep this secret!")
                                 .define("api_key", "YOUR_FLUXER_API_KEY");
                 
+                fluxerApplicationId = builder.comment(
+                                "Fluxer Application ID (OAuth2 Client ID)",
+                                "Required for generating invite links",
+                                "Get this from your Fluxer application settings")
+                                .define("application_id", "YOUR_APPLICATION_ID");
+                
+                fluxerClientSecret = builder.comment(
+                                "Fluxer Client Secret (OAuth2)",
+                                "Required for Bot API authentication",
+                                "Get this from your Fluxer application settings",
+                                "\nIMPORTANT: Keep this secret!")
+                                .define("client_secret", "YOUR_CLIENT_SECRET");
+                
+                fluxerUseBotApi = builder.comment(
+                                "Use Bot API instead of webhooks",
+                                "When enabled, sends messages via Fluxer Bot API using the token",
+                                "More reliable than webhooks but requires a valid bot token")
+                                .define("use_bot_api", false);
+                
                 fluxerReceiverPort = builder.comment(
                                 "Receiver Port",
-                                "Port for receiving Fluxer messages",
+                                "Port for receiving Fluxer messages via HTTP webhook",
                                 "Default: 8080",
-                                "Must be open in your firewall")
+                                "Must be open in your firewall",
+                                "NOTE: If using WebSocket Gateway, port forwarding is not required")
                                 .defineInRange("port", 8080, 1024, 65535);
                 
                 fluxerReceiverPath = builder.comment(

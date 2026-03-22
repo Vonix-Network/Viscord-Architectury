@@ -7,6 +7,25 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### 🌟 Added - Fluxer Bot Full Support
+- **WebSocket Message Receiving** - FluxerBotClient now receives chat messages directly from Fluxer Gateway
+  - No port forwarding required when using WebSocket mode
+  - Handles MESSAGE_CREATE dispatch events
+  - Extracts username, message content, and avatar URLs
+  - Filters out bot messages automatically
+- **Fluxer Bot API Sending** - Alternative to webhooks for sending messages
+  - New `use_bot_api` config option in [fluxer] section
+  - Sends messages via REST API using Bot Token
+  - More reliable than webhooks
+- **Config Expansion** - New OAuth2 fields for Fluxer
+  - `application_id` - For generating invite links
+  - `client_secret` - For Bot API authentication  
+  - `use_bot_api` - Toggle between webhook and API sending
+- **Authorize URL Helper** - New `/viscord fluxer invite` command
+  - Generates Fluxer bot invite URL using configured Application ID
+  - Clickable link output for easy bot installation
+- **Updated Help Documentation** - `/viscord discord help` now includes fluxer commands
+
 ## [2.4.3] - 2026-03-21
 
 ### 🐛 Fixed
