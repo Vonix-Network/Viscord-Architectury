@@ -33,8 +33,12 @@ public class WebhookClient {
         this.webhookUrl = webhookUrl;
     }
     
+    public String getUrl() {
+        return webhookUrl;
+    }
+    
     public String getWebhookUrl() {
-        return this.webhookUrl;
+        return webhookUrl;
     }
 
     public void sendMessage(String username, String avatarUrl, String content) {

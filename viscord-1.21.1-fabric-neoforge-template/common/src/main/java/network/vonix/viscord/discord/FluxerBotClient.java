@@ -4,10 +4,12 @@ import com.neovisionaries.ws.client.WebSocket;
 import com.neovisionaries.ws.client.WebSocketAdapter;
 import com.neovisionaries.ws.client.WebSocketException;
 import com.neovisionaries.ws.client.WebSocketFactory;
+import com.neovisionaries.ws.client.WebSocketFrame;
 import com.google.gson.JsonObject;
 import com.google.gson.JsonParser;
 import com.google.gson.JsonArray;
 import network.vonix.viscord.Viscord;
+import network.vonix.viscord.config.ViscordConfig;
 
 import java.io.IOException;
 import java.io.OutputStream;

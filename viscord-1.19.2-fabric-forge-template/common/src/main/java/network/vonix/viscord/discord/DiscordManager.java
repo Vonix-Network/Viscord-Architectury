@@ -289,11 +289,11 @@ public class DiscordManager {
         this.botClient.connect(botToken, channelId).thenRunAsync(() -> {
             // 4. Send Startup Message (only after connection and if not status-only)
             // Added 5s delay to ensure permissions are cached
-            if (!isStatusOnly) {
+            if (isStatusOnly) {
+                Viscord.LOGGER.info("[Discord] Bot connected successfully for status updates only.");
+            } else {
                 Viscord.LOGGER.info("[Discord] Bot connected successfully, sending startup embed to channel: {}", eventChannelId);
                 sendStartupEmbed(ViscordConfig.CONFIG.serverName.get());
-            } else {
-                Viscord.LOGGER.info("[Discord] Bot connected successfully for status updates only.");
             }
             // 5. Set initial bot status
             updateBotStatus();
