@@ -462,6 +462,7 @@ function Build-AllReleases {
     
     if (-not (Test-Path $releasesDir)) {
         New-Item -ItemType Directory -Path $releasesDir | Out-Null
+        Write-Host "Created Releases directory" -ForegroundColor Green
     }
 
     $versions = @("1.18.2", "1.19.2", "1.20.1", "1.21.1")
@@ -767,6 +768,7 @@ function Build-SpecificVersion {
                     $releasesDir = Join-Path $rootDir "Releases"
                     if (-not (Test-Path $releasesDir)) {
                         New-Item -ItemType Directory -Path $releasesDir | Out-Null
+                        Write-Host "Created Releases directory" -ForegroundColor Green
                     }
                     
                     # Check what platforms are available in this version
