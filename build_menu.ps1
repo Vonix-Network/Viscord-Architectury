@@ -16,7 +16,7 @@ function Get-ModVersion {
     }
     
     # Fallback version if gradle.properties not found
-    return "2.4.7"
+    return "2.4.8"
 }
 
 # Global variable to store mod version
@@ -484,8 +484,9 @@ function Build-AllReleases {
                     Write-Host "Build output (last 10 lines):" -ForegroundColor DarkRed
                     $lastLines = $buildResult.Output | Select-Object -Last 10
                     foreach ($line in $lastLines) {
-                        if ($line.Trim()) {
-                            Write-Host "  $line" -ForegroundColor Red
+                        $lineStr = "$line"
+                        if ($lineStr.Trim()) {
+                            Write-Host "  $lineStr" -ForegroundColor Red
                         }
                     }
                 }
@@ -493,8 +494,9 @@ function Build-AllReleases {
                 if ($buildResult.Error) {
                     Write-Host "Build errors:" -ForegroundColor DarkRed
                     foreach ($errorLine in $buildResult.Error[-5..-1]) {
-                        if ($errorLine.Trim()) {
-                            Write-Host "  $errorLine" -ForegroundColor Red
+                        $errStr = "$errorLine"
+                        if ($errStr.Trim()) {
+                            Write-Host "  $errStr" -ForegroundColor Red
                         }
                     }
                 }
@@ -772,7 +774,7 @@ function Build-SpecificVersion {
                                             # Create GitHub release-ready name: viscord-{version}-{platform}-{mcversion}.jar
                                             $baseName = $jar.BaseName
                                             $extension = $jar.Extension
-                                            $newName = "viscord-$buildVer-$platform-2.4.7$extension"
+                                            $newName = "viscord-$buildVer-$platform-2.4.8$extension"
                                             $newPath = Join-Path $releasesDir $newName
                                             
                                             Copy-Item $jar.FullName $newPath -Force
