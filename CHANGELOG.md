@@ -5,6 +5,19 @@ All notable changes to Viscord will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [2.4.7] - 2026-03-24
+
+### 🐛 Fixed
+- **Fluxer Bot WebSocket Connectivity** - Fixed infinite reconnection loop causing bot oscillation
+  - Proper close code handling for 1000 (normal), 1006 (abnormal), 4004 (auth failed)
+  - `connected` flag now set only after READY dispatch received, not just TCP connect
+  - Added `authenticated` flag to track full gateway authentication state
+  - Connect future completes only after bot is fully ready (not just connected)
+  - Added session resume support for faster reconnections
+  - Max reconnect attempts (10) before giving up to prevent spam
+  - Exponential backoff: 2s → 4s → 8s up to 60s max
+  - Bot status updates only sent when fully authenticated
+
 ## [2.4.6] - 2026-03-24
 
 ### 🐛 Fixed
