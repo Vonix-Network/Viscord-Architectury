@@ -5,7 +5,13 @@ All notable changes to Viscord will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
-## [Unreleased]
+## [2.4.6] - 2026-03-24
+
+### 🐛 Fixed
+- **Advancement Completion Check** - Fixed achievements being granted on progress updates instead of actual completion
+  - Added `isDone()` check via `AdvancementProgress` to verify advancement is fully completed
+  - Prevents premature triggering for multi-step achievements like "Cover me in debris" (netherite armor)
+  - Now correctly only sends notifications when all criteria are satisfied, not on partial progress
 
 ## [2.4.5] - 2026-03-24
 
@@ -29,21 +35,24 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - **Updated Help Documentation** - `/viscord discord help` now includes fluxer commands
 
 ### 🆕 New
-- **`/fluxer` Command Alias** - Players can now type `/fluxer` directly to get a clickable invite link for the Fluxer bot, in addition to the existing `/viscord fluxer invite`.
-- **`/viscord discord invite` Sub-command** - New dedicated sub-command to display the Discord server invite link from within the `/viscord` namespace for consistency.
-- **Discord → Minecraft Formatting** - Messages sent from Discord using `**bold**`, `*italic*`, `__underline__`, or `~~strikethrough~~` markdown are now automatically converted to the corresponding Minecraft `§` formatting codes when relayed in-game.
+- **`/fluxer` Command Alias** - Players can now type `/fluxer` directly to get a clickable invite link for the Fluxer bot.
+- **`/viscord discord invite` Sub-command** - New dedicated sub-command to display the Discord server invite link.
+- **Discord → Minecraft Markdown Conversion** - Messages from Discord with `**bold**`, `*italic*`, `__underline__`, or `~~strikethrough~~` are now converted to native Minecraft formatting.
 
 ### 🐛 Fixed
-- **Fluxer Bot Offline Status** - Fixed `fluxerBotClient` not being initialized and disconnected properly, ensuring it now displays as online with the correct player count in its Discord status.
-- **Duplicate Advancement Notifications** - Added a 5-second per-player debounce cache in `sendAdvancementEmbed`, preventing multiple advancement messages being sent when triggered by commands like `/advancement grant`.
-- **`/viscord fluxer invite` URL** - Updated invite URL to correctly point to the `fluxer.app/oauth2/authorize` endpoint.
+- **Modpack Advancement Spam (Cobblemon Fix)** - Refactored advancement logic to prevent duplicate notifications on modpacks that trigger progress events multiple times.
+  - Added native `isDone()` completion check to ensure only finished advancements are broadcast.
+  - Implemented 5-second per-player debounce cache to eliminate notification spam.
+  - Respects Minecraft's `shouldAnnounceChat` setting to filter out background/recipe advancements.
+- **Fluxer Bot Reconnection** - Resolved thread-safety issues in `FluxerBotClient` preventing clean reconnections.
+- **Duplicate Broadcasts** - Fixed an issue where advancements were being bridged twice when Tridirectional Chat was enabled.
+- **`/viscord fluxer invite` Endpoint** - Updated to use the correct `fluxer.app` domain.
 
 ### 🚀 Improved
-- **Native Event Handlers** - Migrated chat interception from fragile Mixins to native `ServerChatEvent` implementations on Forge and NeoForge. This guarantees compatibility across modpacks and resolves duplicate broadcast bugs on 1.20 and 1.21.
-- **Robust Fluxer Reconnections** - Overhauled `FluxerBotClient` with exponential backoff and thread-safe heartbeat management. The bot will automatically recover from gateway disconnects or network drops.
-- **Async Fluxer Webhook Handling** - Upgraded `FluxerReceiver` to utilize a CachedThreadPool, preventing bottlenecks during high chat traffic and eliminating hanging threads during server shutdown.
-- **Bot Status Player Count** - Both the Discord and Fluxer bots now correctly reflect the live player count in their Discord status activity.
-- **Documentation Updated** - `viscord-documentation.html` fully reflects all new commands, aliases, and formatting features.
+- **Native Event Handlers** - Migrated chat interception to native `ServerChatEvent` on Forge/NeoForge for superior mod compatibility.
+- **Async Safety** - All Discord/Fluxer initialization and status updates are now fully non-blocking.
+- **Documentation Updated** - Browser-based documentation fully reflects all 2.4.5 features.
+
 
 ## [2.4.4] - 2026-03-24
 

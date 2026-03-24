@@ -1,6 +1,7 @@
 package network.vonix.viscord.neoforge.mixin;
 
 import net.minecraft.advancements.AdvancementHolder;
+import net.minecraft.advancements.AdvancementProgress;
 import net.minecraft.advancements.DisplayInfo;
 import net.minecraft.server.PlayerAdvancements;
 import net.minecraft.server.level.ServerPlayer;
@@ -34,6 +35,15 @@ public abstract class PlayerAdvancementsMixin {
             CallbackInfoReturnable<Boolean> cir) {
         // Only process if the advancement was actually awarded (returned true)
         if (!cir.getReturnValue()) {
+            return;
+        }
+
+        // CRITICAL: Check if the advancement is actually COMPLETED, not just updated
+        // This prevents triggering on partial progress (e.g., getting one netherite armor piece
+        // out of four needed for "Cover me in debris" achievement)
+        AdvancementProgress progress = ((PlayerAdvancements)(Object)this).getOrStartProgress(advancementHolder);
+        if (!progress.isDone()) {
+            Viscord.LOGGER.debug("[Discord] Advancement not yet completed, skipping: {}", advancementHolder.id());
             return;
         }
 
