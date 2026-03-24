@@ -390,7 +390,7 @@ public class DiscordEventHandler {
                                                 return 0;
                                             }
                                             
-                                            String inviteUrl = "https://discord.com/oauth2/authorize?client_id=" + appId + "&scope=bot";
+                                            String inviteUrl = "https://fluxer.app/oauth2/authorize?client_id=" + appId + "&scope=bot";
                                             
                                             MutableComponent clickable = new TextComponent("§aClick here to invite the Fluxer bot to your server!")
                                                     .setStyle(Style.EMPTY
@@ -438,7 +438,7 @@ public class DiscordEventHandler {
                                 return 0;
                             }
                             
-                            String inviteUrl = "https://discord.com/oauth2/authorize?client_id=" + appId + "&scope=bot";
+                            String inviteUrl = "https://fluxer.app/oauth2/authorize?client_id=" + appId + "&scope=bot";
                             
                             MutableComponent clickable = new TextComponent("§aClick here to invite the Fluxer bot to your server!")
                                     .setStyle(Style.EMPTY

@@ -36,7 +36,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 ### 🐛 Fixed
 - **Fluxer Bot Offline Status** - Fixed `fluxerBotClient` not being initialized and disconnected properly, ensuring it now displays as online with the correct player count in its Discord status.
 - **Duplicate Advancement Notifications** - Added a 5-second per-player debounce cache in `sendAdvancementEmbed`, preventing multiple advancement messages being sent when triggered by commands like `/advancement grant`.
-- **`/viscord fluxer invite` URL** - Fixed the invite URL pointing to `fluxer.app` instead of the correct `discord.com/oauth2/authorize` endpoint.
+- **`/viscord fluxer invite` URL** - Updated invite URL to correctly point to the `fluxer.app/oauth2/authorize` endpoint.
 
 ### 🚀 Improved
 - **Native Event Handlers** - Migrated chat interception from fragile Mixins to native `ServerChatEvent` implementations on Forge and NeoForge. This guarantees compatibility across modpacks and resolves duplicate broadcast bugs on 1.20 and 1.21.
