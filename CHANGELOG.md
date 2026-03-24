@@ -5,6 +5,18 @@ All notable changes to Viscord will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [2.4.8] - 2026-03-24
+
+### 🐛 Fixed
+- **Fluxer Bot Compilation** - Resolved `method does not override or implement a method from a supertype` error in `FluxerBotClient` across all versions.
+  - Removed invalid 5-argument `onDisconnected` override in favor of the standard 4-argument version.
+
+### 🚀 Improved
+- **Build System** - Updated `build_menu.ps1` with 2.4.8 defaults and refined Java 21 detection logic for legacy Minecraft versions.
+
+### 🔧 chore
+- Bumped mod version to 2.4.8 across all templates.
+
 ## [2.4.7] - 2026-03-24
 
 ### 🐛 Fixed
