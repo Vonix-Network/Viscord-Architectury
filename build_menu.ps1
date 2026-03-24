@@ -583,6 +583,424 @@ function Build-AllReleases {
     $null = $Host.UI.RawUI.ReadKey("NoEcho,IncludeKeyDown")
 }
 
+function Build-AllVersioned {
+    Clear-Host
+    Write-CenterLine "=" -ForegroundColor Cyan
+    Write-CenterText "BUILDING ALL VERSIONS TO VERSIONED FOLDERS" -ForegroundColor Green
+    Write-CenterLine "=" -ForegroundColor Cyan
+    Write-Host ""
+
+    $rootDir = Get-Location
+    $versions = @("1.18.2", "1.19.2", "1.20.1", "1.21.1")
+    
+    foreach ($version in $versions) {
+        Write-Host "Processing Minecraft $version..." -ForegroundColor Yellow
+        Write-Host "------------------------------------------------------------" -ForegroundColor Cyan
+        
+        $verDir = Get-ChildItem -Path $rootDir -Directory -Name "viscord-$version-*" | Select-Object -First 1
+        
+        if ($verDir) {
+            Set-Location (Join-Path $rootDir $verDir)
+            
+            # Set optimal Java version for this Minecraft version
+            $optimalJava = Set-OptimalJavaVersion -MinecraftVersion $version
+            $originalJavaHome = $env:JAVA_HOME
+            $originalPath = $env:PATH
+            
+            if ($optimalJava) {
+                $env:JAVA_HOME = $optimalJava.FullPath
+                $env:PATH = $optimalJava.FullPath + "\bin;" + $env:PATH
+            }
+            
+            # Build with progress tracking
+            $buildResult = Invoke-GradleBuildWithProgress -ProjectName "Minecraft $version" -MinecraftVersion $version
+            
+            # Restore original environment
+            $env:JAVA_HOME = $originalJavaHome
+            $env:PATH = $originalPath
+            
+            if (-not $buildResult.Success) {
+                Write-Host "X Failed to build $version!" -ForegroundColor Red
+                Write-Host "Exit code: $($buildResult.ExitCode)" -ForegroundColor DarkRed
+            } else {
+                Write-Host "+ Build $version successful. Creating versioned folder..." -ForegroundColor Green
+                
+                $versionDir = Join-Path $rootDir $version
+                if (-not (Test-Path $versionDir)) {
+                    New-Item -ItemType Directory -Path $versionDir | Out-Null
+                }
+                
+                # Check what platforms are available in this version
+                $platforms = @()
+                if (Test-Path "fabric") { $platforms += "fabric" }
+                if (Test-Path "forge") { $platforms += "forge" }
+                if (Test-Path "neoforge") { $platforms += "neoforge" }
+                
+                Write-Host "  Available platforms: $($platforms -join ', ')" -ForegroundColor Cyan
+                
+                foreach ($platform in $platforms) {
+                    $libsPath = "$platform\build\libs"
+                    if (Test-Path $libsPath) {
+                        # Try multiple patterns to find the correct jar
+                        $jarPatterns = @("viscord-$platform-*.jar", "viscord-*-$platform.jar", "viscord-$platform.jar")
+                        $foundJars = $false
+                        
+                        foreach ($pattern in $jarPatterns) {
+                            $jars = Get-ChildItem -Path $libsPath -Filter $pattern -ErrorAction SilentlyContinue
+                            if ($jars.Count -gt 0) {
+                                foreach ($jar in $jars) {
+                                    # Only copy the main jar, not dev-shadow or sources
+                                    if ($jar.Name -notmatch "-dev-shadow" -and $jar.Name -notmatch "-sources" -and $jar.Name -notmatch "-transform") {
+                                        Copy-Item $jar.FullName $versionDir -Force
+                                        Write-Host "  + $($jar.Name) copied to $version" -ForegroundColor Green
+                                        $foundJars = $true
+                                    }
+                                }
+                            }
+                        }
+                        
+                        if (-not $foundJars) {
+                            Write-Host "  - No $platform jars found" -ForegroundColor Yellow
+                        }
+                    } else {
+                        Write-Host "  - $platform build directory not found" -ForegroundColor Yellow
+                    }
+                }
+            }
+        } else {
+            Write-Host "X Could not find directory for version $version" -ForegroundColor Red
+        }
+        Write-Host ""
+    }
+
+    Set-Location $rootDir
+    
+    Write-CenterLine "=" -ForegroundColor Cyan
+    Write-CenterText "BUILD PROCESS COMPLETED SUCCESSFULLY!" -ForegroundColor Green
+    Write-CenterText "Jars copied to versioned folders." -ForegroundColor Cyan
+    Write-CenterLine "=" -ForegroundColor Cyan
+    
+    Write-Host "`nPress any key to continue..." -ForegroundColor Cyan
+    $null = $Host.UI.RawUI.ReadKey("NoEcho,IncludeKeyDown")
+}
+
+function Build-SpecificVersion {
+    Clear-Host
+    Write-CenterLine "=" -ForegroundColor Cyan
+    Write-CenterText "BUILD SPECIFIC VERSION" -ForegroundColor Yellow
+    Write-CenterLine "=" -ForegroundColor Cyan
+    Write-Host ""
+    Write-CenterText "Available Minecraft versions:" -ForegroundColor Cyan
+    Write-CenterText "[1] -> Minecraft 1.18.2" -ForegroundColor Green
+    Write-CenterText "[2] -> Minecraft 1.19.2" -ForegroundColor Green
+    Write-CenterText "[3] -> Minecraft 1.20.1" -ForegroundColor Green
+    Write-CenterText "[4] -> Minecraft 1.21.1" -ForegroundColor Green
+    Write-CenterText "[5] -> Back to main menu" -ForegroundColor Red
+    Write-Host ""
+    Write-Host "Enter your choice: " -ForegroundColor Cyan -NoNewline
+    
+    $choice = Read-Host
+    
+    if ($choice -eq "5") { return }
+    
+    $versionMap = @{
+        "1" = "1.18.2"
+        "2" = "1.19.2"
+        "3" = "1.20.1"
+        "4" = "1.21.1"
+    }
+    
+    if (-not $versionMap.ContainsKey($choice)) {
+        Write-Host "Invalid choice. Please try again." -ForegroundColor Red
+        Write-Host "`nPress any key to continue..." -ForegroundColor Cyan
+        $null = $Host.UI.RawUI.ReadKey("NoEcho,IncludeKeyDown")
+        return Build-SpecificVersion
+    }
+    
+    $buildVer = $versionMap[$choice]
+    
+    Write-Host ""
+    Write-Host "Building Minecraft $buildVer..." -ForegroundColor Yellow
+    Write-Host "------------------------------------------------------------" -ForegroundColor Cyan
+
+    $rootDir = Get-Location
+    $verDir = Get-ChildItem -Path $rootDir -Directory -Name "viscord-$buildVer-*" | Select-Object -First 1
+    
+    if ($verDir) {
+        Set-Location (Join-Path $rootDir $verDir)
+        
+        # Set optimal Java version for this Minecraft version
+        $optimalJava = Set-OptimalJavaVersion -MinecraftVersion $buildVer
+        $originalJavaHome = $env:JAVA_HOME
+        $originalPath = $env:PATH
+        
+        if ($optimalJava) {
+            $env:JAVA_HOME = $optimalJava.FullPath
+            $env:PATH = $optimalJava.FullPath + "\bin;" + $env:PATH
+        }
+        
+        # Build with progress tracking
+        $buildResult = Invoke-GradleBuildWithProgress -ProjectName "Minecraft $buildVer" -MinecraftVersion $buildVer
+        
+        # Restore original environment
+        $env:JAVA_HOME = $originalJavaHome
+        $env:PATH = $originalPath
+        
+        if (-not $buildResult.Success) {
+            Write-Host "X Failed to build $buildVer!" -ForegroundColor Red
+            Write-Host "Exit code: $($buildResult.ExitCode)" -ForegroundColor DarkRed
+        } else {
+            Write-Host "+ Build $buildVer successful!" -ForegroundColor Green
+            
+            Write-Host ""
+            Write-Host "Where would you like to copy the jars?" -ForegroundColor Cyan
+            Write-Host "[1] -> Releases folder" -ForegroundColor Green
+            Write-Host "[2] -> Versioned folder ($buildVer)" -ForegroundColor Green
+            Write-Host "[3] -> Don't copy" -ForegroundColor Green
+            Write-Host ""
+            Write-Host "Enter your choice: " -ForegroundColor Cyan -NoNewline
+            
+            $copyChoice = Read-Host
+            
+            switch ($copyChoice) {
+                "1" {
+                    $releasesDir = Join-Path $rootDir "Releases"
+                    if (-not (Test-Path $releasesDir)) {
+                        New-Item -ItemType Directory -Path $releasesDir | Out-Null
+                    }
+                    
+                    # Check what platforms are available in this version
+                    $platforms = @()
+                    if (Test-Path "fabric") { $platforms += "fabric" }
+                    if (Test-Path "forge") { $platforms += "forge" }
+                    if (Test-Path "neoforge") { $platforms += "neoforge" }
+                    
+                    Write-Host "  Available platforms: $($platforms -join ', ')" -ForegroundColor Cyan
+                    
+                    foreach ($platform in $platforms) {
+                        $libsPath = "$platform\build\libs"
+                        if (Test-Path $libsPath) {
+                            # Try multiple patterns to find the correct jar
+                            $jarPatterns = @("viscord-$platform-*.jar", "viscord-*-$platform.jar", "viscord-$platform.jar")
+                            $foundJars = $false
+                            
+                            foreach ($pattern in $jarPatterns) {
+                                $jars = Get-ChildItem -Path $libsPath -Filter $pattern -ErrorAction SilentlyContinue
+                                if ($jars.Count -gt 0) {
+                                    foreach ($jar in $jars) {
+                                        # Only copy the main jar, not dev-shadow or sources
+                                        if ($jar.Name -notmatch "-dev-shadow" -and $jar.Name -notmatch "-sources" -and $jar.Name -notmatch "-transform") {
+                                            # Create GitHub release-ready name: viscord-{version}-{platform}-{mcversion}.jar
+                                            $baseName = $jar.BaseName
+                                            $extension = $jar.Extension
+                                            $newName = "viscord-$buildVer-$platform-2.4.3$extension"
+                                            $newPath = Join-Path $releasesDir $newName
+                                            
+                                            Copy-Item $jar.FullName $newPath -Force
+                                            Write-Host "  + $newName copied to Releases" -ForegroundColor Green
+                                            $foundJars = $true
+                                        }
+                                    }
+                                }
+                            }
+                            
+                            if (-not $foundJars) {
+                                Write-Host "  - No $platform jars found" -ForegroundColor Yellow
+                            }
+                        } else {
+                            Write-Host "  - $platform build directory not found" -ForegroundColor Yellow
+                        }
+                    }
+                }
+                "2" {
+                    $versionDir = Join-Path $rootDir $buildVer
+                    if (-not (Test-Path $versionDir)) {
+                        New-Item -ItemType Directory -Path $versionDir | Out-Null
+                    }
+                    
+                    # Check what platforms are available in this version
+                    $platforms = @()
+                    if (Test-Path "fabric") { $platforms += "fabric" }
+                    if (Test-Path "forge") { $platforms += "forge" }
+                    if (Test-Path "neoforge") { $platforms += "neoforge" }
+                    
+                    Write-Host "  Available platforms: $($platforms -join ', ')" -ForegroundColor Cyan
+                    
+                    foreach ($platform in $platforms) {
+                        $libsPath = "$platform\build\libs"
+                        if (Test-Path $libsPath) {
+                            # Try multiple patterns to find the correct jar
+                            $jarPatterns = @("viscord-$platform-*.jar", "viscord-*-$platform.jar", "viscord-$platform.jar")
+                            $foundJars = $false
+                            
+                            foreach ($pattern in $jarPatterns) {
+                                $jars = Get-ChildItem -Path $libsPath -Filter $pattern -ErrorAction SilentlyContinue
+                                if ($jars.Count -gt 0) {
+                                    foreach ($jar in $jars) {
+                                        # Only copy the main jar, not dev-shadow or sources
+                                        if ($jar.Name -notmatch "-dev-shadow" -and $jar.Name -notmatch "-sources" -and $jar.Name -notmatch "-transform") {
+                                            Copy-Item $jar.FullName $versionDir -Force
+                                            Write-Host "  + $($jar.Name) copied to $buildVer folder" -ForegroundColor Green
+                                            $foundJars = $true
+                                        }
+                                    }
+                                }
+                            }
+                            
+                            if (-not $foundJars) {
+                                Write-Host "  - No $platform jars found" -ForegroundColor Yellow
+                            }
+                        } else {
+                            Write-Host "  - $platform build directory not found" -ForegroundColor Yellow
+                        }
+                    }
+                }
+                "3" {
+                    Write-Host "+ Jars not copied." -ForegroundColor Yellow
+                }
+                default {
+                    Write-Host "+ Jars not copied." -ForegroundColor Yellow
+                }
+            }
+        }
+    } else {
+        Write-Host "X Could not find directory for version $buildVer" -ForegroundColor Red
+    }
+
+    Set-Location $rootDir
+    
+    Write-Host ""
+    Write-CenterLine "=" -ForegroundColor Cyan
+    Write-CenterText "BUILD PROCESS COMPLETED" -ForegroundColor Green
+    Write-CenterLine "=" -ForegroundColor Cyan
+    
+    Write-Host "`nPress any key to continue..." -ForegroundColor Cyan
+    $null = $Host.UI.RawUI.ReadKey("NoEcho,IncludeKeyDown")
+}
+
+function Build-CustomFolder {
+    Clear-Host
+    Write-CenterLine "=" -ForegroundColor Cyan
+    Write-CenterText "BUILD TO CUSTOM RELEASE FOLDER" -ForegroundColor Yellow
+    Write-CenterLine "=" -ForegroundColor Cyan
+    Write-Host ""
+    Write-Host "Enter custom release folder name: " -ForegroundColor Cyan -NoNewline
+    
+    $customFolder = Read-Host
+    
+    if ([string]::IsNullOrWhiteSpace($customFolder)) {
+        Write-Host "Folder name cannot be empty." -ForegroundColor Red
+        Write-Host "`nPress any key to continue..." -ForegroundColor Cyan
+        $null = $Host.UI.RawUI.ReadKey("NoEcho,IncludeKeyDown")
+        return Build-CustomFolder
+    }
+    
+    Clear-Host
+    Write-CenterLine "=" -ForegroundColor Cyan
+    Write-CenterText "BUILDING TO CUSTOM FOLDER: $customFolder" -ForegroundColor Yellow
+    Write-CenterLine "=" -ForegroundColor Cyan
+    Write-Host ""
+
+    $rootDir = Get-Location
+    $customDir = Join-Path $rootDir $customFolder
+    
+    if (-not (Test-Path $customDir)) {
+        New-Item -ItemType Directory -Path $customDir | Out-Null
+    }
+
+    $versions = @("1.18.2", "1.19.2", "1.20.1", "1.21.1")
+    
+    foreach ($version in $versions) {
+        Write-Host "Processing Minecraft $version..." -ForegroundColor Yellow
+        
+        $verDir = Get-ChildItem -Path $rootDir -Directory -Name "viscord-$version-*" | Select-Object -First 1
+        
+        if ($verDir) {
+            Set-Location (Join-Path $rootDir $verDir)
+            
+            # Set optimal Java version for this Minecraft version
+            $optimalJava = Set-OptimalJavaVersion -MinecraftVersion $version
+            $originalJavaHome = $env:JAVA_HOME
+            $originalPath = $env:PATH
+            
+            if ($optimalJava) {
+                $env:JAVA_HOME = $optimalJava.FullPath
+                $env:PATH = $optimalJava.FullPath + "\bin;" + $env:PATH
+            }
+            
+            # Build with progress tracking
+            $buildResult = Invoke-GradleBuildWithProgress -ProjectName "Minecraft $version" -MinecraftVersion $version
+            
+            # Restore original environment
+            $env:JAVA_HOME = $originalJavaHome
+            $env:PATH = $originalPath
+            
+            if (-not $buildResult.Success) {
+                Write-Host "X Failed to build $version!" -ForegroundColor Red
+                Write-Host "Exit code: $($buildResult.ExitCode)" -ForegroundColor DarkRed
+            } else {
+                Write-Host "+ Build $version successful. Copying to $customFolder..." -ForegroundColor Green
+                
+                # Check what platforms are available in this version
+                $platforms = @()
+                if (Test-Path "fabric") { $platforms += "fabric" }
+                if (Test-Path "forge") { $platforms += "forge" }
+                if (Test-Path "neoforge") { $platforms += "neoforge" }
+                
+                Write-Host "  Available platforms: $($platforms -join ', ')" -ForegroundColor Cyan
+                
+                foreach ($platform in $platforms) {
+                    $libsPath = "$platform\build\libs"
+                    if (Test-Path $libsPath) {
+                        # Try multiple patterns to find the correct jar
+                        $jarPatterns = @("viscord-$platform-*.jar", "viscord-*-$platform.jar", "viscord-$platform.jar")
+                        $foundJars = $false
+                        
+                        foreach ($pattern in $jarPatterns) {
+                            $jars = Get-ChildItem -Path $libsPath -Filter $pattern -ErrorAction SilentlyContinue
+                            if ($jars.Count -gt 0) {
+                                foreach ($jar in $jars) {
+                                    # Only copy the main jar, not dev-shadow or sources
+                                    if ($jar.Name -notmatch "-dev-shadow" -and $jar.Name -notmatch "-sources" -and $jar.Name -notmatch "-transform") {
+                                        # Create GitHub release-ready name: viscord-{version}-{platform}-{mcversion}.jar
+                                        $baseName = $jar.BaseName
+                                        $extension = $jar.Extension
+                                        $newName = "viscord-$version-$platform-2.4.3$extension"
+                                        $newPath = Join-Path $customDir $newName
+                                        
+                                        Copy-Item $jar.FullName $newPath -Force
+                                        Write-Host "  + $newName copied" -ForegroundColor Green
+                                        $foundJars = $true
+                                    }
+                                }
+                            }
+                        }
+                        
+                        if (-not $foundJars) {
+                            Write-Host "  - No $platform jars found" -ForegroundColor Yellow
+                        }
+                    } else {
+                        Write-Host "  - $platform build directory not found" -ForegroundColor Yellow
+                    }
+                }
+            }
+        } else {
+            Write-Host "X Could not find directory for version $version" -ForegroundColor Red
+        }
+        Write-Host ""
+    }
+
+    Set-Location $rootDir
+    
+    Write-CenterLine "=" -ForegroundColor Cyan
+    Write-CenterText "BUILD PROCESS COMPLETED SUCCESSFULLY!" -ForegroundColor Green
+    Write-CenterText "Jars copied to $customFolder folder." -ForegroundColor Cyan
+    Write-CenterLine "=" -ForegroundColor Cyan
+    
+    Write-Host "`nPress any key to continue..." -ForegroundColor Cyan
+    $null = $Host.UI.RawUI.ReadKey("NoEcho,IncludeKeyDown")
+}
+
 function Show-ExitScreen {
     Clear-Host
     Write-CenterLine "=" -ForegroundColor Cyan
@@ -605,9 +1023,9 @@ do {
     
     switch ($choice) {
         "1" { Build-AllReleases }
-        "2" { Write-Host "Feature coming soon..." -ForegroundColor Yellow; Start-Sleep -Seconds 2 }
-        "3" { Write-Host "Feature coming soon..." -ForegroundColor Yellow; Start-Sleep -Seconds 2 }
-        "4" { Write-Host "Feature coming soon..." -ForegroundColor Yellow; Start-Sleep -Seconds 2 }
+        "2" { Build-AllVersioned }
+        "3" { Build-SpecificVersion }
+        "4" { Build-CustomFolder }
         "5" { 
             $selectedJava = Select-JavaVersion
             if ($selectedJava) {
