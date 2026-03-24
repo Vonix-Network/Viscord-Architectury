@@ -175,7 +175,8 @@ function Write-ProgressBar {
     $filled = [math]::Floor($Width * $PercentComplete / 100)
     $empty = $Width - $filled
     
-    $bar = "█" * $filled + "░" * $empty
+    # Use ASCII-safe characters instead of Unicode blocks
+    $bar = "=" * $filled + "-" * $empty
     Write-Host "`r[$bar] $PercentComplete% - $Status" -NoNewline -ForegroundColor White
 }
 
@@ -240,9 +241,11 @@ function Invoke-GradleBuildWithProgress {
         $currentProgress = 0
         $lastStatus = "Initializing build..."
         $startTime = Get-Date
+        $timeout = 300  # 5 minute timeout
         
-        while (-not $process.HasExited) {
+        while (-not $process.HasExited -and $timeout -gt 0) {
             Start-Sleep -Seconds 1
+            $timeout--
             
             # Gradual progress increase
             $elapsed = (Get-Date) - $startTime
@@ -264,6 +267,27 @@ function Invoke-GradleBuildWithProgress {
             Write-ProgressBar -PercentComplete $currentProgress -Status $lastStatus
         }
         
+        # If process is still running after timeout, kill it and use fallback
+        if (-not $process.HasExited) {
+            Write-Host ""
+            Write-Host "Progress tracking timeout, using fallback build method..." -ForegroundColor Yellow
+            $process.Kill()
+            $process.WaitForExit()
+            
+            # Fallback to simple build
+            Write-Host "Running fallback build..." -ForegroundColor Blue
+            $fallbackResult = & .\gradlew build 2>&1
+            Write-ProgressBar -PercentComplete 100 -Status "Build complete!"
+            Write-Host ""
+            
+            return @{
+                Success = ($LASTEXITCODE -eq 0)
+                Output = $fallbackResult
+                Error = @()
+                ExitCode = $LASTEXITCODE
+            }
+        }
+        
         # Wait for process and get result
         $process.WaitForExit()
         $buildResult = Get-Content $outputFile -ErrorAction SilentlyContinue
@@ -277,6 +301,23 @@ function Invoke-GradleBuildWithProgress {
             Output = $buildResult
             Error = $buildError
             ExitCode = $process.ExitCode
+        }
+    }
+    catch {
+        Write-Host ""
+        Write-Host "Progress tracking failed, using fallback build method..." -ForegroundColor Yellow
+        
+        # Fallback to simple build
+        Write-Host "Running fallback build..." -ForegroundColor Blue
+        $fallbackResult = & .\gradlew build 2>&1
+        Write-ProgressBar -PercentComplete 100 -Status "Build complete!"
+        Write-Host ""
+        
+        return @{
+            Success = ($LASTEXITCODE -eq 0)
+            Output = $fallbackResult
+            Error = @()
+            ExitCode = $LASTEXITCODE
         }
     }
     finally {
@@ -403,8 +444,25 @@ function Build-AllReleases {
             
             if (-not $buildResult.Success) {
                 Write-Host "X Failed to build $version!" -ForegroundColor Red
+                Write-Host "Exit code: $($buildResult.ExitCode)" -ForegroundColor DarkRed
+                
                 if ($buildResult.Error) {
-                    Write-Host "Error: $($buildResult.Error[-1])" -ForegroundColor DarkRed
+                    Write-Host "Build errors:" -ForegroundColor DarkRed
+                    foreach ($errorLine in $buildResult.Error[-5..-1]) {
+                        if ($errorLine.Trim()) {
+                            Write-Host "  $errorLine" -ForegroundColor Red
+                        }
+                    }
+                }
+                
+                if ($buildResult.Output) {
+                    $relevantOutput = $buildResult.Output | Where-Object { $_ -match "error|Error|FAILED|failed" } | Select-Object -Last 3
+                    if ($relevantOutput) {
+                        Write-Host "Relevant output:" -ForegroundColor DarkRed
+                        foreach ($line in $relevantOutput) {
+                            Write-Host "  $line" -ForegroundColor Red
+                        }
+                    }
                 }
             } else {
                 Write-Host "+ Build $version successful. Copying jars to Releases folder..." -ForegroundColor Green
