@@ -534,15 +534,25 @@ function Build-AllReleases {
                 foreach ($platform in $platforms) {
                     $libsPath = "$platform\build\libs"
                     if (Test-Path $libsPath) {
-                        $jarPattern = "viscord-*-$platform.jar"
-                        $jars = Get-ChildItem -Path $libsPath -Filter $jarPattern -ErrorAction SilentlyContinue
+                        # Try multiple patterns to find the correct jar
+                        $jarPatterns = @("viscord-$platform-*.jar", "viscord-*-$platform.jar", "viscord-$platform.jar")
+                        $foundJars = $false
                         
-                        if ($jars.Count -gt 0) {
-                            foreach ($jar in $jars) {
-                                Copy-Item $jar.FullName $releasesDir -Force
-                                Write-Host "  + $($jar.Name) copied" -ForegroundColor Green
+                        foreach ($pattern in $jarPatterns) {
+                            $jars = Get-ChildItem -Path $libsPath -Filter $pattern -ErrorAction SilentlyContinue
+                            if ($jars.Count -gt 0) {
+                                foreach ($jar in $jars) {
+                                    # Only copy the main jar, not dev-shadow or sources
+                                    if ($jar.Name -notmatch "-dev-shadow" -and $jar.Name -notmatch "-sources" -and $jar.Name -notmatch "-transform") {
+                                        Copy-Item $jar.FullName $releasesDir -Force
+                                        Write-Host "  + $($jar.Name) copied" -ForegroundColor Green
+                                        $foundJars = $true
+                                    }
+                                }
                             }
-                        } else {
+                        }
+                        
+                        if (-not $foundJars) {
                             Write-Host "  - No $platform jars found" -ForegroundColor Yellow
                         }
                     } else {
