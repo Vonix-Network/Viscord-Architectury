@@ -88,7 +88,7 @@ public class DiscordEventHandler {
                                     CommandSourceStack source = context.getSource();
         
                                     if (invite == null || invite.isEmpty()) {
-                                        source.sendSuccess(Component.literal(
+                                        source.sendSuccess(() -> Component.literal(
                                                 "§cDiscord invite URL is not configured."), false);
                                     } else {
                                         MutableComponent clickable = Component
@@ -97,7 +97,7 @@ public class DiscordEventHandler {
                                                         .withClickEvent(new ClickEvent(ClickEvent.Action.OPEN_URL, invite))
                                                         .withUnderlined(true)
                                                         .withColor(ChatFormatting.AQUA));
-                                        source.sendSuccess(clickable, false);
+                                        source.sendSuccess(() -> clickable, false);
                                     }
                                     return 1;
                                 }))

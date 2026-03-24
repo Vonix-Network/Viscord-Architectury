@@ -108,6 +108,7 @@ public class FluxerBotClient {
                     }
 
                     private void handleDisconnect(boolean closedByServer) {
+                        if (!connected && webSocket == null) return; // Already handled
                         connected = false;
                         Viscord.LOGGER.info("[Fluxer Bot] WebSocket disconnected. Closed by server: {}", closedByServer);
                         stopHeartbeating();
@@ -282,7 +283,7 @@ public class FluxerBotClient {
 
     private synchronized void stopHeartbeating() {
         if (heartbeatTask != null) {
-            heartbeatTask.cancel(false);
+            heartbeatTask.cancel(true); // Changed to true for better thread interruption
             heartbeatTask = null;
         }
     }
@@ -318,22 +319,20 @@ public class FluxerBotClient {
         }
     }
 
-    public void disconnect() {
+    public synchronized void disconnect() {
         String oldToken = this.token;
         this.token = null; // Prevent auto-reconnect
         
+        stopHeartbeating();
+
         if (webSocket != null) {
             webSocket.disconnect();
             webSocket = null;
         }
         connected = false;
         
-        stopHeartbeating();
-        
-        // Use a shutdown hook approach to clear out the executor safely on final mod shutdown, 
-        // but normally we keep the executor alive for reconnects.
-        if (oldToken == null) {
-            // If already cleared, assume full shutdown
+        // If oldToken is null, we might be in a shutdown state
+        if (oldToken == null && !heartbeatExecutor.isShutdown()) {
             heartbeatExecutor.shutdownNow();
         }
     }
