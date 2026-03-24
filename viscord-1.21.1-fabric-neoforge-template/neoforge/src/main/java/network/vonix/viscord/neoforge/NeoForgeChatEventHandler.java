@@ -14,7 +14,7 @@ public class NeoForgeChatEventHandler {
     public void onServerChat(ServerChatEvent event) {
         try {
             ServerPlayer player = event.getPlayer();
-            String rawMessage = event.getMessage();
+            String rawMessage = event.getMessage().getString();
 
             DiscordManager manager = DiscordManager.getInstance();
             if (manager.isRunning()) {

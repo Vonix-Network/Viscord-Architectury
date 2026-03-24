@@ -1,0 +1,92 @@
+
+> Configure project :
+Architect Plugin: 3.4.162
+Architectury Loom: 1.11.458
+
+> Task :common:compileJava UP-TO-DATE
+> Task :common:processResources UP-TO-DATE
+> Task :common:classes UP-TO-DATE
+> Task :common:jar UP-TO-DATE
+
+> Task :neoforge:compileJava FAILED
+.\gradlew.bat : C:\User
+s\rwcoo\Viscord-Archite
+ctury\viscord-1.21.1-fa
+bric-neoforge-template\
+neoforge\src\main\java\
+network\vonix\viscord\n
+eoforge\NeoForgeChatEve
+ntHandler.java:17: 
+error: incompatible 
+types: Component 
+cannot be converted to 
+String
+At line:1 char:382
++ ... -template ; 
+.\gradlew.bat 
+neoforge:compileJava 
+--console=plain > erro 
+...
++                 ~~~~~
+~~~~~~~~~~~~~~~~~~~~~~~
+~~~~~~~~~~~~~~~~~~~~~~~
+~~~~~~
+    + CategoryInfo     
+         : NotSpecifi  
+  ed: (C:\Users\rwco   
+ o\...erted to Stri    
+ng:String) [], Rem    
+oteException
+    + FullyQualifiedEr 
+   rorId : NativeComm  
+  andError
+ 
+            String 
+rawMessage = 
+event.getMessage();
+                       
+                       
+  ^
+1 error
+
+[Incubating] Problems report is available at: file:///C:/Users/rwcoo/Viscord-Architectury/viscord-1.21.1-fabric-neoforge-template/build/reports/problems/problems-report.html
+
+FAILURE: Build failed 
+with an exception.
+
+* What went wrong:
+Execution failed for 
+task ':neoforge:compile
+Java'.
+> Compilation failed; 
+see the compiler 
+output below.
+  C:\Users\rwcoo\Viscor
+d-Architectury\viscord-
+1.21.1-fabric-neoforge-
+template\neoforge\src\m
+ain\java\network\vonix\
+viscord\neoforge\NeoFor
+geChatEventHandler.java
+:17: error: 
+incompatible types: 
+Component cannot be 
+converted to String
+              String 
+rawMessage = 
+event.getMessage();
+                       
+                       
+    ^
+  1 error
+
+* Try:
+> Check your code and 
+dependencies to fix 
+the compilation 
+error(s)
+> Run with --scan to 
+get full insights.
+
+BUILD FAILED in 3s
+4 actionable tasks: 1 executed, 3 up-to-date
