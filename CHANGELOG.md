@@ -7,6 +7,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [2.4.5] - 2026-03-24
+
 ### 🌟 Added - Fluxer Bot Full Support
 - **WebSocket Message Receiving** - FluxerBotClient now receives chat messages directly from Fluxer Gateway
   - No port forwarding required when using WebSocket mode
@@ -26,12 +28,27 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   - Clickable link output for easy bot installation
 - **Updated Help Documentation** - `/viscord discord help` now includes fluxer commands
 
-## [2.4.4] - 2026-03-24
+### 🆕 New
+- **`/fluxer` Command Alias** - Players can now type `/fluxer` directly to get a clickable invite link for the Fluxer bot, in addition to the existing `/viscord fluxer invite`.
+- **`/viscord discord invite` Sub-command** - New dedicated sub-command to display the Discord server invite link from within the `/viscord` namespace for consistency.
+- **Discord → Minecraft Formatting** - Messages sent from Discord using `**bold**`, `*italic*`, `__underline__`, or `~~strikethrough~~` markdown are now automatically converted to the corresponding Minecraft `§` formatting codes when relayed in-game.
+
+### 🐛 Fixed
+- **Fluxer Bot Offline Status** - Fixed `fluxerBotClient` not being initialized and disconnected properly, ensuring it now displays as online with the correct player count in its Discord status.
+- **Duplicate Advancement Notifications** - Added a 5-second per-player debounce cache in `sendAdvancementEmbed`, preventing multiple advancement messages being sent when triggered by commands like `/advancement grant`.
+- **`/viscord fluxer invite` URL** - Fixed the invite URL pointing to `fluxer.app` instead of the correct `discord.com/oauth2/authorize` endpoint.
 
 ### 🚀 Improved
 - **Native Event Handlers** - Migrated chat interception from fragile Mixins to native `ServerChatEvent` implementations on Forge and NeoForge. This guarantees compatibility across modpacks and resolves duplicate broadcast bugs on 1.20 and 1.21.
 - **Robust Fluxer Reconnections** - Overhauled `FluxerBotClient` with exponential backoff and thread-safe heartbeat management. The bot will automatically recover from gateway disconnects or network drops.
 - **Async Fluxer Webhook Handling** - Upgraded `FluxerReceiver` to utilize a CachedThreadPool, preventing bottlenecks during high chat traffic and eliminating hanging threads during server shutdown.
+- **Bot Status Player Count** - Both the Discord and Fluxer bots now correctly reflect the live player count in their Discord status activity.
+- **Documentation Updated** - `viscord-documentation.html` fully reflects all new commands, aliases, and formatting features.
+
+## [2.4.4] - 2026-03-24
+
+### 🚀 Improved
+- Initial prep for native event handlers and fluxer updates.
 
 ## [2.4.3] - 2026-03-21
 
