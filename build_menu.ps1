@@ -544,8 +544,14 @@ function Build-AllReleases {
                                 foreach ($jar in $jars) {
                                     # Only copy the main jar, not dev-shadow or sources
                                     if ($jar.Name -notmatch "-dev-shadow" -and $jar.Name -notmatch "-sources" -and $jar.Name -notmatch "-transform") {
-                                        Copy-Item $jar.FullName $releasesDir -Force
-                                        Write-Host "  + $($jar.Name) copied" -ForegroundColor Green
+                                        # Create GitHub release-ready name: viscord-{version}-{platform}-{mcversion}.jar
+                                        $baseName = $jar.BaseName  # e.g., "viscord-fabric-2.4.3"
+                                        $extension = $jar.Extension
+                                        $newName = "viscord-$version-$platform-2.4.3$extension"
+                                        $newPath = Join-Path $releasesDir $newName
+                                        
+                                        Copy-Item $jar.FullName $newPath -Force
+                                        Write-Host "  + $newName copied" -ForegroundColor Green
                                         $foundJars = $true
                                     }
                                 }
