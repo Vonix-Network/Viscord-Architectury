@@ -229,12 +229,8 @@ function Get-RequiredJavaVersion {
         [string]$MinecraftVersion
     )
     
-    # Minecraft 1.21.1+ requires Java 21
-    if ($MinecraftVersion -ge "1.21.1") {
-        return 21
-    }
-    # Most other versions work with Java 17
-    return 17
+    # All versions require Java 21 due to newer Architectury Loom dependencies
+    return 21
 }
 
 function Set-OptimalJavaVersion {
@@ -314,8 +310,8 @@ function Invoke-GradleBuildWithProgress {
             $process.Kill()
             $process.WaitForExit()
             
-            # Fallback to simple build
-            Write-Host "Running fallback build..." -ForegroundColor Blue
+            # Fallback to simple build with full output capture
+            Write-Host "Running fallback build with full output..." -ForegroundColor Blue
             $fallbackResult = & .\gradlew build 2>&1
             Write-ProgressBar -PercentComplete 100 -Status "Build complete!"
             Write-Host ""
@@ -485,21 +481,22 @@ function Build-AllReleases {
                 Write-Host "X Failed to build $version!" -ForegroundColor Red
                 Write-Host "Exit code: $($buildResult.ExitCode)" -ForegroundColor DarkRed
                 
+                # Always show the last 10 lines of output for debugging
+                if ($buildResult.Output) {
+                    Write-Host "Build output (last 10 lines):" -ForegroundColor DarkRed
+                    $lastLines = $buildResult.Output | Select-Object -Last 10
+                    foreach ($line in $lastLines) {
+                        if ($line.Trim()) {
+                            Write-Host "  $line" -ForegroundColor Red
+                        }
+                    }
+                }
+                
                 if ($buildResult.Error) {
                     Write-Host "Build errors:" -ForegroundColor DarkRed
                     foreach ($errorLine in $buildResult.Error[-5..-1]) {
                         if ($errorLine.Trim()) {
                             Write-Host "  $errorLine" -ForegroundColor Red
-                        }
-                    }
-                }
-                
-                if ($buildResult.Output) {
-                    $relevantOutput = $buildResult.Output | Where-Object { $_ -match "error|Error|FAILED|failed" } | Select-Object -Last 3
-                    if ($relevantOutput) {
-                        Write-Host "Relevant output:" -ForegroundColor DarkRed
-                        foreach ($line in $relevantOutput) {
-                            Write-Host "  $line" -ForegroundColor Red
                         }
                     }
                 }
