@@ -194,11 +194,19 @@ function Get-BuildProgress {
         }
     }
     
+    # Look for cleaning progress
+    if ($GradleOutput -match "clean|Clean") {
+        return @{
+            Task = "Cleaning"
+            Progress = 15
+        }
+    }
+    
     # Look for compilation progress
     if ($GradleOutput -match "compiling|Compiling") {
         return @{
             Task = "Compiling"
-            Progress = 25
+            Progress = 50
         }
     }
     
@@ -206,7 +214,7 @@ function Get-BuildProgress {
     if ($GradleOutput -match "jar|Jar") {
         return @{
             Task = "Creating JAR"
-            Progress = 75
+            Progress = 85
         }
     }
     
@@ -265,17 +273,17 @@ function Invoke-GradleBuildWithProgress {
         [string]$MinecraftVersion = ""
     )
     
-    Write-Host "Starting Gradle build for $ProjectName..." -ForegroundColor Blue
-    Write-ProgressBar -PercentComplete 0 -Status "Initializing build..."
+    Write-Host "Starting clean Gradle build for $ProjectName..." -ForegroundColor Blue
+    Write-ProgressBar -PercentComplete 0 -Status "Cleaning and building..."
     
     $outputFile = "$env:TEMP\gradle_output_$($ProjectName)_$((Get-Date).ToString('yyyyMMddHHmmss')).txt"
     $errorFile = "$env:TEMP\gradle_error_$($ProjectName)_$((Get-Date).ToString('yyyyMMddHHmmss')).txt"
     
     try {
-        $process = Start-Process -FilePath ".\gradlew" -ArgumentList "build" -NoNewWindow -PassThru -RedirectStandardOutput $outputFile -RedirectStandardError $errorFile
+        $process = Start-Process -FilePath ".\gradlew" -ArgumentList "clean build" -NoNewWindow -PassThru -RedirectStandardOutput $outputFile -RedirectStandardError $errorFile
         
         $currentProgress = 0
-        $lastStatus = "Initializing build..."
+        $lastStatus = "Cleaning and building..."
         $startTime = Get-Date
         $timeout = 300  # 5 minute timeout
         
@@ -312,7 +320,7 @@ function Invoke-GradleBuildWithProgress {
             
             # Fallback to simple build with full output capture
             Write-Host "Running fallback build with full output..." -ForegroundColor Blue
-            $fallbackResult = & .\gradlew build 2>&1
+            $fallbackResult = & .\gradlew clean build 2>&1
             $exitCode = $LASTEXITCODE
             Write-ProgressBar -PercentComplete 100 -Status "Build complete!"
             Write-Host ""
@@ -353,7 +361,7 @@ function Invoke-GradleBuildWithProgress {
         
         # Fallback to simple build
         Write-Host "Running fallback build..." -ForegroundColor Blue
-        $fallbackResult = & .\gradlew build 2>&1
+        $fallbackResult = & .\gradlew clean build 2>&1
         $exitCode = $LASTEXITCODE
         Write-ProgressBar -PercentComplete 100 -Status "Build complete!"
         Write-Host ""
