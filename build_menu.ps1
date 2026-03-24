@@ -548,7 +548,7 @@ function Build-AllReleases {
                                         # Create GitHub release-ready name: viscord-{version}-{platform}-{mcversion}.jar
                                         $baseName = $jar.BaseName  # e.g., "viscord-fabric-2.4.4"
                                         $extension = $jar.Extension
-                                        $newName = "viscord-$version-$platform-2.4.5$extension"
+                                        $newName = "viscord-$version-$platform-2.4.7$extension"
                                         $newPath = Join-Path $releasesDir $newName
                                         
                                         Copy-Item $jar.FullName $newPath -Force
@@ -795,7 +795,7 @@ function Build-SpecificVersion {
                                             # Create GitHub release-ready name: viscord-{version}-{platform}-{mcversion}.jar
                                             $baseName = $jar.BaseName
                                             $extension = $jar.Extension
-                                            $newName = "viscord-$buildVer-$platform-2.4.5$extension"
+                                            $newName = "viscord-$buildVer-$platform-2.4.7$extension"
                                             $newPath = Join-Path $releasesDir $newName
                                             
                                             Copy-Item $jar.FullName $newPath -Force
@@ -967,7 +967,7 @@ function Build-CustomFolder {
                                         # Create GitHub release-ready name: viscord-{version}-{platform}-{mcversion}.jar
                                         $baseName = $jar.BaseName
                                         $extension = $jar.Extension
-                                        $newName = "viscord-$version-$platform-2.4.5$extension"
+                                        $newName = "viscord-$version-$platform-2.4.7$extension"
                                         $newPath = Join-Path $customDir $newName
                                         
                                         Copy-Item $jar.FullName $newPath -Force
