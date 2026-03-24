@@ -113,17 +113,7 @@ public class FluxerBotClient {
                         handleDisconnect(closedByServer, closeCode, closeReason, null);
                     }
 
-                    @Override
-                    public void onDisconnected(WebSocket websocket, WebSocketException serverCloseException,
-                            WebSocketFrame serverCloseFrame, WebSocketFrame clientCloseFrame,
-                            boolean closedByServer) {
-                        int closeCode = (serverCloseFrame != null) ? serverCloseFrame.getCloseCode() : 
-                                        (clientCloseFrame != null) ? clientCloseFrame.getCloseCode() : -1;
-                        String closeReason = (serverCloseFrame != null) ? serverCloseFrame.getCloseReason() : 
-                                             (clientCloseFrame != null) ? clientCloseFrame.getCloseReason() : 
-                                             (serverCloseException != null) ? serverCloseException.getMessage() : "Unknown";
-                        handleDisconnect(closedByServer, closeCode, closeReason, serverCloseException);
-                    }
+
 
                     @Override
                     public void onTextMessage(WebSocket websocket, String text) {
