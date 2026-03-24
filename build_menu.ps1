@@ -1,6 +1,27 @@
 # Viscord Build Menu - PowerShell Version with Progress Tracking
 # Modern, colorful CLI interface for building Viscord mods
 
+function Get-ModVersion {
+    # Read version from the first available gradle.properties
+    $rootDir = Get-Location
+    $gradleProps = Get-ChildItem -Path $rootDir -Recurse -Filter "gradle.properties" | Select-Object -First 1
+    
+    if ($gradleProps) {
+        $content = Get-Content $gradleProps.FullName -ErrorAction SilentlyContinue
+        $versionLine = $content | Where-Object { $_ -match "^mod_version\s*=\s*(.+)$" } | Select-Object -First 1
+        if ($versionLine) {
+            $version = $matches[1].Trim()
+            return $version
+        }
+    }
+    
+    # Fallback version if gradle.properties not found
+    return "2.4.7"
+}
+
+# Global variable to store mod version
+$script:ModVersion = Get-ModVersion
+
 function Get-InstalledJavaVersions {
     $javaVersions = @()
     
@@ -274,112 +295,68 @@ function Invoke-GradleBuildWithProgress {
     )
     
     Write-Host "Starting clean Gradle build for $ProjectName..." -ForegroundColor Blue
+    Write-Host "Using Java: $env:JAVA_HOME" -ForegroundColor Cyan
     Write-ProgressBar -PercentComplete 0 -Status "Cleaning and building..."
     
-    $outputFile = "$env:TEMP\gradle_output_$($ProjectName)_$((Get-Date).ToString('yyyyMMddHHmmss')).txt"
-    $errorFile = "$env:TEMP\gradle_error_$($ProjectName)_$((Get-Date).ToString('yyyyMMddHHmmss')).txt"
-    
     try {
-        $process = Start-Process -FilePath ".\gradlew" -ArgumentList "clean build" -NoNewWindow -PassThru -RedirectStandardOutput $outputFile -RedirectStandardError $errorFile
-        
+        # Run gradle with live output capture using call operator
+        $outputLines = @()
+        $errorLines = @()
         $currentProgress = 0
         $lastStatus = "Cleaning and building..."
         $startTime = Get-Date
         $timeout = 300  # 5 minute timeout
         
-        while (-not $process.HasExited -and $timeout -gt 0) {
-            Start-Sleep -Seconds 1
-            $timeout--
+        # Use & call operator which properly inherits environment variables
+        & .\gradlew.bat clean build 2>&1 | ForEach-Object {
+            $line = $_
+            $outputLines += $line
             
-            # Gradual progress increase
+            # Check for errors
+            if ($line -match "^> Task .*FAILED" -or $line -match "BUILD FAILED" -or $line -match "error:") {
+                $errorLines += $line
+            }
+            
+            # Update progress based on output
             $elapsed = (Get-Date) - $startTime
             $timeBasedProgress = [math]::Min($elapsed.TotalSeconds * 2, 85)
             $currentProgress = [math]::Max($currentProgress, $timeBasedProgress)
             
-            # Try to read current output for status
-            if (Test-Path $outputFile) {
-                $output = Get-Content $outputFile -Tail 10 -ErrorAction SilentlyContinue
-                if ($output) {
-                    $progressInfo = Get-BuildProgress -GradleOutput ($output -join "`n")
-                    if ($progressInfo.Progress -gt $currentProgress) {
-                        $currentProgress = $progressInfo.Progress
-                    }
-                    $lastStatus = "$($progressInfo.Task) - $ProjectName"
-                }
+            $progressInfo = Get-BuildProgress -GradleOutput $line
+            if ($progressInfo.Progress -gt $currentProgress) {
+                $currentProgress = $progressInfo.Progress
+            }
+            if ($progressInfo.Task -ne "Building") {
+                $lastStatus = "$($progressInfo.Task) - $ProjectName"
             }
             
             Write-ProgressBar -PercentComplete $currentProgress -Status $lastStatus
         }
         
-        # If process is still running after timeout, kill it and use fallback
-        if (-not $process.HasExited) {
-            Write-Host ""
-            Write-Host "Progress tracking timeout, using fallback build method..." -ForegroundColor Yellow
-            $process.Kill()
-            $process.WaitForExit()
-            
-            # Fallback to simple build with full output capture
-            Write-Host "Running fallback build with full output..." -ForegroundColor Blue
-            $fallbackResult = & .\gradlew clean build 2>&1
-            $exitCode = $LASTEXITCODE
-            Write-ProgressBar -PercentComplete 100 -Status "Build complete!"
-            Write-Host ""
-            
-            # Check for BUILD SUCCESSFUL in output as additional verification
-            $buildSuccessful = ($exitCode -eq 0) -or ($fallbackResult -match "BUILD SUCCESSFUL")
-            
-            return @{
-                Success = $buildSuccessful
-                Output = $fallbackResult
-                Error = @()
-                ExitCode = $exitCode
-            }
-        }
-        
-        # Wait for process and get result
-        $process.WaitForExit()
-        $exitCode = $process.ExitCode
-        $buildResult = Get-Content $outputFile -ErrorAction SilentlyContinue
-        $buildError = Get-Content $errorFile -ErrorAction SilentlyContinue
-        
-        Write-ProgressBar -PercentComplete 100 -Status "Build complete!"
-        Write-Host ""
-        
-        # Check for BUILD SUCCESSFUL in output as additional verification
-        $buildSuccessful = ($exitCode -eq 0) -or ($buildResult -match "BUILD SUCCESSFUL")
-        
-        return @{
-            Success = $buildSuccessful
-            Output = $buildResult
-            Error = $buildError
-            ExitCode = $exitCode
-        }
-    }
-    catch {
-        Write-Host ""
-        Write-Host "Progress tracking failed, using fallback build method..." -ForegroundColor Yellow
-        
-        # Fallback to simple build
-        Write-Host "Running fallback build..." -ForegroundColor Blue
-        $fallbackResult = & .\gradlew clean build 2>&1
         $exitCode = $LASTEXITCODE
         Write-ProgressBar -PercentComplete 100 -Status "Build complete!"
         Write-Host ""
         
         # Check for BUILD SUCCESSFUL in output as additional verification
-        $buildSuccessful = ($exitCode -eq 0) -or ($fallbackResult -match "BUILD SUCCESSFUL")
+        $buildSuccessful = ($exitCode -eq 0) -or (($outputLines -join "`n") -match "BUILD SUCCESSFUL")
         
         return @{
             Success = $buildSuccessful
-            Output = $fallbackResult
-            Error = @()
+            Output = $outputLines
+            Error = $errorLines
             ExitCode = $exitCode
         }
     }
-    finally {
-        # Clean up temp files
-        Remove-Item $outputFile -ErrorAction SilentlyContinue
-        Remove-Item $errorFile -ErrorAction SilentlyContinue
+    catch {
+        Write-Host ""
+        Write-Host "Build process error: $_" -ForegroundColor Red
+        
+        return @{
+            Success = $false
+            Output = @()
+            Error = @($_)
+            ExitCode = 1
+        }
     }
 }
 
@@ -548,7 +525,7 @@ function Build-AllReleases {
                                         # Create GitHub release-ready name: viscord-{version}-{platform}-{mcversion}.jar
                                         $baseName = $jar.BaseName  # e.g., "viscord-fabric-2.4.4"
                                         $extension = $jar.Extension
-                                        $newName = "viscord-$version-$platform-2.4.7$extension"
+                                        $newName = "viscord-$version-$platform-$script:ModVersion$extension"
                                         $newPath = Join-Path $releasesDir $newName
                                         
                                         Copy-Item $jar.FullName $newPath -Force
@@ -967,7 +944,7 @@ function Build-CustomFolder {
                                         # Create GitHub release-ready name: viscord-{version}-{platform}-{mcversion}.jar
                                         $baseName = $jar.BaseName
                                         $extension = $jar.Extension
-                                        $newName = "viscord-$version-$platform-2.4.7$extension"
+                                        $newName = "viscord-$version-$platform-$script:ModVersion$extension"
                                         $newPath = Join-Path $customDir $newName
                                         
                                         Copy-Item $jar.FullName $newPath -Force
