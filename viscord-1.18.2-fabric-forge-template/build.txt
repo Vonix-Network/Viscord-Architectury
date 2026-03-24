@@ -1,0 +1,79 @@
+
+> Configure project :
+Architect Plugin: 3.4.162
+Architectury Loom: 1.11.458
+
+> Task :common:compileJava FAILED
+.\gradlew.bat : C:\User
+s\rwcoo\Viscord-Archite
+ctury\viscord-1.18.2-fa
+bric-forge-template\com
+mon\src\main\java\netwo
+rk\vonix\viscord\discor
+d\FluxerBotClient.java:
+96: error: method does 
+not override or 
+implement a method 
+from a supertype
+At line:1 char:89
++ ... c-forge-template 
+; .\gradlew.bat 
+compileJava > 
+build.log 2>&1 ; Set-L 
+...
++                      
+  ~~~~~~~~~~~~~~~~~~~~~
+~~~~~~~~~~~~~~~~~~~~~
+    + CategoryInfo     
+         : NotSpecifi  
+  ed: (C:\Users\rwco   
+ o\...rom a superty    
+pe:String) [], Rem    
+oteException
+    + FullyQualifiedEr 
+   rorId : NativeComm  
+  andError
+ 
+                    
+@Override
+                    ^
+1 error
+
+[Incubating] Problems report is available at: file:///C:/Users/rwcoo/Viscord-Architectury/viscord-1.18.2-fabric-forge-template/build/reports/problems/problems-report.html
+
+FAILURE: Build failed 
+with an exception.
+
+* What went wrong:
+Execution failed for 
+task 
+':common:compileJava'.
+> Compilation failed; 
+see the compiler 
+output below.
+  C:\Users\rwcoo\Viscor
+d-Architectury\viscord-
+1.18.2-fabric-forge-tem
+plate\common\src\main\j
+ava\network\vonix\visco
+rd\discord\FluxerBotCli
+ent.java:96: error: 
+method does not 
+override or implement 
+a method from a 
+supertype
+                      
+@Override
+                      ^
+  1 error
+
+* Try:
+> Check your code and 
+dependencies to fix 
+the compilation 
+error(s)
+> Run with --scan to 
+get full insights.
+
+BUILD FAILED in 2s
+1 actionable task: 1 executed

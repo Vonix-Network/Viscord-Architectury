@@ -11,5 +11,8 @@ public final class ViscordNeoForge {
         System.out.println("[Viscord] NeoForge entry point called!");
         // Run our common setup.
         Viscord.init();
+
+        // Register the NeoForge chat event handler to relay player messages to Discord.
+        net.neoforged.neoforge.common.NeoForge.EVENT_BUS.register(new NeoForgeChatEventHandler());
     }
 }

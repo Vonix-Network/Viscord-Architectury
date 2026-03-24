@@ -26,6 +26,13 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   - Clickable link output for easy bot installation
 - **Updated Help Documentation** - `/viscord discord help` now includes fluxer commands
 
+## [2.4.4] - 2026-03-24
+
+### 🚀 Improved
+- **Native Event Handlers** - Migrated chat interception from fragile Mixins to native `ServerChatEvent` implementations on Forge and NeoForge. This guarantees compatibility across modpacks and resolves duplicate broadcast bugs on 1.20 and 1.21.
+- **Robust Fluxer Reconnections** - Overhauled `FluxerBotClient` with exponential backoff and thread-safe heartbeat management. The bot will automatically recover from gateway disconnects or network drops.
+- **Async Fluxer Webhook Handling** - Upgraded `FluxerReceiver` to utilize a CachedThreadPool, preventing bottlenecks during high chat traffic and eliminating hanging threads during server shutdown.
+
 ## [2.4.3] - 2026-03-21
 
 ### 🐛 Fixed

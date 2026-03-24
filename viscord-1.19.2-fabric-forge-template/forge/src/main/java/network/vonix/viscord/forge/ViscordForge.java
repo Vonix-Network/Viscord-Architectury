@@ -14,5 +14,8 @@ public final class ViscordForge {
 
         // Run our common setup.
         Viscord.init();
+
+        // Register the Forge chat event handler to relay player messages to Discord.
+        net.minecraftforge.common.MinecraftForge.EVENT_BUS.register(new ForgeChatEventHandler());
     }
 }

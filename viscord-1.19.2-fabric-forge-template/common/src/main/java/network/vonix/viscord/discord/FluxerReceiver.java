@@ -31,6 +31,8 @@ public class FluxerReceiver implements HttpHandler {
         void onFluxerMessage(String username, String message, String avatarUrl);
     }
 
+    private java.util.concurrent.ExecutorService executorService;
+
     public FluxerReceiver(int port, String path, MessageHandler messageHandler) {
         this.port = port;
         this.path = path.startsWith("/") ? path : "/" + path;
@@ -45,11 +47,15 @@ public class FluxerReceiver implements HttpHandler {
 
         server = HttpServer.create(new InetSocketAddress(port), 0);
         server.createContext(path, this);
-        server.setExecutor(Executors.newSingleThreadExecutor(r -> {
-            Thread t = new Thread(r, "Fluxer-Receiver");
-            t.setDaemon(true);
+        
+        // Use a cached thread pool for incoming requests to handle load properly without bottlenecking
+        executorService = Executors.newCachedThreadPool(r -> {
+            Thread t = new Thread(r, "Fluxer-Receiver-Worker");
+            t.setDaemon(true); // Ensure JVM can exit if this thread is running
             return t;
-        }));
+        });
+        
+        server.setExecutor(executorService);
         server.start();
 
         Viscord.LOGGER.info("[Fluxer] HTTP server started on port {} at path {}", port, path);
@@ -57,10 +63,14 @@ public class FluxerReceiver implements HttpHandler {
 
     public void stop() {
         if (server != null) {
-            server.stop(0);
+            server.stop(0); // instant stop
             server = null;
-            Viscord.LOGGER.info("[Fluxer] HTTP server stopped");
         }
+        if (executorService != null) {
+            executorService.shutdownNow();
+            executorService = null;
+        }
+        Viscord.LOGGER.info("[Fluxer] HTTP server stopped cleanly");
     }
 
     @Override
