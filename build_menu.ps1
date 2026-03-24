@@ -313,30 +313,38 @@ function Invoke-GradleBuildWithProgress {
             # Fallback to simple build with full output capture
             Write-Host "Running fallback build with full output..." -ForegroundColor Blue
             $fallbackResult = & .\gradlew build 2>&1
+            $exitCode = $LASTEXITCODE
             Write-ProgressBar -PercentComplete 100 -Status "Build complete!"
             Write-Host ""
             
+            # Check for BUILD SUCCESSFUL in output as additional verification
+            $buildSuccessful = ($exitCode -eq 0) -or ($fallbackResult -match "BUILD SUCCESSFUL")
+            
             return @{
-                Success = ($LASTEXITCODE -eq 0)
+                Success = $buildSuccessful
                 Output = $fallbackResult
                 Error = @()
-                ExitCode = $LASTEXITCODE
+                ExitCode = $exitCode
             }
         }
         
         # Wait for process and get result
         $process.WaitForExit()
+        $exitCode = $process.ExitCode
         $buildResult = Get-Content $outputFile -ErrorAction SilentlyContinue
         $buildError = Get-Content $errorFile -ErrorAction SilentlyContinue
         
         Write-ProgressBar -PercentComplete 100 -Status "Build complete!"
         Write-Host ""
         
+        # Check for BUILD SUCCESSFUL in output as additional verification
+        $buildSuccessful = ($exitCode -eq 0) -or ($buildResult -match "BUILD SUCCESSFUL")
+        
         return @{
-            Success = ($process.ExitCode -eq 0)
+            Success = $buildSuccessful
             Output = $buildResult
             Error = $buildError
-            ExitCode = $process.ExitCode
+            ExitCode = $exitCode
         }
     }
     catch {
@@ -346,14 +354,18 @@ function Invoke-GradleBuildWithProgress {
         # Fallback to simple build
         Write-Host "Running fallback build..." -ForegroundColor Blue
         $fallbackResult = & .\gradlew build 2>&1
+        $exitCode = $LASTEXITCODE
         Write-ProgressBar -PercentComplete 100 -Status "Build complete!"
         Write-Host ""
         
+        # Check for BUILD SUCCESSFUL in output as additional verification
+        $buildSuccessful = ($exitCode -eq 0) -or ($fallbackResult -match "BUILD SUCCESSFUL")
+        
         return @{
-            Success = ($LASTEXITCODE -eq 0)
+            Success = $buildSuccessful
             Output = $fallbackResult
             Error = @()
-            ExitCode = $LASTEXITCODE
+            ExitCode = $exitCode
         }
     }
     finally {
