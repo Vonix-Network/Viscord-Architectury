@@ -224,9 +224,49 @@ function Get-BuildProgress {
     }
 }
 
+function Get-RequiredJavaVersion {
+    param(
+        [string]$MinecraftVersion
+    )
+    
+    # Minecraft 1.21.1+ requires Java 21
+    if ($MinecraftVersion -ge "1.21.1") {
+        return 21
+    }
+    # Most other versions work with Java 17
+    return 17
+}
+
+function Set-OptimalJavaVersion {
+    param(
+        [string]$MinecraftVersion
+    )
+    
+    $requiredVersion = Get-RequiredJavaVersion -MinecraftVersion $MinecraftVersion
+    $javaVersions = Get-InstalledJavaVersions
+    
+    # Find the best Java version (prefer the exact required version or higher)
+    $bestJava = $javaVersions | Where-Object { $_.Version -ge $requiredVersion } | Sort-Object Version | Select-Object -First 1
+    
+    if ($bestJava) {
+        Write-Host "Auto-selecting Java $($bestJava.Version) for Minecraft $MinecraftVersion" -ForegroundColor Cyan
+        return $bestJava
+    }
+    
+    # Fallback to user-selected Java or system default
+    if ($script:SelectedJava) {
+        Write-Host "Using user-selected Java $($script:SelectedJava.Version) for Minecraft $MinecraftVersion" -ForegroundColor Yellow
+        return $script:SelectedJava
+    }
+    
+    Write-Host "Using system default Java for Minecraft $MinecraftVersion" -ForegroundColor Yellow
+    return $null
+}
+
 function Invoke-GradleBuildWithProgress {
     param(
-        [string]$ProjectName = "project"
+        [string]$ProjectName = "project",
+        [string]$MinecraftVersion = ""
     )
     
     Write-Host "Starting Gradle build for $ProjectName..." -ForegroundColor Blue
@@ -424,23 +464,22 @@ function Build-AllReleases {
         if ($verDir) {
             Set-Location (Join-Path $rootDir $verDir)
             
-            # Set JAVA_HOME if a specific Java version is selected
+            # Set optimal Java version for this Minecraft version
+            $optimalJava = Set-OptimalJavaVersion -MinecraftVersion $version
             $originalJavaHome = $env:JAVA_HOME
             $originalPath = $env:PATH
-            if ($script:SelectedJava) {
-                $env:JAVA_HOME = $script:SelectedJava.FullPath
-                $env:PATH = $script:SelectedJava.FullPath + "\bin;" + $env:PATH
-                Write-Host "Using Java $($script:SelectedJava.Version)" -ForegroundColor Yellow
+            
+            if ($optimalJava) {
+                $env:JAVA_HOME = $optimalJava.FullPath
+                $env:PATH = $optimalJava.FullPath + "\bin;" + $env:PATH
             }
             
             # Build with progress tracking
-            $buildResult = Invoke-GradleBuildWithProgress -ProjectName "Minecraft $version"
+            $buildResult = Invoke-GradleBuildWithProgress -ProjectName "Minecraft $version" -MinecraftVersion $version
             
             # Restore original environment
-            if ($script:SelectedJava) {
-                $env:JAVA_HOME = $originalJavaHome
-                $env:PATH = $originalPath
-            }
+            $env:JAVA_HOME = $originalJavaHome
+            $env:PATH = $originalPath
             
             if (-not $buildResult.Success) {
                 Write-Host "X Failed to build $version!" -ForegroundColor Red
