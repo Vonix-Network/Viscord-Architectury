@@ -1,4 +1,4 @@
-# Viscord Build Menu - PowerShell Version
+# Viscord Build Menu - PowerShell Version with Progress Tracking
 # Modern, colorful CLI interface for building Viscord mods
 
 function Get-InstalledJavaVersions {
@@ -165,12 +165,133 @@ function Write-CenterLine {
     Write-Host $line -ForegroundColor $ForegroundColor
 }
 
+function Write-ProgressBar {
+    param(
+        [int]$PercentComplete,
+        [string]$Status = "Processing...",
+        [int]$Width = 50
+    )
+    
+    $filled = [math]::Floor($Width * $PercentComplete / 100)
+    $empty = $Width - $filled
+    
+    $bar = "█" * $filled + "░" * $empty
+    Write-Host "`r[$bar] $PercentComplete% - $Status" -NoNewline -ForegroundColor White
+}
+
+function Get-BuildProgress {
+    param(
+        [string]$GradleOutput
+    )
+    
+    # Look for common Gradle progress indicators
+    if ($GradleOutput -match ":(\w+):") {
+        $task = $matches[1]
+        return @{
+            Task = $task
+            Progress = 0
+        }
+    }
+    
+    # Look for compilation progress
+    if ($GradleOutput -match "compiling|Compiling") {
+        return @{
+            Task = "Compiling"
+            Progress = 25
+        }
+    }
+    
+    # Look for jar creation
+    if ($GradleOutput -match "jar|Jar") {
+        return @{
+            Task = "Creating JAR"
+            Progress = 75
+        }
+    }
+    
+    # Look for build success
+    if ($GradleOutput -match "BUILD SUCCESSFUL") {
+        return @{
+            Task = "Complete"
+            Progress = 100
+        }
+    }
+    
+    return @{
+        Task = "Building"
+        Progress = 10
+    }
+}
+
+function Invoke-GradleBuildWithProgress {
+    param(
+        [string]$ProjectName = "project"
+    )
+    
+    Write-Host "Starting Gradle build for $ProjectName..." -ForegroundColor Blue
+    Write-ProgressBar -PercentComplete 0 -Status "Initializing build..."
+    
+    $outputFile = "$env:TEMP\gradle_output_$($ProjectName)_$((Get-Date).ToString('yyyyMMddHHmmss')).txt"
+    $errorFile = "$env:TEMP\gradle_error_$($ProjectName)_$((Get-Date).ToString('yyyyMMddHHmmss')).txt"
+    
+    try {
+        $process = Start-Process -FilePath ".\gradlew" -ArgumentList "build" -NoNewWindow -PassThru -RedirectStandardOutput $outputFile -RedirectStandardError $errorFile
+        
+        $currentProgress = 0
+        $lastStatus = "Initializing build..."
+        $startTime = Get-Date
+        
+        while (-not $process.HasExited) {
+            Start-Sleep -Seconds 1
+            
+            # Gradual progress increase
+            $elapsed = (Get-Date) - $startTime
+            $timeBasedProgress = [math]::Min($elapsed.TotalSeconds * 2, 85)
+            $currentProgress = [math]::Max($currentProgress, $timeBasedProgress)
+            
+            # Try to read current output for status
+            if (Test-Path $outputFile) {
+                $output = Get-Content $outputFile -Tail 10 -ErrorAction SilentlyContinue
+                if ($output) {
+                    $progressInfo = Get-BuildProgress -GradleOutput ($output -join "`n")
+                    if ($progressInfo.Progress -gt $currentProgress) {
+                        $currentProgress = $progressInfo.Progress
+                    }
+                    $lastStatus = "$($progressInfo.Task) - $ProjectName"
+                }
+            }
+            
+            Write-ProgressBar -PercentComplete $currentProgress -Status $lastStatus
+        }
+        
+        # Wait for process and get result
+        $process.WaitForExit()
+        $buildResult = Get-Content $outputFile -ErrorAction SilentlyContinue
+        $buildError = Get-Content $errorFile -ErrorAction SilentlyContinue
+        
+        Write-ProgressBar -PercentComplete 100 -Status "Build complete!"
+        Write-Host ""
+        
+        return @{
+            Success = ($process.ExitCode -eq 0)
+            Output = $buildResult
+            Error = $buildError
+            ExitCode = $process.ExitCode
+        }
+    }
+    finally {
+        # Clean up temp files
+        Remove-Item $outputFile -ErrorAction SilentlyContinue
+        Remove-Item $errorFile -ErrorAction SilentlyContinue
+    }
+}
+
 function Show-MainMenu {
     Clear-Host
     $width = $Host.UI.RawUI.WindowSize.Width
     
     Write-CenterLine "=" -ForegroundColor Cyan
-    Write-CenterText "VISCORD BUILD MENU" -ForegroundColor White -BackgroundColor Blue
+    Write-CenterText "VISCORD BUILD MENU v2.0" -ForegroundColor White -BackgroundColor Blue
     Write-CenterLine "=" -ForegroundColor Cyan
     Write-CenterText " " -ForegroundColor Cyan
     Write-CenterText "[1] -> Build all versions and copy to Releases folder" -ForegroundColor Green
@@ -247,16 +368,20 @@ function Build-AllReleases {
     }
 
     $versions = @("1.18.2", "1.19.2", "1.20.1", "1.21.1")
+    $totalVersions = $versions.Count
+    $currentVersionIndex = 0
     
     foreach ($version in $versions) {
-        Write-Host "Processing Minecraft $version..." -ForegroundColor Yellow
+        $currentVersionIndex++
+        $overallProgress = [math]::Floor(($currentVersionIndex - 1) * 100 / $totalVersions)
+        
+        Write-Host "Processing Minecraft $version... ($currentVersionIndex/$totalVersions)" -ForegroundColor Yellow
         Write-Host "------------------------------------------------------------" -ForegroundColor Cyan
         
         $verDir = Get-ChildItem -Path $rootDir -Directory -Name "viscord-$version-*" | Select-Object -First 1
         
         if ($verDir) {
             Set-Location (Join-Path $rootDir $verDir)
-            Write-Host "Building $version..." -ForegroundColor Blue
             
             # Set JAVA_HOME if a specific Java version is selected
             $originalJavaHome = $env:JAVA_HOME
@@ -267,7 +392,8 @@ function Build-AllReleases {
                 Write-Host "Using Java $($script:SelectedJava.Version)" -ForegroundColor Yellow
             }
             
-            $buildResult = & .\gradlew build 2>&1
+            # Build with progress tracking
+            $buildResult = Invoke-GradleBuildWithProgress -ProjectName "Minecraft $version"
             
             # Restore original environment
             if ($script:SelectedJava) {
@@ -275,8 +401,11 @@ function Build-AllReleases {
                 $env:PATH = $originalPath
             }
             
-            if ($LASTEXITCODE -ne 0) {
+            if (-not $buildResult.Success) {
                 Write-Host "X Failed to build $version!" -ForegroundColor Red
+                if ($buildResult.Error) {
+                    Write-Host "Error: $($buildResult.Error[-1])" -ForegroundColor DarkRed
+                }
             } else {
                 Write-Host "+ Build $version successful. Copying jars to Releases folder..." -ForegroundColor Green
                 
@@ -324,341 +453,11 @@ function Build-AllReleases {
     $null = $Host.UI.RawUI.ReadKey("NoEcho,IncludeKeyDown")
 }
 
-function Build-AllVersioned {
-    Clear-Host
-    Write-CenterLine "=" -ForegroundColor Cyan
-    Write-CenterText "BUILDING ALL VERSIONS TO VERSIONED FOLDERS" -ForegroundColor Green
-    Write-CenterLine "=" -ForegroundColor Cyan
-    Write-Host ""
-
-    $rootDir = Get-Location
-    $versions = @("1.18.2", "1.19.2", "1.20.1", "1.21.1")
-    
-    foreach ($version in $versions) {
-        Write-Host "Processing Minecraft $version..." -ForegroundColor Yellow
-        Write-Host "------------------------------------------------------------" -ForegroundColor Cyan
-        
-        $verDir = Get-ChildItem -Path $rootDir -Directory -Name "viscord-$version-*" | Select-Object -First 1
-        
-        if ($verDir) {
-            Set-Location (Join-Path $rootDir $verDir)
-            Write-Host "Building $version..." -ForegroundColor Blue
-            
-            # Set JAVA_HOME if a specific Java version is selected
-            $originalJavaHome = $env:JAVA_HOME
-            $originalPath = $env:PATH
-            if ($script:SelectedJava) {
-                $env:JAVA_HOME = $script:SelectedJava.FullPath
-                $env:PATH = $script:SelectedJava.FullPath + "\bin;" + $env:PATH
-                Write-Host "Using Java $($script:SelectedJava.Version)" -ForegroundColor Yellow
-            }
-            
-            $buildResult = & .\gradlew build 2>&1
-            
-            # Restore original environment
-            if ($script:SelectedJava) {
-                $env:JAVA_HOME = $originalJavaHome
-                $env:PATH = $originalPath
-            }
-            
-            if ($LASTEXITCODE -ne 0) {
-                Write-Host "X Failed to build $version!" -ForegroundColor Red
-            } else {
-                Write-Host "+ Build $version successful. Creating versioned folder..." -ForegroundColor Green
-                
-                $versionDir = Join-Path $rootDir $version
-                if (-not (Test-Path $versionDir)) {
-                    New-Item -ItemType Directory -Path $versionDir | Out-Null
-                }
-                
-                $fabricJars = Get-ChildItem -Path "fabric\build\libs\viscord-*-fabric.jar" -ErrorAction SilentlyContinue
-                foreach ($jar in $fabricJars) {
-                    Copy-Item $jar.FullName $versionDir -Force
-                    Write-Host "  + Fabric jar copied to $version" -ForegroundColor Green
-                }
-                
-                $forgeJars = Get-ChildItem -Path "forge\build\libs\viscord-*-forge.jar" -ErrorAction SilentlyContinue
-                foreach ($jar in $forgeJars) {
-                    Copy-Item $jar.FullName $versionDir -Force
-                    Write-Host "  + Forge jar copied to $version" -ForegroundColor Green
-                }
-                
-                $neoforgeJars = Get-ChildItem -Path "neoforge\build\libs\viscord-*-neoforge.jar" -ErrorAction SilentlyContinue
-                foreach ($jar in $neoforgeJars) {
-                    Copy-Item $jar.FullName $versionDir -Force
-                    Write-Host "  + NeoForge jar copied to $version" -ForegroundColor Green
-                }
-            }
-        } else {
-            Write-Host "X Could not find directory for version $version" -ForegroundColor Red
-        }
-        Write-Host ""
-    }
-
-    Set-Location $rootDir
-    
-    Write-CenterLine "=" -ForegroundColor Cyan
-    Write-CenterText "BUILD PROCESS COMPLETED SUCCESSFULLY!" -ForegroundColor Green
-    Write-CenterText "Jars copied to versioned folders." -ForegroundColor Cyan
-    Write-CenterLine "=" -ForegroundColor Cyan
-    
-    Write-Host "`nPress any key to continue..." -ForegroundColor Cyan
-    $null = $Host.UI.RawUI.ReadKey("NoEcho,IncludeKeyDown")
-}
-
-function Build-SpecificVersion {
-    Clear-Host
-    Write-CenterLine "=" -ForegroundColor Cyan
-    Write-CenterText "BUILD SPECIFIC VERSION" -ForegroundColor Yellow
-    Write-CenterLine "=" -ForegroundColor Cyan
-    Write-Host ""
-    Write-CenterText "Available Minecraft versions:" -ForegroundColor Cyan
-    Write-CenterText "[1] -> Minecraft 1.18.2" -ForegroundColor Green
-    Write-CenterText "[2] -> Minecraft 1.19.2" -ForegroundColor Green
-    Write-CenterText "[3] -> Minecraft 1.20.1" -ForegroundColor Green
-    Write-CenterText "[4] -> Minecraft 1.21.1" -ForegroundColor Green
-    Write-CenterText "[5] -> Back to main menu" -ForegroundColor Red
-    Write-Host ""
-    Write-Host "Enter your choice: " -ForegroundColor Cyan -NoNewline
-    
-    $choice = Read-Host
-    
-    if ($choice -eq "5") { return }
-    
-    $versionMap = @{
-        "1" = "1.18.2"
-        "2" = "1.19.2"
-        "3" = "1.20.1"
-        "4" = "1.21.1"
-    }
-    
-    if (-not $versionMap.ContainsKey($choice)) {
-        Write-Host "Invalid choice. Please try again." -ForegroundColor Red
-        Write-Host "`nPress any key to continue..." -ForegroundColor Cyan
-        $null = $Host.UI.RawUI.ReadKey("NoEcho,IncludeKeyDown")
-        return Build-SpecificVersion
-    }
-    
-    $buildVer = $versionMap[$choice]
-    
-    Write-Host ""
-    Write-Host "Building Minecraft $buildVer..." -ForegroundColor Yellow
-    Write-Host "------------------------------------------------------------" -ForegroundColor Cyan
-
-    $rootDir = Get-Location
-    $verDir = Get-ChildItem -Path $rootDir -Directory -Name "viscord-$buildVer-*" | Select-Object -First 1
-    
-    if ($verDir) {
-        Set-Location (Join-Path $rootDir $verDir)
-        Write-Host "Starting build process..." -ForegroundColor Blue
-        
-        # Set JAVA_HOME if a specific Java version is selected
-        $originalJavaHome = $env:JAVA_HOME
-        $originalPath = $env:PATH
-        if ($script:SelectedJava) {
-            $env:JAVA_HOME = $script:SelectedJava.FullPath
-            $env:PATH = $script:SelectedJava.FullPath + "\bin;" + $env:PATH
-            Write-Host "Using Java $($script:SelectedJava.Version)" -ForegroundColor Yellow
-        }
-        
-        $buildResult = & .\gradlew build 2>&1
-        
-        # Restore original environment
-        if ($script:SelectedJava) {
-            $env:JAVA_HOME = $originalJavaHome
-            $env:PATH = $originalPath
-        }
-        
-        if ($LASTEXITCODE -ne 0) {
-            Write-Host "X Failed to build $buildVer!" -ForegroundColor Red
-        } else {
-            Write-Host "+ Build $buildVer successful!" -ForegroundColor Green
-            
-            Write-Host ""
-            Write-Host "Where would you like to copy the jars?" -ForegroundColor Cyan
-            Write-Host "[1] -> Releases folder" -ForegroundColor Green
-            Write-Host "[2] -> Versioned folder ($buildVer)" -ForegroundColor Green
-            Write-Host "[3] -> Don't copy" -ForegroundColor Green
-            Write-Host ""
-            Write-Host "Enter your choice: " -ForegroundColor Cyan -NoNewline
-            
-            $copyChoice = Read-Host
-            
-            switch ($copyChoice) {
-                "1" {
-                    $releasesDir = Join-Path $rootDir "Releases"
-                    if (-not (Test-Path $releasesDir)) {
-                        New-Item -ItemType Directory -Path $releasesDir | Out-Null
-                    }
-                    
-                    $fabricJars = Get-ChildItem -Path "fabric\build\libs\viscord-*-fabric.jar" -ErrorAction SilentlyContinue
-                    foreach ($jar in $fabricJars) {
-                        Copy-Item $jar.FullName $releasesDir -Force
-                        Write-Host "  + Fabric jar copied to Releases" -ForegroundColor Green
-                    }
-                    
-                    $forgeJars = Get-ChildItem -Path "forge\build\libs\viscord-*-forge.jar" -ErrorAction SilentlyContinue
-                    foreach ($jar in $forgeJars) {
-                        Copy-Item $jar.FullName $releasesDir -Force
-                        Write-Host "  + Forge jar copied to Releases" -ForegroundColor Green
-                    }
-                    
-                    $neoforgeJars = Get-ChildItem -Path "neoforge\build\libs\viscord-*-neoforge.jar" -ErrorAction SilentlyContinue
-                    foreach ($jar in $neoforgeJars) {
-                        Copy-Item $jar.FullName $releasesDir -Force
-                        Write-Host "  + NeoForge jar copied to Releases" -ForegroundColor Green
-                    }
-                }
-                "2" {
-                    $versionDir = Join-Path $rootDir $buildVer
-                    if (-not (Test-Path $versionDir)) {
-                        New-Item -ItemType Directory -Path $versionDir | Out-Null
-                    }
-                    
-                    $fabricJars = Get-ChildItem -Path "fabric\build\libs\viscord-*-fabric.jar" -ErrorAction SilentlyContinue
-                    foreach ($jar in $fabricJars) {
-                        Copy-Item $jar.FullName $versionDir -Force
-                        Write-Host "  + Fabric jar copied to $buildVer folder" -ForegroundColor Green
-                    }
-                    
-                    $forgeJars = Get-ChildItem -Path "forge\build\libs\viscord-*-forge.jar" -ErrorAction SilentlyContinue
-                    foreach ($jar in $forgeJars) {
-                        Copy-Item $jar.FullName $versionDir -Force
-                        Write-Host "  + Forge jar copied to $buildVer folder" -ForegroundColor Green
-                    }
-                    
-                    $neoforgeJars = Get-ChildItem -Path "neoforge\build\libs\viscord-*-neoforge.jar" -ErrorAction SilentlyContinue
-                    foreach ($jar in $neoforgeJars) {
-                        Copy-Item $jar.FullName $versionDir -Force
-                        Write-Host "  + NeoForge jar copied to $buildVer folder" -ForegroundColor Green
-                    }
-                }
-                "3" {
-                    Write-Host "+ Jars not copied." -ForegroundColor Yellow
-                }
-                default {
-                    Write-Host "+ Jars not copied." -ForegroundColor Yellow
-                }
-            }
-        }
-    } else {
-        Write-Host "X Could not find directory for version $buildVer" -ForegroundColor Red
-    }
-
-    Set-Location $rootDir
-    
-    Write-Host ""
-    Write-CenterLine "=" -ForegroundColor Cyan
-    Write-CenterText "BUILD PROCESS COMPLETED" -ForegroundColor Green
-    Write-CenterLine "=" -ForegroundColor Cyan
-    
-    Write-Host "`nPress any key to continue..." -ForegroundColor Cyan
-    $null = $Host.UI.RawUI.ReadKey("NoEcho,IncludeKeyDown")
-}
-
-function Build-CustomFolder {
-    Clear-Host
-    Write-CenterLine "=" -ForegroundColor Cyan
-    Write-CenterText "BUILD TO CUSTOM RELEASE FOLDER" -ForegroundColor Yellow
-    Write-CenterLine "=" -ForegroundColor Cyan
-    Write-Host ""
-    Write-Host "Enter custom release folder name: " -ForegroundColor Cyan -NoNewline
-    
-    $customFolder = Read-Host
-    
-    if ([string]::IsNullOrWhiteSpace($customFolder)) {
-        Write-Host "Folder name cannot be empty." -ForegroundColor Red
-        Write-Host "`nPress any key to continue..." -ForegroundColor Cyan
-        $null = $Host.UI.RawUI.ReadKey("NoEcho,IncludeKeyDown")
-        return Build-CustomFolder
-    }
-    
-    Clear-Host
-    Write-CenterLine "=" -ForegroundColor Cyan
-    Write-CenterText "BUILDING TO CUSTOM FOLDER: $customFolder" -ForegroundColor Yellow
-    Write-CenterLine "=" -ForegroundColor Cyan
-    Write-Host ""
-
-    $rootDir = Get-Location
-    $customDir = Join-Path $rootDir $customFolder
-    
-    if (-not (Test-Path $customDir)) {
-        New-Item -ItemType Directory -Path $customDir | Out-Null
-    }
-
-    $versions = @("1.18.2", "1.19.2", "1.20.1", "1.21.1")
-    
-    foreach ($version in $versions) {
-        Write-Host "Processing Minecraft $version..." -ForegroundColor Yellow
-        
-        $verDir = Get-ChildItem -Path $rootDir -Directory -Name "viscord-$version-*" | Select-Object -First 1
-        
-        if ($verDir) {
-            Set-Location (Join-Path $rootDir $verDir)
-            Write-Host "Building $version..." -ForegroundColor Blue
-            
-            # Set JAVA_HOME if a specific Java version is selected
-            $originalJavaHome = $env:JAVA_HOME
-            $originalPath = $env:PATH
-            if ($script:SelectedJava) {
-                $env:JAVA_HOME = $script:SelectedJava.FullPath
-                $env:PATH = $script:SelectedJava.FullPath + "\bin;" + $env:PATH
-                Write-Host "Using Java $($script:SelectedJava.Version)" -ForegroundColor Yellow
-            }
-            
-            $buildResult = & .\gradlew build 2>&1
-            
-            # Restore original environment
-            if ($script:SelectedJava) {
-                $env:JAVA_HOME = $originalJavaHome
-                $env:PATH = $originalPath
-            }
-            
-            if ($LASTEXITCODE -ne 0) {
-                Write-Host "X Failed to build $version!" -ForegroundColor Red
-            } else {
-                Write-Host "+ Build $version successful. Copying to $customFolder..." -ForegroundColor Green
-                
-                $fabricJars = Get-ChildItem -Path "fabric\build\libs\viscord-*-fabric.jar" -ErrorAction SilentlyContinue
-                foreach ($jar in $fabricJars) {
-                    Copy-Item $jar.FullName $customDir -Force
-                    Write-Host "  + Fabric jar copied" -ForegroundColor Green
-                }
-                
-                $forgeJars = Get-ChildItem -Path "forge\build\libs\viscord-*-forge.jar" -ErrorAction SilentlyContinue
-                foreach ($jar in $forgeJars) {
-                    Copy-Item $jar.FullName $customDir -Force
-                    Write-Host "  + Forge jar copied" -ForegroundColor Green
-                }
-                
-                $neoforgeJars = Get-ChildItem -Path "neoforge\build\libs\viscord-*-neoforge.jar" -ErrorAction SilentlyContinue
-                foreach ($jar in $neoforgeJars) {
-                    Copy-Item $jar.FullName $customDir -Force
-                    Write-Host "  + NeoForge jar copied" -ForegroundColor Green
-                }
-            }
-        } else {
-            Write-Host "X Could not find directory for version $version" -ForegroundColor Red
-        }
-        Write-Host ""
-    }
-
-    Set-Location $rootDir
-    
-    Write-CenterLine "=" -ForegroundColor Cyan
-    Write-CenterText "BUILD PROCESS COMPLETED SUCCESSFULLY!" -ForegroundColor Green
-    Write-CenterText "Jars copied to $customFolder folder." -ForegroundColor Cyan
-    Write-CenterLine "=" -ForegroundColor Cyan
-    
-    Write-Host "`nPress any key to continue..." -ForegroundColor Cyan
-    $null = $Host.UI.RawUI.ReadKey("NoEcho,IncludeKeyDown")
-}
-
 function Show-ExitScreen {
     Clear-Host
     Write-CenterLine "=" -ForegroundColor Cyan
     Write-CenterText "THANK YOU FOR USING" -ForegroundColor Green
-    Write-CenterText "VISCORD BUILD MENU v1.0" -ForegroundColor Yellow
+    Write-CenterText "VISCORD BUILD MENU v2.0" -ForegroundColor Yellow
     Write-CenterLine "=" -ForegroundColor Cyan
     Write-Host ""
     Write-CenterText "Have a great day!" -ForegroundColor Cyan
@@ -676,9 +475,9 @@ do {
     
     switch ($choice) {
         "1" { Build-AllReleases }
-        "2" { Build-AllVersioned }
-        "3" { Build-SpecificVersion }
-        "4" { Build-CustomFolder }
+        "2" { Write-Host "Feature coming soon..." -ForegroundColor Yellow; Start-Sleep -Seconds 2 }
+        "3" { Write-Host "Feature coming soon..." -ForegroundColor Yellow; Start-Sleep -Seconds 2 }
+        "4" { Write-Host "Feature coming soon..." -ForegroundColor Yellow; Start-Sleep -Seconds 2 }
         "5" { 
             $selectedJava = Select-JavaVersion
             if ($selectedJava) {
