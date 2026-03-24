@@ -177,4 +177,30 @@ public class DiscordFormatter {
         }
         return FORMATTING_CODE_PATTERN.matcher(message).find();
     }
+
+    /**
+     * Converts Discord markdown formatting to Minecraft formatting codes.
+     */
+    public static String convertDiscordToMinecraftFormatting(String message) {
+        if (message == null || message.isEmpty()) {
+            return message;
+        }
+
+        // Process bold (**text**)
+        message = message.replaceAll("\\*\\*(.+?)\\*\\*", "§l$1§r");
+        
+        // Process underline (__text__)
+        message = message.replaceAll("__(.+?)__", "§n$1§r");
+        
+        // Process strikethrough (~~text~~)
+        message = message.replaceAll("~~(.+?)~~", "§m$1§r");
+        
+        // Process italic (*text*)
+        message = message.replaceAll("\\*(.+?)\\*", "§o$1§r");
+        
+        // Process italic (_text_) - Use negative lookbehind/lookahead to avoid matching variable_names
+        message = message.replaceAll("(?<!\\w)_(.+?)_(?!\\w)", "§o$1§r");
+
+        return message;
+    }
 }

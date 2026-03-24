@@ -1,0 +1,1092 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Viscord 2.4.4 - Complete Documentation</title>
+    <link href="https://fonts.googleapis.com/css2?family=Outfit:wght@300;400;500;600;700;800&display=swap" rel="stylesheet">
+    <link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css" rel="stylesheet">
+    <style>
+        :root {
+            --primary: #5865F2;
+            --primary-glow: rgba(88, 101, 242, 0.6);
+            --secondary: #57F287;
+            --secondary-glow: rgba(87, 242, 135, 0.6);
+            --danger: #ED4245;
+            --warning: #FEE75C;
+            --bg-dark: #0a0b10;
+            --bg-darker: #050508;
+            --glass-bg: rgba(20, 22, 35, 0.45);
+            --glass-border: rgba(255, 255, 255, 0.08);
+            --text-primary: #FFFFFF;
+            --text-secondary: #949BA4;
+            --text-muted: #6B6F76;
+        }
+
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        body {
+            font-family: 'Outfit', sans-serif;
+            background-color: var(--bg-darker);
+            background-image: 
+                radial-gradient(circle at 15% 50%, rgba(88, 101, 242, 0.15) 0%, transparent 50%),
+                radial-gradient(circle at 85% 30%, rgba(87, 242, 135, 0.1) 0%, transparent 50%);
+            background-attachment: fixed;
+            color: var(--text-primary);
+            line-height: 1.6;
+            min-height: 100vh;
+            overflow-x: hidden;
+        }
+
+        /* Animated grid background */
+        body::before {
+            content: '';
+            position: fixed;
+            top: 0; left: 0; right: 0; bottom: 0;
+            background-image: linear-gradient(var(--glass-border) 1px, transparent 1px),
+                              linear-gradient(90deg, var(--glass-border) 1px, transparent 1px);
+            background-size: 50px 50px;
+            background-position: center center;
+            opacity: 0.15;
+            z-index: -1;
+            transform: perspective(1000px) rotateX(60deg) scale(2.5) translateY(-100px);
+            animation: gridMove 20s linear infinite;
+        }
+
+        @keyframes gridMove {
+            0% { background-position: center 0; }
+            100% { background-position: center 50px; }
+        }
+
+        @keyframes fadeIn {
+            from { opacity: 0; transform: translateY(20px); }
+            to { opacity: 1; transform: translateY(0); }
+        }
+
+        .container {
+            max-width: 1200px;
+            margin: 0 auto;
+            padding: 40px 20px;
+            position: relative;
+            z-index: 1;
+        }
+
+        header {
+            background: var(--glass-bg);
+            backdrop-filter: blur(20px);
+            -webkit-backdrop-filter: blur(20px);
+            border-radius: 24px;
+            padding: 60px 40px;
+            margin-bottom: 40px;
+            border: 1px solid var(--glass-border);
+            text-align: center;
+            box-shadow: 0 15px 35px rgba(0,0,0,0.5), inset 0 1px 0 rgba(255,255,255,0.1);
+            animation: fadeIn 0.8s ease-out forwards;
+        }
+
+        .logo {
+            font-size: 4.5rem;
+            font-weight: 800;
+            background: linear-gradient(135deg, var(--primary) 0%, #A07CFE 100%);
+            -webkit-background-clip: text;
+            background-clip: text;
+            -webkit-text-fill-color: transparent;
+            margin-bottom: 10px;
+            letter-spacing: -1px;
+            filter: drop-shadow(0 0 20px var(--primary-glow));
+        }
+
+        .version {
+            display: inline-flex;
+            align-items: center;
+            background: rgba(88, 101, 242, 0.15);
+            color: #929fff;
+            padding: 8px 20px;
+            border-radius: 30px;
+            font-weight: 600;
+            font-size: 1.1rem;
+            margin-bottom: 25px;
+            border: 1px solid rgba(88, 101, 242, 0.3);
+            box-shadow: 0 0 15px var(--primary-glow);
+        }
+
+        .nav-tabs {
+            display: flex;
+            background: var(--glass-bg);
+            backdrop-filter: blur(15px);
+            border-radius: 16px;
+            padding: 10px;
+            margin-bottom: 40px;
+            border: 1px solid var(--glass-border);
+            overflow-x: auto;
+            scrollbar-width: none;
+            box-shadow: 0 10px 30px rgba(0,0,0,0.3);
+            animation: fadeIn 0.8s ease-out 0.2s forwards;
+            opacity: 0;
+        }
+
+        .nav-tabs::-webkit-scrollbar {
+            display: none;
+        }
+
+        .nav-tab {
+            flex: 1;
+            padding: 15px 20px;
+            background: transparent;
+            border: none;
+            color: var(--text-secondary);
+            cursor: pointer;
+            border-radius: 12px;
+            font-weight: 500;
+            font-size: 1rem;
+            font-family: inherit;
+            transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+            white-space: nowrap;
+            position: relative;
+            overflow: hidden;
+        }
+
+        .nav-tab i {
+            margin-right: 8px;
+            transition: transform 0.3s ease;
+        }
+
+        .nav-tab:hover {
+            color: var(--text-primary);
+            background: rgba(255, 255, 255, 0.05);
+        }
+
+        .nav-tab:hover i {
+            transform: translateY(-2px);
+        }
+
+        .nav-tab.active {
+            color: white;
+            background: rgba(88, 101, 242, 0.2);
+            border: 1px solid rgba(88, 101, 242, 0.4);
+            box-shadow: inset 0 0 20px rgba(88, 101, 242, 0.2);
+        }
+
+        .tab-content {
+            display: none;
+            animation: fadeIn 0.5s ease-out forwards;
+        }
+
+        .tab-content.active {
+            display: block;
+        }
+
+        .card {
+            background: var(--glass-bg);
+            backdrop-filter: blur(15px);
+            border-radius: 20px;
+            padding: 40px;
+            margin-bottom: 30px;
+            border: 1px solid var(--glass-border);
+            box-shadow: 0 10px 30px rgba(0,0,0,0.2);
+            transition: transform 0.3s ease, box-shadow 0.3s ease;
+        }
+
+        .card:hover {
+            transform: translateY(-5px);
+            box-shadow: 0 15px 40px rgba(0,0,0,0.4), inset 0 1px 0 rgba(255,255,255,0.1);
+        }
+
+        .card h2 {
+            color: var(--text-primary);
+            margin-bottom: 25px;
+            font-size: 2rem;
+            display: flex;
+            align-items: center;
+            gap: 15px;
+            font-weight: 700;
+        }
+
+        .card h2 i {
+            color: var(--primary);
+            background: rgba(88, 101, 242, 0.1);
+            padding: 12px;
+            border-radius: 12px;
+            box-shadow: 0 0 15px var(--primary-glow);
+        }
+
+        .card h3 {
+            color: var(--secondary);
+            margin: 30px 0 15px 0;
+            font-size: 1.4rem;
+            font-weight: 600;
+        }
+
+        p {
+            color: var(--text-secondary);
+            margin-bottom: 15px;
+            font-size: 1.05rem;
+        }
+
+        .feature-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(280px, 1fr));
+            gap: 25px;
+            margin: 30px 0;
+        }
+
+        .feature-card {
+            background: rgba(0,0,0,0.2);
+            padding: 30px;
+            border-radius: 16px;
+            border: 1px solid rgba(255,255,255,0.05);
+            transition: all 0.3s ease;
+            position: relative;
+            overflow: hidden;
+        }
+
+        .feature-card::before {
+            content: '';
+            position: absolute;
+            top: 0; left: 0; width: 100%; height: 2px;
+            background: linear-gradient(90deg, transparent, var(--primary), transparent);
+            opacity: 0;
+            transition: opacity 0.3s ease;
+        }
+
+        .feature-card:hover {
+            background: rgba(255,255,255,0.03);
+            border-color: rgba(88, 101, 242, 0.3);
+            transform: translateY(-5px);
+        }
+
+        .feature-card:hover::before {
+            opacity: 1;
+        }
+
+        .feature-card h4 {
+            color: var(--text-primary);
+            margin-bottom: 15px;
+            font-size: 1.2rem;
+            display: flex;
+            align-items: center;
+            gap: 10px;
+        }
+
+        .feature-card h4 i {
+            color: var(--primary);
+        }
+
+        .code-block {
+            background: #0d0e12;
+            border: 1px solid rgba(255,255,255,0.1);
+            border-radius: 12px;
+            padding: 25px;
+            margin: 20px 0;
+            overflow-x: auto;
+            position: relative;
+            box-shadow: inset 0 2px 10px rgba(0,0,0,0.5);
+        }
+
+        .code-block pre {
+            margin: 0;
+            color: #a9b1d6;
+            font-family: 'Consolas', 'Courier New', monospace;
+            font-size: 0.95rem;
+            line-height: 1.5;
+        }
+
+        .copy-btn {
+            position: absolute;
+            top: 15px;
+            right: 15px;
+            background: rgba(255,255,255,0.1);
+            backdrop-filter: blur(5px);
+            color: white;
+            border: 1px solid rgba(255,255,255,0.1);
+            padding: 8px 15px;
+            border-radius: 8px;
+            cursor: pointer;
+            font-size: 0.85rem;
+            font-family: inherit;
+            font-weight: 500;
+            transition: all 0.2s ease;
+        }
+
+        .copy-btn:hover {
+            background: var(--primary);
+            border-color: var(--primary);
+            transform: scale(1.05);
+        }
+
+        .alert {
+            border-radius: 12px;
+            padding: 20px 25px;
+            margin: 25px 0;
+            display: flex;
+            align-items: flex-start;
+            gap: 15px;
+            background: rgba(255, 255, 255, 0.03);
+            border: 1px solid rgba(255, 255, 255, 0.1);
+            position: relative;
+            overflow: hidden;
+        }
+
+        .alert::before {
+            content: '';
+            position: absolute;
+            left: 0; top: 0; bottom: 0;
+            width: 4px;
+        }
+
+        .alert i {
+            font-size: 1.5rem;
+            margin-top: 2px;
+        }
+
+        .alert-warning {
+            border-color: rgba(254, 231, 92, 0.3);
+            background: rgba(254, 231, 92, 0.05);
+        }
+        .alert-warning::before { background: var(--warning); }
+        .alert-warning i, .alert-warning strong { color: var(--warning); }
+
+        .alert-success {
+            border-color: rgba(87, 242, 135, 0.3);
+            background: rgba(87, 242, 135, 0.05);
+        }
+        .alert-success::before { background: var(--secondary); }
+        .alert-success i, .alert-success strong { color: var(--secondary); }
+
+        .alert-danger {
+            border-color: rgba(237, 66, 69, 0.3);
+            background: rgba(237, 66, 69, 0.05);
+        }
+        .alert-danger::before { background: var(--danger); }
+        .alert-danger i, .alert-danger strong { color: var(--danger); }
+
+        .formatting-table {
+            width: 100%;
+            border-collapse: separate;
+            border-spacing: 0;
+            margin: 25px 0;
+            background: rgba(0,0,0,0.2);
+            border-radius: 12px;
+            overflow: hidden;
+            border: 1px solid rgba(255,255,255,0.05);
+        }
+
+        .formatting-table th,
+        .formatting-table td {
+            padding: 18px 20px;
+            text-align: left;
+            border-bottom: 1px solid rgba(255,255,255,0.05);
+        }
+
+        .formatting-table th {
+            background: rgba(88, 101, 242, 0.15);
+            color: var(--text-primary);
+            font-weight: 600;
+            text-transform: uppercase;
+            font-size: 0.85rem;
+            letter-spacing: 1px;
+        }
+
+        .formatting-table tr:hover td {
+            background: rgba(255,255,255,0.03);
+        }
+
+        .formatting-table tr:last-child td {
+            border-bottom: none;
+        }
+
+        .step {
+            display: flex;
+            align-items: flex-start;
+            margin: 30px 0;
+            gap: 20px;
+            background: rgba(255,255,255,0.02);
+            padding: 25px;
+            border-radius: 16px;
+            border: 1px solid rgba(255,255,255,0.03);
+        }
+
+        .step-number {
+            background: linear-gradient(135deg, var(--primary) 0%, #A07CFE 100%);
+            color: white;
+            width: 40px;
+            height: 40px;
+            border-radius: 12px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-weight: 700;
+            font-size: 1.2rem;
+            flex-shrink: 0;
+            box-shadow: 0 5px 15px var(--primary-glow);
+        }
+
+        .step-content {
+            flex: 1;
+        }
+
+        .step-content h3 {
+            margin: 0 0 10px 0;
+            color: var(--text-primary);
+        }
+
+        .download-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(260px, 1fr));
+            gap: 20px;
+            margin: 30px 0;
+        }
+
+        .download-card {
+            background: linear-gradient(145deg, rgba(88, 101, 242, 0.1) 0%, rgba(0,0,0,0.3) 100%);
+            border: 1px solid rgba(88, 101, 242, 0.3);
+            border-radius: 16px;
+            padding: 30px;
+            text-align: center;
+            transition: all 0.3s ease;
+            position: relative;
+            overflow: hidden;
+        }
+
+        .download-card::after {
+            content: '';
+            position: absolute;
+            top: -50%; left: -50%; width: 200%; height: 200%;
+            background: radial-gradient(circle, rgba(255,255,255,0.1) 0%, transparent 60%);
+            opacity: 0;
+            transform: scale(0.5);
+            transition: opacity 0.3s, transform 0.5s;
+        }
+
+        .download-card:hover {
+            transform: translateY(-5px);
+            box-shadow: 0 15px 30px rgba(88, 101, 242, 0.2);
+            border-color: var(--primary);
+        }
+
+        .download-card:hover::after {
+            opacity: 1;
+            transform: scale(1);
+        }
+
+        .download-card h4 {
+            color: var(--text-primary);
+            font-size: 1.5rem;
+            margin-bottom: 5px;
+            position: relative; z-index: 1;
+        }
+
+        .download-card .loader {
+            color: var(--secondary);
+            font-weight: 600;
+            font-size: 1rem;
+            margin-bottom: 15px;
+            position: relative; z-index: 1;
+            text-shadow: 0 0 10px var(--secondary-glow);
+        }
+        
+        .download-card p {
+            position: relative; z-index: 1;
+        }
+
+        .badge {
+            display: inline-block;
+            padding: 4px 10px;
+            border-radius: 6px;
+            font-size: 0.75rem;
+            font-weight: 700;
+            text-transform: uppercase;
+            letter-spacing: 1px;
+            background: rgba(87, 242, 135, 0.2);
+            color: var(--secondary);
+            border: 1px solid rgba(87, 242, 135, 0.4);
+            margin-left: 10px;
+            vertical-align: middle;
+        }
+
+        .footer {
+            text-align: center;
+            padding: 50px 20px;
+            color: var(--text-muted);
+            margin-top: 60px;
+            border-top: 1px solid var(--glass-border);
+            font-size: 1rem;
+        }
+
+        /* Custom scrollbar */
+        ::-webkit-scrollbar { width: 10px; height: 10px; }
+        ::-webkit-scrollbar-track { background: var(--bg-darker); }
+        ::-webkit-scrollbar-thumb { background: #2a2d36; border-radius: 5px; }
+        ::-webkit-scrollbar-thumb:hover { background: var(--primary); }
+
+        @media (max-width: 768px) {
+            .logo { font-size: 3rem; }
+            .nav-tabs { flex-direction: column; }
+            .step { flex-direction: column; gap: 10px; }
+            .card { padding: 25px; }
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <header>
+            <div class="logo">Viscord</div>
+            <div class="version"><i class="fas fa-code-branch" style="margin-right: 8px;"></i> Version 2.4.4</div>
+            <p style="font-size: 1.3rem; color: var(--text-primary); margin-bottom: 20px; font-weight: 300;">
+                The Ultimate Cross-Platform Minecraft Chat Solution
+            </p>
+            <p style="color: var(--text-secondary); max-width: 600px; margin: 0 auto;">
+                Discord ↔ Minecraft ↔ Fluxer Tridirectional Chat with Rich Formatting, Native Architecture, & Unmatched Thread Safety.
+            </p>
+        </header>
+
+        <div class="nav-tabs">
+            <button class="nav-tab active" onclick="showTab('overview')"><i class="fas fa-home"></i> Overview</button>
+            <button class="nav-tab" onclick="showTab('installation')"><i class="fas fa-download"></i> Installation</button>
+            <button class="nav-tab" onclick="showTab('configuration')"><i class="fas fa-layer-group"></i> Configuration</button>
+            <button class="nav-tab" onclick="showTab('commands')"><i class="fas fa-terminal"></i> Commands</button>
+            <button class="nav-tab" onclick="showTab('features')"><i class="fas fa-bolt"></i> Features</button>
+            <button class="nav-tab" onclick="showTab('formatting')"><i class="fas fa-palette"></i> Formatting</button>
+            <button class="nav-tab" onclick="showTab('troubleshooting')"><i class="fas fa-shield-alt"></i> Troubleshooting</button>
+        </div>
+
+        <!-- Overview Tab -->
+        <div id="overview" class="tab-content active">
+            <div class="card">
+                <h2><i class="fas fa-rocket"></i> Welcome to Viscord 2.4.4 <span class="badge">LATEST</span></h2>
+                <p>Viscord is the most advanced, heavily optimized Minecraft chat integration mod. Enabling seamless communication between Minecraft, Discord, and Fluxer platforms. Version 2.4.4 introduces <strong>Native ServerChatEvent Architecture</strong> across all modern Forge/NeoForge mod loaders to permanently eliminate chat duplication, alongside production-grade thread pooling and exponential WebSocket backoff for the Fluxer integration.</p>
+                
+                <div class="feature-grid">
+                    <div class="feature-card">
+                        <h4><i class="fas fa-comments"></i> Tridirectional Chat</h4>
+                        <p>Real-time message synchronization bridged flawlessly between Discord, Minecraft, and Fluxer platforms concurrently.</p>
+                    </div>
+                    <div class="feature-card">
+                        <h4><i class="fas fa-palette"></i> Rich Formatting</h4>
+                        <p>Complete parsing of Minecraft formatting codes converted directly to beautiful Discord markdown.</p>
+                    </div>
+                    <div class="feature-card">
+                        <h4><i class="fas fa-server"></i> Native Multi-Loader</h4>
+                        <p>Built directly into platform-specific bus events for Fabric, Forge, and NeoForge across multiple versions without brittle mixins.</p>
+                    </div>
+                    <div class="feature-card">
+                        <h4><i class="fas fa-link"></i> Account Linking</h4>
+                        <p>Secure Discord-Minecraft account association via a robust code-based verification system.</p>
+                    </div>
+                </div>
+            </div>
+
+            <div class="card">
+                <h2><i class="fas fa-gamepad"></i> Supported Versions</h2>
+                <div class="download-grid">
+                    <div class="download-card">
+                        <h4>Minecraft 1.21.1</h4>
+                        <div class="loader">Fabric <span style="color:var(--text-muted)">+</span> NeoForge</div>
+                        <p>Latest version featuring fully-native component processing.</p>
+                    </div>
+                    <div class="download-card">
+                        <h4>Minecraft 1.20.1</h4>
+                        <div class="loader">Fabric <span style="color:var(--text-muted)">+</span> Forge</div>
+                        <p>Stable release replacing old mixin stacks with native hooks.</p>
+                    </div>
+                    <div class="download-card">
+                        <h4>Minecraft 1.19.2</h4>
+                        <div class="loader">Fabric <span style="color:var(--text-muted)">+</span> Forge</div>
+                        <p>LTS version with complete feature parity.</p>
+                    </div>
+                    <div class="download-card">
+                        <h4>Minecraft 1.18.2</h4>
+                        <div class="loader">Fabric <span style="color:var(--text-muted)">+</span> Forge</div>
+                        <p>Backward-compatible release bridging older nv-websocket schemas.</p>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Installation Tab -->
+        <div id="installation" class="tab-content">
+            <div class="card">
+                <h2><i class="fas fa-download"></i> Quick Installation</h2>
+                
+                <div class="step">
+                    <div class="step-number">1</div>
+                    <div class="step-content">
+                        <h3>Download the Release JAR</h3>
+                        <p>Choose the appropriate JAR file for your Minecraft version and mod loader from the repository Releases folder.</p>
+                    </div>
+                </div>
+
+                <div class="step">
+                    <div class="step-number">2</div>
+                    <div class="step-content">
+                        <h3>Install to Server</h3>
+                        <p>Place the downloaded JAR file directly into your server's <code>mods</code> folder.</p>
+                        <div class="code-block">
+                            <pre>server/
+├── mods/
+│   └── viscord-1.21.1-neoforge-2.4.4.jar
+└── ...</pre>
+                            <button class="copy-btn" onclick="copyCode(this)"><i class="fas fa-copy"></i></button>
+                        </div>
+                    </div>
+                </div>
+
+                <div class="step">
+                    <div class="step-number">3</div>
+                    <div class="step-content">
+                        <h3>Boot Server</h3>
+                        <p>Start your Minecraft server to load the Viscord environment. A configuration schema will be generated automatically in <code>config/viscord/viscord.json</code>.</p>
+                    </div>
+                </div>
+
+                <div class="alert alert-success">
+                    <i class="fas fa-check-circle"></i>
+                    <div>
+                        <strong>Installation Complete!</strong>
+                        <p style="margin: 0; color: inherit;">Viscord is now hooked into the server. Proceed to the platform setup below.</p>
+                    </div>
+                </div>
+            </div>
+
+            <div class="card">
+                <h2><i class="fas fa-plug"></i> Discord Platform Setup</h2>
+                
+                <div class="step">
+                    <div class="step-number">1</div>
+                    <div class="step-content">
+                        <h3>Create Application</h3>
+                        <p>Visit <a href="https://discord.com/developers/applications" target="_blank" style="color: var(--primary); text-decoration: none; border-bottom: 1px dashed var(--primary);">discord.com/developers/applications</a> and create a new application.</p>
+                    </div>
+                </div>
+
+                <div class="step">
+                    <div class="step-number">2</div>
+                    <div class="step-content">
+                        <h3>Configure Intents <span class="badge" style="background: rgba(237, 66, 69, 0.2); color: var(--danger); border-color: var(--danger);">CRITICAL</span></h3>
+                        <p>In the Bot tab, scroll to Privileged Gateway Intents and enable:</p>
+                        <ul style="padding-left: 20px; color: var(--text-secondary); margin-top: 10px; line-height: 1.8;">
+                            <li><strong style="color: white">MESSAGE CONTENT INTENT</strong> (Required for reading chat bridging)</li>
+                            <li><strong style="color: white">SERVER MEMBERS INTENT</strong> (Required for account linking)</li>
+                        </ul>
+                    </div>
+                </div>
+
+                <div class="step">
+                    <div class="step-number">3</div>
+                    <div class="step-content">
+                        <h3>Configure Viscord</h3>
+                        <p>Inject your Bot Token, Channel ID, and Webhook URL into the configuration payload:</p>
+                        <div class="code-block">
+                            <pre>{
+  "discord": {
+    "bot_token": "YOUR_BOT_TOKEN",
+    "channel_id": "1234567890", 
+    "webhook_url": "https://discord.com/api/webhooks/...",
+    "invite_url": "https://discord.gg/yourserver"
+  }
+}</pre>
+                            <button class="copy-btn" onclick="copyCode(this)"><i class="fas fa-copy"></i></button>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <div class="card" style="margin-top: 30px;">
+                <h2><i class="fas fa-satellite-dish"></i> Fluxer Platform Setup</h2>
+                
+                <div class="step">
+                    <div class="step-number">1</div>
+                    <div class="step-content">
+                        <h3>Configure General Settings</h3>
+                        <p>Set <code>platform: "fluxer"</code> in your configuration to enable the base routing.</p>
+                        <div class="code-block">
+                        <pre>"general": {
+  "enabled": true,
+  "platform": "fluxer"
+}</pre>
+                        </div>
+                    </div>
+                </div>
+
+                <div class="step">
+                    <div class="step-number">2</div>
+                    <div class="step-content">
+                        <h3>Configure Network Routing</h3>
+                        <p>Update your Viscord configuration with your Fluxer dashboard settings.</p>
+                        <div class="code-block">
+                        <pre>"fluxer": {
+  "webhook_url": "YOUR_FLUXER_WEBHOOK",
+  "api_key": "YOUR_FLUXER_API_KEY",
+  "port": 8080,
+  "path": "/webhook"
+}</pre>
+                        </div>
+                    </div>
+                </div>
+
+                <div class="step">
+                    <div class="step-number">3</div>
+                    <div class="step-content">
+                        <h3>Port Forwarding (CRITICAL)</h3>
+                        <p>Ensure that port <strong>8080</strong> (or your chosen port) is fully open and port-forwarded on your server machine so the Fluxer API can reach the Minecraft Server.</p>
+                    </div>
+                </div>
+
+                <div class="step">
+                    <div class="step-number">4</div>
+                    <div class="step-content">
+                        <h3>Point Fluxer Dashboard</h3>
+                        <p>In your Fluxer provider settings, set the receiver endpoint to <code>http://your-server-ip:8080/webhook</code></p>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Configuration Tab -->
+        <div id="configuration" class="tab-content">
+            <div class="card">
+                <h2><i class="fas fa-layer-group"></i> Configuration Architecture</h2>
+                <p>Located cleanly inside <code>config/viscord/viscord.json</code>. Viscord 2.4+ features an incredibly simplified configuration tree.</p>
+
+                <div class="code-block" style="max-height: 500px; overflow-y: auto;">
+                    <pre>{
+  "general": {
+    "enabled": true,
+    "platform": "discord"
+  },
+  
+  "tridirectional": {
+    "enabled": false,
+    "discord_to_fluxer": true,
+    "fluxer_to_discord": true,
+    "show_source": true
+  },
+  
+  "discord": {
+    "bot_token": "YOUR_TOKEN",
+    "channel_id": "YOUR_CHANNEL",
+    "webhook_url": "YOUR_WEBHOOK"
+  },
+  
+  "fluxer": {
+    "webhook_url": "",
+    "event_webhook_url": "",
+    "api_key": "YOUR_API_KEY",
+    "port": 8080,
+    "path": "/webhook"
+  },
+  
+  "server": {
+    "prefix": "[MC]",
+    "name": "Minecraft Server"
+  },
+  
+  "formats": {
+    "discord_to_minecraft": "[Discord] {username}: {message}",
+    "minecraft_to_discord": "{message}",
+    "webhook_username": "{prefix}{username}",
+    "avatar_url": "https://minotar.net/armor/bust/{username}/100.png"
+  },
+  
+  "events": {
+    "send_join": true,
+    "send_leave": true,
+    "send_death": true,
+    "send_advancement": true
+  },
+  
+  "filters": {
+    "ignore_bots": true,
+    "enable_chat_filter": false,
+    "chat_filter_prefix": "!"
+  },
+  
+  "linking": {
+    "enabled": true,
+    "code_expiry": 300
+  }
+}</pre>
+                    <button class="copy-btn" onclick="copyCode(this)"><i class="fas fa-copy"></i></button>
+                </div>
+                
+                <div class="alert alert-warning" style="margin-top: 30px;">
+                    <i class="fas fa-bolt"></i>
+                    <div>
+                        <strong>Thread Pool Architecture</strong>
+                        <p style="margin: 0; color: inherit;">Fluxer receiver and WebHook senders operate asynchronously via a CachedThreadPool, protecting the main server thread at all costs. Never lower thread limits unless strictly required.</p>
+                    </div>
+                </div>
+            </div>
+
+            <div class="card" style="margin-top: 30px;">
+                <h2><i class="fas fa-sliders-h"></i> In-Depth Configuration Options</h2>
+                
+                <h3 style="color: var(--secondary); margin-top: 20px; font-weight: 600;">Basic Settings</h3>
+                <table class="formatting-table">
+                    <tr>
+                        <th style="width: 30%;">Setting</th>
+                        <th style="width: 50%;">Description</th>
+                        <th style="width: 20%;">Default</th>
+                    </tr>
+                    <tr>
+                        <td style="font-family: monospace; color: var(--secondary);">enabled</td>
+                        <td>Master networking toggle for the entire Viscord framework.</td>
+                        <td style="font-family: monospace;">true</td>
+                    </tr>
+                    <tr>
+                        <td style="font-family: monospace; color: var(--secondary);">platform</td>
+                        <td>The backend engine to use for chat reception (<code>discord</code> or <code>fluxer</code>).</td>
+                        <td style="font-family: monospace;">"discord"</td>
+                    </tr>
+                </table>
+
+                <h3 style="color: var(--secondary); margin-top: 40px; font-weight: 600;">Tridirectional Engine Settings</h3>
+                <p>When using both Fluxer and Discord simultaneously:</p>
+                <table class="formatting-table">
+                    <tr>
+                        <th style="width: 30%;">Setting</th>
+                        <th style="width: 50%;">Description</th>
+                        <th style="width: 20%;">Default</th>
+                    </tr>
+                    <tr>
+                        <td style="font-family: monospace; color: var(--secondary);">tridirectional.enabled</td>
+                        <td>Enable the 3-way synchronization system.</td>
+                        <td style="font-family: monospace;">false</td>
+                    </tr>
+                    <tr>
+                        <td style="font-family: monospace; color: var(--secondary);">tridirectional.discord_to_fluxer</td>
+                        <td>Bridge incoming Discord messages directly to Fluxer channels.</td>
+                        <td style="font-family: monospace;">true</td>
+                    </tr>
+                    <tr>
+                        <td style="font-family: monospace; color: var(--secondary);">tridirectional.fluxer_to_discord</td>
+                        <td>Bridge incoming Fluxer messages directly to Discord webhooks.</td>
+                        <td style="font-family: monospace;">true</td>
+                    </tr>
+                </table>
+            </div>
+        </div>
+
+        <!-- Commands Tab -->
+        <div id="commands" class="tab-content">
+            <div class="card">
+                <h2><i class="fas fa-terminal"></i> Command Registry</h2>
+                <p>All admin commands execute completely asynchronously with standard rollback protection.</p>
+                
+                <h3 style="margin-top: 40px;"><i class="fas fa-crown" style="color: var(--warning); margin-right: 10px;"></i> Admin Operations</h3>
+                <table class="formatting-table">
+                    <tr>
+                        <th>Command</th><th>Permission</th><th>Description</th>
+                    </tr>
+                    <tr>
+                        <td style="font-family: monospace; color: var(--secondary);">/viscord reload</td>
+                        <td>OP (Lv 4)</td>
+                        <td>Safely rebuilds ThreadPools and network connections with new config asynchronously.</td>
+                    </tr>
+                    <tr>
+                        <td style="font-family: monospace; color: var(--secondary);">/viscord status</td>
+                        <td>OP (Lv 4)</td>
+                        <td>Displays real-time diagnostic payload of Gateway connections.</td>
+                    </tr>
+                </table>
+
+                <h3 style="margin-top: 40px;"><i class="fas fa-user" style="color: var(--primary); margin-right: 10px;"></i> General Access</h3>
+                <table class="formatting-table">
+                    <tr>
+                        <th>Command</th><th>Alias</th><th>Description</th>
+                    </tr>
+                    <tr>
+                        <td style="font-family: monospace; color: var(--secondary);">/discord</td>
+                        <td style="font-family: monospace; color: var(--text-muted);">—</td>
+                        <td>Broadcasts a clickable server Discord invite embed.</td>
+                    </tr>
+                    <tr>
+                        <td style="font-family: monospace; color: var(--secondary);">/viscord discord invite</td>
+                        <td style="font-family: monospace; color: var(--text-muted);">—</td>
+                        <td>Sub-command alias — also shows the Discord server invite link.</td>
+                    </tr>
+                    <tr>
+                        <td style="font-family: monospace; color: var(--secondary);">/viscord discord link</td>
+                        <td style="font-family: monospace; color: var(--text-muted);">—</td>
+                        <td>Generates 6-digit secure key for Discord account pairing.</td>
+                    </tr>
+                    <tr>
+                        <td style="font-family: monospace; color: var(--secondary);">/viscord discord unlink</td>
+                        <td style="font-family: monospace; color: var(--text-muted);">—</td>
+                        <td>Removes an existing Discord account association.</td>
+                    </tr>
+                    <tr>
+                        <td style="font-family: monospace; color: var(--secondary);">/viscord discord help</td>
+                        <td style="font-family: monospace; color: var(--text-muted);">—</td>
+                        <td>Shows the in-game command index.</td>
+                    </tr>
+                    <tr>
+                        <td style="font-family: monospace; color: var(--secondary);">/viscord fluxer invite</td>
+                        <td style="font-family: monospace; color: var(--secondary);">/fluxer</td>
+                        <td>Shows a clickable URL to invite the Fluxer bot to your Discord server. <code>/fluxer</code> is a convenient top-level alias.</td>
+                    </tr>
+                </table>
+
+                <div class="alert alert-success" style="margin-top: 30px;">
+                    <i class="fas fa-check-circle"></i>
+                    <div>
+                        <strong>Duplicate Advancement Fix (v2.4.4)</strong>
+                        <p style="margin: 0; color: inherit;">Advancement notifications are now deduplicated with a 5-second cooldown window per player. Advancements triggered via commands (e.g. <code>/advancement grant</code>) no longer spam Discord multiple times.</p>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Features Tab -->
+        <div id="features" class="tab-content">
+            <div class="card">
+                <h2><i class="fas fa-bolt"></i> State of the Art Engine</h2>
+                
+                <div class="feature-grid">
+                    <div class="feature-card">
+                        <h4><i class="fas fa-network-wired"></i> Tridirectional Bridging</h4>
+                        <p>Complete 3-way synchronization handling edge-case deduplication instantly via cached hashes. A user messaging from a Fluxer dashboard hits the server, which identically bridges back to Discord webhook.</p>
+                    </div>
+                    
+                    <div class="feature-card">
+                        <h4><i class="fas fa-shield-alt"></i> Native Forge Event Bus</h4>
+                        <p>By hooking directly into <code>ServerChatEvent</code> internally via platform abstractions, Viscord is completely resistant to other chat-management mods overriding standard Mixins.</p>
+                    </div>
+                    
+                    <div class="feature-card">
+                        <h4><i class="fas fa-satellite-dish"></i> Exponential Backoff</h4>
+                        <p>Fluxer bot connections feature automatic exponential connection retry scaling to prevent CPU thrashing during WAN dropouts.</p>
+                    </div>
+                    
+                    <div class="feature-card">
+                        <h4><i class="fas fa-database"></i> JSON Persistence</h4>
+                        <p>All link mapping and cache vectors are serialized optimally into <code>/config/viscord</code> using high-speed Jackson databinding.</p>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Formatting Tab -->
+        <div id="formatting" class="tab-content">
+            <div class="card">
+                <h2><i class="fas fa-palette"></i> Text Syntax Mapping</h2>
+                <p>Native parsing engine intercepts Minecraft's underlying Component tags or legacy <code>&</code> sequences and transpiles them tightly into Discord markdown nodes.</p>
+
+                <table class="formatting-table" style="margin-top: 30px;">
+                    <tr>
+                        <th>Minecraft Tag</th><th>Outcome</th><th>Discord Transpilation</th>
+                    </tr>
+                    <tr>
+                        <td style="font-family: monospace;">§l / &l</td>
+                        <td style="font-weight: bold;">Bold</td>
+                        <td style="font-family: monospace;">**text**</td>
+                    </tr>
+                    <tr>
+                        <td style="font-family: monospace;">§o / &o</td>
+                        <td style="font-style: italic;">Italic</td>
+                        <td style="font-family: monospace;">*text*</td>
+                    </tr>
+                    <tr>
+                        <td style="font-family: monospace;">§m / &m</td>
+                        <td style="text-decoration: line-through;">Strike</td>
+                        <td style="font-family: monospace;">~~text~~</td>
+                    </tr>
+                    <tr>
+                        <td style="font-family: monospace;">§n / &n</td>
+                        <td style="text-decoration: underline;">Underline</td>
+                        <td style="font-family: monospace;">__text__</td>
+                    </tr>
+                    <tr>
+                        <td style="font-family: monospace;">§k / &k</td>
+                        <td>✨ Obscured</td>
+                        <td style="font-family: monospace;">✨text✨</td>
+                    </tr>
+                </table>
+
+                <div class="alert alert-success" style="margin-top: 30px;">
+                    <i class="fas fa-magic"></i>
+                    <div>
+                        <strong>Real-time Complex Nested Rendering</strong>
+                        <p style="margin: 0; color: inherit;">Viscord's internal stack parser actively manages markdown open/close tags during transpile to ensure nested formats (e.g. <code>§c§lBold Red</code>) render perfectly as 🔴 **Bold Red**.</p>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Troubleshooting Tab -->
+        <div id="troubleshooting" class="tab-content">
+            <div class="card">
+                <h2><i class="fas fa-shield-halved"></i> Security & Diagnostics</h2>
+                
+                <h3 style="margin-top: 30px; margin-bottom: 20px;"><i class="fas fa-microchip" style="color: var(--secondary); margin-right: 10px;"></i> Network Issues</h3>
+                
+                <div class="alert alert-danger" style="margin-bottom: 15px;">
+                    <strong><i class="fas fa-times-circle" style="margin-right: 8px;"></i> Discord Bot Offline</strong> 
+                    <p style="margin: 5px 0 0 0; color: inherit; font-size: 0.95rem;">Validate token hash. Confirm <strong>Message Content Intent</strong> is physically toggled ON inside the Discord Developer Portal.</p>
+                </div>
+                
+                <div class="alert alert-danger" style="margin-bottom: 15px;">
+                    <strong><i class="fas fa-times-circle" style="margin-right: 8px;"></i> Fluxer Binding Failed</strong> 
+                    <p style="margin: 5px 0 0 0; color: inherit; font-size: 0.95rem;">Ensure port 8080 (or your configured port) is completely unbound on the physical host machine, and WAN NAT tunneling is enabled if running headless.</p>
+                </div>
+
+                <h3 style="margin-top: 40px; margin-bottom: 20px;"><i class="fas fa-bug" style="color: var(--warning); margin-right: 10px;"></i> Advanced Debug Pipeline</h3>
+                <p>To view deep internal websocket traces and pipeline packet dumps, enable hardware logging inside configuration array:</p>
+                <div class="code-block">
+                    <pre>"advanced": {
+  "debug_logging": true
+}</pre>
+                    <button class="copy-btn" onclick="copyCode(this)"><i class="fas fa-copy"></i></button>
+                </div>
+            </div>
+        </div>
+
+        <div class="footer">
+            <p>&copy; 2026 Viscord Core Engine - Version 2.4.4</p>
+            <p style="margin-top: 10px; opacity: 0.5;">Forge & Fabric Interoperability Layer</p>
+        </div>
+    </div>
+
+    <script>
+        function showTab(tabName) {
+            const tabs = document.querySelectorAll('.tab-content');
+            tabs.forEach(tab => {
+                tab.style.display = 'none';
+                tab.classList.remove('active');
+            });
+            
+            const navTabs = document.querySelectorAll('.nav-tab');
+            navTabs.forEach(tab => tab.classList.remove('active'));
+            
+            const target = document.getElementById(tabName);
+            target.style.display = 'block';
+            
+            // Force reflow for animation
+            void target.offsetWidth; 
+            target.classList.add('active');
+            
+            event.currentTarget.classList.add('active');
+        }
+
+        function copyCode(button) {
+            const codeBlock = button.parentElement.querySelector('pre');
+            navigator.clipboard.writeText(codeBlock.textContent).then(() => {
+                const originalHTML = button.innerHTML;
+                button.innerHTML = '<i class="fas fa-check"></i>';
+                button.style.background = 'var(--secondary)';
+                button.style.color = '#000';
+                
+                setTimeout(() => {
+                    button.innerHTML = originalHTML;
+                    button.style.background = '';
+                    button.style.color = '';
+                }, 1500);
+            });
+        }
+    </script>
+</body>
+</html>

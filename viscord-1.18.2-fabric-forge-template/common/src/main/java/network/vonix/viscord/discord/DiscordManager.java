@@ -40,6 +40,7 @@ public class DiscordManager {
     private final WebhookClient webhookClient;
     private final MessageConverter messageConverter;
     private FluxerReceiver fluxerReceiver;
+    private final FluxerBotClient fluxerBotClient;
 
     // Embed detection and processing
     private final EventEmbedDetector eventDetector = new EventEmbedDetector();
@@ -66,6 +67,7 @@ public class DiscordManager {
         this.botClient = new BotClient();
         this.webhookClient = new WebhookClient();
         this.messageConverter = new MessageConverter();
+        this.fluxerBotClient = new FluxerBotClient();
     }
 
     public static DiscordManager getInstance() {
@@ -134,13 +136,6 @@ public class DiscordManager {
         } else if (useFluxer) {
             Viscord.LOGGER.info("[Viscord] Initializing with Fluxer platform");
             initializeFluxer();
-            
-            // If user wants bot status, we still need to initialize the Discord bot
-            String token = ViscordConfig.CONFIG.discordBotToken.get();
-            if (ViscordConfig.CONFIG.setBotStatus.get() && token != null && !token.isEmpty() && !token.equals("YOUR_BOT_TOKEN_HERE")) {
-                Viscord.LOGGER.info("[Viscord] Initializing Discord bot for status updates (Fluxer mode)");
-                initializeDiscord(true);
-            }
         } else {
             Viscord.LOGGER.info("[Viscord] Initializing with Discord platform");
             initializeDiscord(false);
@@ -197,7 +192,19 @@ public class DiscordManager {
         
         Viscord.LOGGER.info("[Fluxer] Fluxer integration initialized with webhook and receiver.");
         
-        // 4. Send Startup Message for Fluxer
+        // 4. Connect Fluxer Bot for status if enabled
+        if (ViscordConfig.CONFIG.setBotStatus.get()) {
+            String token = ViscordConfig.CONFIG.fluxerApiKey.get();
+            if (token != null && !token.isEmpty() && !token.equals("YOUR_FLUXER_API_KEY")) {
+                this.fluxerBotClient.connect(token).thenRun(() -> {
+                    updateBotStatus();
+                });
+            } else {
+                Viscord.LOGGER.warn("[Fluxer] set_bot_status is enabled but fluxer.api_key (Bot Token) is not configured!");
+            }
+        }
+        
+        // 5. Send Startup Message for Fluxer
         if (!ViscordConfig.CONFIG.enableTridirectionalChat.get()) {
             sendStartupEmbed(ViscordConfig.CONFIG.serverName.get());
         }
@@ -217,9 +224,10 @@ public class DiscordManager {
         }
         
         // Format message for Minecraft
+        String convertedMessage = DiscordFormatter.convertDiscordToMinecraftFormatting(message);
         String rawFormat = ViscordConfig.CONFIG.discordToMinecraftFormat.get()
                 .replace("{username}", username)
-                .replace("{message}", message);
+                .replace("{message}", convertedMessage);
         
         // Replace [Discord] with [Fluxer] for clarity
         String formatted = rawFormat.replace("[Discord]", "[Fluxer]");
@@ -346,6 +354,15 @@ public class DiscordManager {
                 botClient.disconnect();
             } catch (Exception e) {
                 Viscord.LOGGER.error("[Discord] Error disconnecting bot client: {}", e.getMessage());
+            }
+        }
+
+        // Disconnect Fluxer bot client with error handling
+        if (fluxerBotClient != null) {
+            try {
+                fluxerBotClient.disconnect();
+            } catch (Exception e) {
+                Viscord.LOGGER.error("[Fluxer] Error disconnecting Fluxer bot client: {}", e.getMessage());
             }
         }
 
@@ -631,6 +648,8 @@ public class DiscordManager {
                 } else if (content.startsWith(authorName + " ")) {
                     cleanedContent = content.substring(authorName.length() + 1);
                 }
+                
+                cleanedContent = DiscordFormatter.convertDiscordToMinecraftFormatting(cleanedContent);
 
                 String formattedMessage;
                 if (displayName.startsWith("[") && displayName.contains("]")) {
@@ -663,9 +682,10 @@ public class DiscordManager {
             } else {
                 // Regular Discord user: make [Discord] clickable
                 String inviteUrl = ViscordConfig.CONFIG.discordInviteUrl.get();
+                String convertedContent = DiscordFormatter.convertDiscordToMinecraftFormatting(content);
                 String rawFormat = ViscordConfig.CONFIG.discordToMinecraftFormat.get()
                         .replace("{username}", authorName)
-                        .replace("{message}", content);
+                        .replace("{message}", convertedContent);
 
                 if (rawFormat.contains("[Discord]") && inviteUrl != null && !inviteUrl.isEmpty()) {
                     String[] parts = rawFormat.split("\\[Discord\\]", 2);
@@ -1185,9 +1205,27 @@ public class DiscordManager {
         });
     }
 
+    // Cache for advancement debounce (username:title -> timestamp)
+    private final java.util.Map<String, Long> recentAdvancements = new java.util.concurrent.ConcurrentHashMap<>();
+
     public void sendAdvancementEmbed(String username, String title, String desc) {
         if (!ViscordConfig.CONFIG.sendAdvancement.get())
             return;
+
+        long now = System.currentTimeMillis();
+        String key = username + ":" + title;
+        if (recentAdvancements.containsKey(key)) {
+            if (now - recentAdvancements.get(key) < 5000) { // 5 second debounce
+                return;
+            }
+        }
+        recentAdvancements.put(key, now);
+        
+        // Ensure cache doesn't grow indefinitely
+        if (recentAdvancements.size() > 100) {
+            recentAdvancements.clear();
+            recentAdvancements.put(key, now);
+        }
 
         if (!isRunning()) {
             Viscord.LOGGER.debug("[Discord] Not sending advancement embed - Discord not running");
@@ -1209,7 +1247,7 @@ public class DiscordManager {
     }
 
     public void updateBotStatus() {
-        if (botClient == null || server == null || !ViscordConfig.CONFIG.setBotStatus.get()) {
+        if (server == null || !ViscordConfig.CONFIG.setBotStatus.get()) {
             return;
         }
         
@@ -1220,7 +1258,14 @@ public class DiscordManager {
                               .replace("{max}", String.valueOf(max));
         
         // Update status asynchronously to avoid blocking main thread
-        Viscord.ASYNC_EXECUTOR.submit(() -> botClient.updateStatus(status));
+        Viscord.ASYNC_EXECUTOR.submit(() -> {
+            if (botClient != null && botClient.isConnected()) {
+                botClient.updateStatus(status);
+            }
+            if (fluxerBotClient != null && fluxerBotClient.isConnected()) {
+                fluxerBotClient.updateStatus(status);
+            }
+        });
     }
     
     /**
@@ -1228,7 +1273,7 @@ public class DiscordManager {
      * Non-blocking and thread-safe.
      */
     public void scheduleStatusUpdate(int delayMs) {
-        if (botClient == null || server == null || !ViscordConfig.CONFIG.setBotStatus.get()) {
+        if (server == null || !ViscordConfig.CONFIG.setBotStatus.get()) {
             return;
         }
         

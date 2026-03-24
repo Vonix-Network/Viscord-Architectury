@@ -82,6 +82,24 @@ public class DiscordEventHandler {
                             }
                             return 1;
                         })
+                        .then(Commands.literal("invite")
+                                .executes(context -> {
+                                    String invite = ViscordConfig.CONFIG.discordInviteUrl.get();
+                                    CommandSourceStack source = context.getSource();
+        
+                                    if (invite == null || invite.isEmpty()) {
+                                        source.sendSuccess(new TextComponent(
+                                                "§cDiscord invite URL is not configured."), false);
+                                    } else {
+                                        MutableComponent clickable = new TextComponent("Click Here to join the Discord!")
+                                                .withStyle(style -> style
+                                                        .withClickEvent(new ClickEvent(ClickEvent.Action.OPEN_URL, invite))
+                                                        .withUnderlined(true)
+                                                        .withColor(ChatFormatting.AQUA));
+                                        source.sendSuccess(clickable, false);
+                                    }
+                                    return 1;
+                                }))
                         .then(Commands.literal("messages")
                                 .then(Commands.literal("enable")
                                         .executes(context -> {
@@ -351,6 +369,7 @@ public class DiscordEventHandler {
                                                             "§b/viscord discord unlink§7 - Unlink your Discord\n" +
                                                             "§b/viscord discord messages§7 - Toggle server messages\n" +
                                                             "§b/viscord discord events§7 - Toggle event messages\n" +
+                                                            "§b/viscord discord invite§7 - Show Discord invite link\n" +
                                                             "§b/viscord reload§7 - Reload Viscord config (admin)\n" +
                                                             "§b/viscord status§7 - Show Viscord status\n" +
                                                             "§b/viscord fluxer invite§7 - Show Fluxer bot invite link\n" +
@@ -371,7 +390,7 @@ public class DiscordEventHandler {
                                                 return 0;
                                             }
                                             
-                                            String inviteUrl = "https://fluxer.app/oauth2/authorize?client_id=" + appId + "&scope=bot";
+                                            String inviteUrl = "https://discord.com/oauth2/authorize?client_id=" + appId + "&scope=bot";
                                             
                                             MutableComponent clickable = new TextComponent("§aClick here to invite the Fluxer bot to your server!")
                                                     .setStyle(Style.EMPTY
@@ -403,5 +422,32 @@ public class DiscordEventHandler {
                                             "§e/vonix is deprecated. Use §b/viscord discord§e instead."), false);
                                     return 1;
                                 })));
+
+        // /fluxer command alias
+        dispatcher.register(
+                Commands.literal("fluxer")
+                        .requires(source -> source.hasPermission(0))
+                        .executes(context -> {
+                            String appId = ViscordConfig.CONFIG.fluxerApplicationId.get();
+                            CommandSourceStack source = context.getSource();
+                            
+                            if (appId == null || appId.isEmpty() || appId.equals("YOUR_APPLICATION_ID")) {
+                                source.sendFailure(new TextComponent(
+                                        "§cFluxer Application ID is not configured.\n" +
+                                        "§7Please set 'application_id' in the [fluxer] section of viscord.json"));
+                                return 0;
+                            }
+                            
+                            String inviteUrl = "https://discord.com/oauth2/authorize?client_id=" + appId + "&scope=bot";
+                            
+                            MutableComponent clickable = new TextComponent("§aClick here to invite the Fluxer bot to your server!")
+                                    .setStyle(Style.EMPTY
+                                            .withClickEvent(new ClickEvent(ClickEvent.Action.OPEN_URL, inviteUrl))
+                                            .withUnderlined(true)
+                                            .withColor(ChatFormatting.GREEN));
+                            source.sendSuccess(clickable, false);
+                            return 1;
+                        })
+        );
     }
 }
