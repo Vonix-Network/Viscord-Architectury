@@ -391,9 +391,9 @@ public class FluxerBotClient {
         d.addProperty("token", token);
         
         JsonObject properties = new JsonObject();
-        properties.addProperty("$os", "linux");
-        properties.addProperty("$browser", "discord.js");
-        properties.addProperty("$device", "discord.js");
+        properties.addProperty("os", "linux");
+        properties.addProperty("browser", "viscord-bot");
+        properties.addProperty("device", "viscord-bot");
         d.add("properties", properties);
 
         JsonObject presence = new JsonObject();

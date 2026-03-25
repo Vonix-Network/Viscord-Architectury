@@ -5,6 +5,16 @@ All notable changes to Viscord will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [2.4.13] - 2026-03-25
+
+### 🐛 Fixed (All Versions)
+- **Fluxer Gateway 4002 "Invalid identify payload" Error** - Fixed bot connection failures due to deprecated Discord gateway v6 properties format.
+  - **Root cause**: The identify payload was using legacy `$os`, `$browser`, `$device` property names (Discord gateway v6 format)
+  - **Fix**: Updated to modern `os`, `browser`, `device` property names (Discord gateway v8+ format)
+  - **Also changed**: Updated browser/device values from `discord.js` to `viscord-bot` for proper identification
+  - **Files modified**: `FluxerBotClient.java` in all versions (1.18.2, 1.19.2, 1.20.1, 1.21.1)
+  - **Surgical edit location**: `sendIdentify()` method, lines 372-376 (1.21.1), 391-395 (1.19.2), 393-397 (1.18.2), 396-400 (1.20.1)
+
 ## [2.4.12] - 2026-03-25
 
 ### 🌟 Added

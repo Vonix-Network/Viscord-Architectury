@@ -1,6 +1,6 @@
 #!/usr/bin/env python3
 """
-Viscord Build Menu - Modern Terminal UI
+Viscord Build Menu v3.0 - Gamified Terminal UI
 A beautiful, interactive CLI interface for building Viscord mods
 """
 
@@ -10,6 +10,8 @@ import re
 import subprocess
 import tempfile
 import shutil
+import time
+import random
 from pathlib import Path
 from datetime import datetime
 from typing import Optional, List, Dict, Any
@@ -28,6 +30,16 @@ from rich.prompt import Prompt, Confirm
 from rich.columns import Columns
 from rich.live import Live
 from rich.tree import Tree
+from rich.rule import Rule
+
+# Force terminal reset
+def clear_screen():
+    """Clear the terminal screen in a cross-platform way"""
+    if os.name == 'nt':
+        os.system('cls')
+    else:
+        os.system('clear')
+    console.clear()
 
 console = Console()
 
@@ -54,6 +66,50 @@ class BuildResult:
     exit_code: int
 
 
+# ASCII Art Logo
+LOGO = """
+[bold cyan]╔══════════════════════════════════════════════════════════════╗[/bold cyan]
+[bold cyan]║[/bold cyan]     [bold yellow]██╗   ██╗██╗███████╗ ██████╗ ██████╗ ██████╗ ██████╗[/bold yellow]    [bold cyan]║[/bold cyan]
+[bold cyan]║[/bold cyan]     [bold yellow]██║   ██║██║██╔════╝██╔════╝██╔═══██╗██╔══██╗██╔══██╗[/bold yellow]   [bold cyan]║[/bold cyan]
+[bold cyan]║[/bold cyan]     [bold yellow]██║   ██║██║███████╗██║     ██║   ██║██████╔╝██║  ██║[/bold yellow]   [bold cyan]║[/bold cyan]
+[bold cyan]║[/bold cyan]     [bold yellow]╚██╗ ██╔╝██║╚════██║██║     ██║   ██║██╔══██╗██║  ██║[/bold yellow]   [bold cyan]║[/bold cyan]
+[bold cyan]║[/bold cyan]      [bold yellow]╚████╔╝ ██║███████║╚██████╗╚██████╔╝██║  ██║██████╔╝[/bold yellow]   [bold cyan]║[/bold cyan]
+[bold cyan]║[/bold cyan]       [bold yellow]╚═══╝  ╚═╝╚══════╝ ╚═════╝ ╚═════╝ ╚═╝  ╚═╝╚═════╝[/bold yellow]    [bold cyan]║[/bold cyan]
+[bold cyan]╠══════════════════════════════════════════════════════════════╣[/bold cyan]
+[bold cyan]║[/bold cyan]         [italic bright_green]The Ultimate Minecraft-Discord Bridge[/italic bright_green]          [bold cyan]║[/bold cyan]
+[bold cyan]╚══════════════════════════════════════════════════════════════╝[/bold cyan]
+"""
+
+# Gamified messages
+BUILD_SUCCESS_MESSAGES = [
+    "🔥 Build Legendary!",
+    "⚡ Maximum Power Achieved!",
+    "🎯 Perfect Execution!",
+    "🚀 Mission Accomplished!",
+    "💎 Master Craftsman!",
+    "🏆 Victory! Build Complete!",
+    "✨ Build Enchanted Successfully!",
+    "🎮 Achievement Unlocked: Build Master!"
+]
+
+BUILD_FAIL_MESSAGES = [
+    "💀 Critical Failure...",
+    "🔥 The Build Burnt to Ash...",
+    "⚠️  Catastrophic Error!",
+    "💥 Build Crashed and Burned!",
+    "🌋 Lava Flow Detected!",
+    "👻 Phantom Build Errors!",
+    "🕸️  Caught in a Web of Bugs!"
+]
+
+RARE_MESSAGES = [
+    "🌟 Legendary Build Detected!",
+    "💫 Mythical Success!",
+    "🏅 Epic Achievement Unlocked!",
+    "🎊 Unbelievable Performance!"
+]
+
+
 class ViscordBuildMenu:
     VERSIONS = ["1.18.2", "1.19.2", "1.20.1", "1.21.1"]
     
@@ -61,6 +117,9 @@ class ViscordBuildMenu:
         self.root_dir = Path.cwd()
         self.selected_java: Optional[JavaVersion] = None
         self.mod_version = self._get_mod_version()
+        self.total_builds = 0
+        self.successful_builds = 0
+        self.session_start = datetime.now()
         
     def _get_mod_version(self) -> str:
         """Read version from gradle.properties"""
@@ -72,7 +131,45 @@ class ViscordBuildMenu:
                     return match.group(1).strip()
             except Exception:
                 pass
-        return "2.4.10"
+        return "2.4.12"
+    
+    def _display_stats(self):
+        """Display gamified session stats"""
+        duration = datetime.now() - self.session_start
+        minutes = int(duration.total_seconds() / 60)
+        seconds = int(duration.total_seconds() % 60)
+        
+        if self.total_builds > 0:
+            success_rate = (self.successful_builds / self.total_builds) * 100
+        else:
+            success_rate = 0
+        
+        # Calculate "level" based on successful builds
+        level = self.successful_builds // 4 + 1
+        xp = (self.successful_builds % 4) * 25
+        
+        stats_text = f"""[bold cyan]🏅 Level {level}[/bold cyan]    [yellow]⭐ XP: {xp}/100[/yellow]    [green]✅ {success_rate:.0f}% Win Rate[/green]    [blue]⏱️  {minutes}m {seconds}s[/blue]"""
+        console.print(Align.center(Panel(stats_text, border_style="bright_blue", box=box.ROUNDED, padding=(0, 2))))
+    
+    def _display_header(self, title: str, subtitle: str = ""):
+        """Display a beautiful gamified header"""
+        clear_screen()
+        console.print(LOGO)
+        
+        if title:
+            title_panel = Panel(
+                Align.center(Text(title, style="bold bright_yellow")),
+                box=box.DOUBLE_EDGE,
+                border_style="bright_cyan",
+                padding=(0, 4)
+            )
+            console.print(title_panel)
+        
+        if subtitle:
+            console.print(Align.center(f"[italic bright_green]{subtitle}[/italic bright_green]"))
+        
+        self._display_stats()
+        console.print()
     
     def _get_installed_java_versions(self) -> List[JavaVersion]:
         """Detect installed Java versions"""
@@ -189,17 +286,16 @@ class ViscordBuildMenu:
         required = self._get_required_java_version(mc_version)
         java_versions = self._get_installed_java_versions()
         
-        # Find Java >= required version
         for java in sorted(java_versions, key=lambda x: x.version):
             if java.version >= required:
-                console.print(f"[cyan]Auto-selecting {java.display_name} for Minecraft {mc_version}[/cyan]")
+                console.print(f"[bold cyan]⚡ Auto-equipping {java.display_name} for Minecraft {mc_version}[/bold cyan]")
                 return java
         
         if self.selected_java:
-            console.print(f"[yellow]Using user-selected {self.selected_java.display_name} for Minecraft {mc_version}[/yellow]")
+            console.print(f"[bold yellow]🎒 Equipping user-selected {self.selected_java.display_name} for Minecraft {mc_version}[/bold yellow]")
             return self.selected_java
         
-        console.print(f"[yellow]Using system default Java for Minecraft {mc_version}[/yellow]")
+        console.print(f"[bold yellow]⚠️  Using default system Java for Minecraft {mc_version}[/bold yellow]")
         return None
     
     def _display_header(self, title: str):
@@ -215,98 +311,123 @@ class ViscordBuildMenu:
         console.print()
     
     def _display_menu(self):
-        """Display the main menu"""
-        self._display_header("VISCORD BUILD MENU v3.0")
+        """Display the gamified main menu"""
+        self._display_header("🎮 MAIN MENU", "Choose Your Adventure")
         
-        # Create menu table
-        table = Table(
-            show_header=False,
-            box=box.ROUNDED,
-            border_style="cyan",
-            pad_edge=False,
-            width=60
-        )
-        table.add_column("Option", style="green", justify="center")
-        table.add_column("Description", style="white")
-        
-        java_display = self.selected_java.display_name if self.selected_java else "System Default"
-        
+        # Create menu with gamified styling
         menu_items = [
-            ("[1]", "Build all versions → Releases folder"),
-            ("[2]", "Build all versions → Versioned folders"),
-            ("[3]", "Build specific version"),
-            ("[4]", "Build to custom folder"),
-            ("[5]", f"Select Java ({java_display})"),
-            ("[6]", "Exit"),
+            ("[bold bright_green]⚔️  QUEST 1[/bold bright_green]", "Build All → Releases", "Conquer all dimensions at once"),
+            ("[bold bright_blue]🗡️  QUEST 2[/bold bright_blue]", "Build All → Versioned", "Organize your loot by world"),
+            ("[bold bright_yellow]🛡️  QUEST 3[/bold bright_yellow]", "Build Specific Version", "Target a single realm"),
+            ("[bold bright_magenta]🏰 QUEST 4[/bold bright_magenta]", "Build to Custom Folder", "Forge your own path"),
+            ("[bold bright_cyan]⚙️  SETTINGS[/bold bright_cyan]", f"Java Engine", f"Current: {self.selected_java.display_name if self.selected_java else 'Default'}"),
+            ("[bold red]🚪 EXIT[/bold red]", "Quit Game", "Save and exit to desktop"),
         ]
         
-        for opt, desc in menu_items:
-            style = "red" if opt == "[6]" else ("yellow" if opt == "[5]" else "green")
-            table.add_row(f"[{style}]{opt}[/{style}]", desc)
+        for i, (label, action, desc) in enumerate(menu_items, 1):
+            color = "green" if i <= 4 else ("cyan" if i == 5 else "red")
+            
+            row = Table(show_header=False, box=None, padding=0)
+            row.add_column(width=20)
+            row.add_column(width=25)
+            row.add_column()
+            
+            if i == 6:
+                row.add_row(label, f"[bold red]{action}[/bold red]", f"[dim]{desc}[/dim]")
+            else:
+                row.add_row(label, f"[bold white]{action}[/bold white]", f"[dim]{desc}[/dim]")
+            
+            panel = Panel(row, border_style=color, box=box.ROUNDED, padding=(0, 1))
+            console.print(Align.center(panel))
+            console.print()
         
-        console.print(Align.center(table))
-        console.print()
-        
-        # Version info panel
-        version_info = Panel(
-            f"[cyan]Mod Version:[/cyan] [white]{self.mod_version}[/white]",
+        # Version badge
+        version_badge = Panel(
+            f"[bold bright_cyan]📦 VISCORD v{self.mod_version}[/bold bright_cyan]    [dim]⚡ Powered by Architectury[/dim]",
             box=box.ROUNDED,
             border_style="dim cyan"
         )
-        console.print(Align.center(version_info))
+        console.print(Align.center(version_badge))
         console.print()
     
     def _select_build_type(self) -> BuildType:
-        """Prompt for build type selection"""
-        self._display_header("SELECT BUILD TYPE")
+        """Gamified build type selection"""
+        clear_screen()
+        self._display_header("⚡ SELECT BUILD MODE", "Choose your forging technique")
         
-        table = Table(show_header=False, box=box.ROUNDED, border_style="cyan")
-        table.add_column("Option", style="green")
-        table.add_column("Type", style="white bold")
+        table = Table(show_header=False, box=box.HEAVY_EDGE, border_style="bright_yellow")
+        table.add_column("Mode", style="bold bright_yellow", justify="center")
+        table.add_column("Name", style="bold white")
+        table.add_column("Power", style="bright_green")
         table.add_column("Description", style="dim white")
         
-        table.add_row("[1]", "Clean Build", "Deletes previous build artifacts, rebuilds from scratch (recommended)")
-        table.add_row("[2]", "Quick Build", "Builds only changed files, preserves existing artifacts (faster)")
+        table.add_row(
+            "[⚔️]",
+            "CLEAN FORGE",
+            "██████████ 100%",
+            "Complete reconstruction - Maximum purity, zero artifacts"
+        )
+        table.add_row(
+            "[🏃]",
+            "QUICK FORGE",
+            "██████░░░░ 60%",
+            "Incremental build - Fast but may retain shadows"
+        )
         
         console.print(Align.center(table))
         console.print()
         
-        choice = Prompt.ask("[cyan]Enter your choice[/cyan]", choices=["1", "2"], default="1")
+        choice = Prompt.ask(
+            "[bold cyan]Choose your forging technique[/bold cyan]",
+            choices=["1", "2"],
+            default="1"
+        )
+        
         return BuildType.CLEAN if choice == "1" else BuildType.QUICK
     
     def _select_java_version(self):
-        """Java version selection screen"""
-        java_versions = self._get_installed_java_versions()
+        """Gamified Java version selection"""
+        clear_screen()
+        self._display_header("⚙️  JAVA ENGINE SELECTION", "Select your power source")
+        
+        with console.status("[bold yellow]Scanning for Java engines...[/bold yellow]", spinner="bouncing") as status:
+            java_versions = self._get_installed_java_versions()
         
         if not java_versions:
-            console.print("[red]No Java installations found![/red]")
-            console.print("[yellow]Please install Java 17 or Java 21 to continue.[/yellow]")
-            Prompt.ask("[cyan]Press Enter to continue...[/cyan]")
+            console.print("[bold red on black]💀 NO JAVA ENGINES DETECTED![/bold red on black]")
+            console.print("[yellow]Please install Java 21 or higher to continue your quest.[/yellow]")
+            Prompt.ask("[dim]Press Enter to return...[/dim]")
             return
         
-        self._display_header("SELECT JAVA VERSION")
+        console.print(f"[green]✓ Found {len(java_versions)} Java engines[/green]\n")
         
-        table = Table(show_header=False, box=box.ROUNDED, border_style="cyan")
-        table.add_column("Option", style="green")
-        table.add_column("Version", style="white")
+        # Display Java versions as cards
+        table = Table(show_header=True, header_style="bold bright_cyan", box=box.HEAVY_EDGE)
+        table.add_column("Slot", style="bold yellow", justify="center")
+        table.add_column("Engine", style="white")
+        table.add_column("Version", style="bright_green", justify="center")
+        table.add_column("Power Level", style="bright_magenta")
         
         for i, java in enumerate(java_versions, 1):
-            table.add_row(f"[{i}]", java.display_name)
+            power_bars = "█" * min(java.version - 8, 10) + "░" * (10 - min(java.version - 8, 10))
+            table.add_row(f"[{i}]", java.display_name, str(java.version), power_bars)
         
-        table.add_row("[0]", "Use system default Java")
+        table.add_row("[0]", "[dim]System Default[/dim]", "-", "[dim]Auto-detect[/dim]")
         
         console.print(Align.center(table))
         console.print()
         
         choices = [str(i) for i in range(len(java_versions) + 1)]
-        choice = Prompt.ask("[cyan]Enter your choice[/cyan]", choices=choices, default="0")
+        choice = Prompt.ask("[bold cyan]Select engine slot[/bold cyan]", choices=choices, default="0")
         
         if choice == "0":
             self.selected_java = None
+            console.print("[yellow]⚙️  Reverted to system default[/yellow]")
         else:
             self.selected_java = java_versions[int(choice) - 1]
-            console.print(f"[green]Selected: {self.selected_java.display_name}[/green]")
-            Prompt.ask("[cyan]Press Enter to continue...[/cyan]")
+            console.print(f"[bold green]✅ Equipped: {self.selected_java.display_name}[/bold green]")
+        
+        Prompt.ask("[dim]Press Enter to continue...[/dim]")
     
     def _build_with_progress(self, project_name: str, mc_version: str, build_type: BuildType) -> BuildResult:
         """Execute Gradle build with visual progress tracking"""
@@ -425,7 +546,7 @@ class ViscordBuildMenu:
                     pass
     
     def _copy_jars(self, version: str, dest_dir: Path, rename: bool = True) -> bool:
-        """Copy built JARs to destination"""
+        """Copy built JARs with gamified loot collection"""
         platforms = []
         if (Path("fabric")).exists():
             platforms.append("fabric")
@@ -435,16 +556,16 @@ class ViscordBuildMenu:
             platforms.append("neoforge")
         
         if not platforms:
-            console.print("[yellow]  - No platforms found[/yellow]")
+            console.print("[dim]💨 No artifacts found in this realm...[/dim]")
             return False
         
-        console.print(f"[cyan]  Available platforms: {', '.join(platforms)}[/cyan]")
+        console.print(f"[cyan]🌍 Discovered platforms: {', '.join(platforms)}[/cyan]")
         
         copied = False
         for platform in platforms:
             libs_path = Path(platform) / "build" / "libs"
             if not libs_path.exists():
-                console.print(f"[yellow]  - {platform} build directory not found[/yellow]")
+                console.print(f"[dim]🌫️  {platform} realm is empty[/dim]")
                 continue
             
             jar_patterns = [
@@ -468,7 +589,10 @@ class ViscordBuildMenu:
                         dest_path = dest_dir / jar.name
                     
                     shutil.copy2(jar, dest_path)
-                    console.print(f"[green]  + {dest_path.name} copied[/green]")
+                    
+                    # Gamified loot message
+                    size_kb = jar.stat().st_size / 1024
+                    console.print(f"[bold bright_green]💎 LOOT ACQUIRED: {dest_path.name}[/bold bright_green] [dim]({size_kb:.1f} KB)[/dim]")
                     found = True
                     copied = True
                 
@@ -476,7 +600,7 @@ class ViscordBuildMenu:
                     break
             
             if not found:
-                console.print(f"[yellow]  - No {platform} jars found[/yellow]")
+                console.print(f"[yellow]⚠️  No artifacts in {platform} realm[/yellow]")
         
         return copied
     
@@ -489,10 +613,10 @@ class ViscordBuildMenu:
         return None
     
     def _build_version(self, version: str, build_type: BuildType) -> BuildResult:
-        """Build a single version"""
+        """Build a single version with gamified feedback"""
         ver_dir = self._get_version_dir(version)
         if not ver_dir:
-            console.print(f"[red]X Could not find directory for version {version}[/red]")
+            console.print(f"[bold red]💀 Realm {version} not found![/bold red]")
             return BuildResult(False, [], [f"Directory not found for {version}"], 1)
         
         os.chdir(ver_dir)
@@ -513,57 +637,64 @@ class ViscordBuildMenu:
             os.environ["PATH"] = original_path
             os.chdir(self.root_dir)
         
+        self.total_builds += 1
+        if result.success:
+            self.successful_builds += 1
+        
         return result
     
     def _display_build_error(self, result: BuildResult):
-        """Display build error details"""
-        console.print(f"[red]Exit code: {result.exit_code}[/red]")
+        """Display build error with gamified failure"""
+        console.print()
+        fail_msg = random.choice(BUILD_FAIL_MESSAGES)
+        console.print(Panel(
+            Align.center(Text(fail_msg, style="bold red")),
+            border_style="red",
+            box=box.HEAVY
+        ))
+        console.print(f"[red]Exit Code: {result.exit_code}[/red]")
         
         if result.output:
-            console.print("[dark_red]Build output (last 30 lines):[/dark_red]")
+            console.print("\n[bold dark_red]📜 Scroll of Errors (last 30 lines):[/bold dark_red]")
             for line in result.output[-30:]:
                 if line.strip():
-                    console.print(f"[red]  {line}[/red]")
+                    console.print(f"[red]  ► {line}[/red]")
         
         if result.error:
-            console.print("[dark_red]Build errors:[/dark_red]")
+            console.print("\n[bold dark_red]💀 Critical Failures:[/bold dark_red]")
             for line in result.error[-10:]:
                 if line.strip():
-                    console.print(f"[red]  {line}[/red]")
+                    console.print(f"[red]  ✗ {line}[/red]")
     
     def build_all_releases(self):
-        """Build all versions to Releases folder"""
+        """Build all versions to Releases folder with gamification"""
         build_type = self._select_build_type()
         
-        self._display_header("BUILDING ALL VERSIONS → RELEASES")
+        clear_screen()
+        self._display_header("⚔️  EPIC QUEST: BUILD ALL TO RELEASES", "Forge artifacts for all dimensions")
         
         releases_dir = self.root_dir / "Releases"
         releases_dir.mkdir(exist_ok=True)
-        console.print(f"[green]Created/Found Releases directory[/green]")
-        console.print()
+        console.print(f"[green]📁 Treasury initialized: {releases_dir}[/green]\n")
         
         total = len(self.VERSIONS)
-        success_count = 0
         
         for i, version in enumerate(self.VERSIONS, 1):
-            console.print(f"[yellow]Processing Minecraft {version}... ({i}/{total})[/yellow]")
-            console.print("-" * 60)
+            console.print(Rule(f"[bold yellow]🌟 Dimension {i}/{total}: Minecraft {version}[/bold yellow]", style="bright_yellow"))
             
             result = self._build_version(version, build_type)
             
             if result.success:
-                console.print(f"[green]+ Build {version} successful. Copying jars...[/green]")
+                self._display_success_message()
                 os.chdir(self._get_version_dir(version))
                 self._copy_jars(version, releases_dir, rename=True)
                 os.chdir(self.root_dir)
-                success_count += 1
             else:
-                console.print(f"[red]X Failed to build {version}![/red]")
                 self._display_build_error(result)
             
             console.print()
         
-        self._display_summary(success_count, total, "Releases")
+        self._display_quest_complete(total)
     
     def build_all_versioned(self):
         """Build all versions to versioned folders"""
@@ -695,6 +826,18 @@ class ViscordBuildMenu:
         
         self._display_summary(success_count, total, custom_folder)
     
+    def _display_success_message(self):
+        """Display random success message"""
+        msg = random.choice(BUILD_SUCCESS_MESSAGES)
+        if random.random() < 0.05:  # 5% chance for rare message
+            msg = random.choice(RARE_MESSAGES)
+        
+        console.print(Panel(
+            Align.center(Text(msg, style="bold bright_green")),
+            border_style="bright_green",
+            box=box.HEAVY_EDGE
+        ))
+
     def _display_summary(self, success_count: int, total_count: int, destination: str):
         """Display build summary"""
         console.print()
@@ -735,17 +878,46 @@ class ViscordBuildMenu:
                 self._display_exit_screen()
                 break
     
-    def _display_exit_screen(self):
-        """Display exit screen"""
-        console.clear()
-        console.print(Panel(
-            Align.center(Text("THANK YOU FOR USING\nVISCORD BUILD MENU v3.0", style="bold yellow")),
-            box=box.ROUNDED,
-            border_style="cyan"
-        ))
-        console.print(Align.center("[cyan]Have a great day![/cyan]"))
-        import time
-        time.sleep(1)
+    def _display_quest_complete(self, total_count: int):
+        """Display quest completion screen"""
+        clear_screen()
+        
+        success_rate = (self.successful_builds / total_count) * 100 if total_count > 0 else 0
+        
+        # Victory banner
+        banner = """
+[bold bright_green]    ╔═══════════════════════════════════════════════════════════════╗[/bold bright_green]
+[bold bright_green]    ║                                                               ║[/bold bright_green]
+[bold bright_green]    ║     ⚔️  QUEST COMPLETED! ALL DIMENSIONS CONQUERED!  ⚔️         ║[/bold bright_green]
+[bold bright_green]    ║                                                               ║[/bold bright_green]
+[bold bright_green]    ╚═══════════════════════════════════════════════════════════════╝[/bold bright_green]
+        """
+        console.print(banner)
+        
+        # Stats table
+        stats = Table(show_header=False, box=box.DOUBLE_EDGE, border_style="bright_cyan")
+        stats.add_column("Stat", style="bold cyan")
+        stats.add_column("Value", style="white")
+        
+        stats.add_row("🏆 Successful Forges", f"[bold green]{self.successful_builds}/{total_count}[/bold green]")
+        stats.add_row("📦 Artifacts Created", f"[bold yellow]{self.successful_builds * 2}[/bold yellow]")
+        stats.add_row("⭐ Success Rate", f"[bold bright_green]{success_rate:.0f}%[/bold bright_green]")
+        stats.add_row("⚡ Total XP Gained", f"[bold bright_cyan]+{self.successful_builds * 25} XP[/bold bright_cyan]")
+        
+        console.print(Align.center(stats))
+        console.print()
+        
+        if success_rate == 100:
+            console.print(Align.center("[bold bright_yellow]🏅 PERFECT RUN! LEGENDARY STATUS ACHIEVED! 🏅[/bold bright_yellow]"))
+        elif success_rate >= 75:
+            console.print(Align.center("[bold green]🎖️  EXCELLENT WORK, CHAMPION! 🎖️[/bold green]"))
+        elif success_rate >= 50:
+            console.print(Align.center("[bold yellow]🎗️  GOOD EFFORT, WARRIOR! 🎗️[/bold yellow]"))
+        else:
+            console.print(Align.center("[bold red]⚠️  SOME DIMENSIONS RESISTED... TRY AGAIN! ⚠️[/bold red]"))
+        
+        console.print()
+        Prompt.ask("[dim]Press Enter to return to base camp...[/dim]")
 
 
 def main():
