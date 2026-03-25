@@ -697,53 +697,54 @@ class ViscordBuildMenu:
         self._display_quest_complete(total)
     
     def build_all_versioned(self):
-        """Build all versions to versioned folders"""
+        """Build all versions to versioned folders with gamification"""
         build_type = self._select_build_type()
         
-        self._display_header("BUILDING ALL VERSIONS → VERSIONED FOLDERS")
+        clear_screen()
+        self._display_header("🗡️  QUEST: ORGANIZE BY DIMENSION", "Sort artifacts into realm vaults")
         
         total = len(self.VERSIONS)
-        success_count = 0
         
         for version in self.VERSIONS:
-            console.print(f"[yellow]Processing Minecraft {version}...[/yellow]")
-            console.print("-" * 60)
+            console.print(Rule(f"[bold cyan]🌍 Processing Realm: {version}[/bold cyan]", style="bright_cyan"))
             
             result = self._build_version(version, build_type)
             
             if result.success:
-                console.print(f"[green]+ Build {version} successful. Creating folder...[/green]")
+                self._display_success_message()
                 version_dir = self.root_dir / version
                 version_dir.mkdir(exist_ok=True)
                 
                 os.chdir(self._get_version_dir(version))
                 self._copy_jars(version, version_dir, rename=False)
                 os.chdir(self.root_dir)
-                success_count += 1
             else:
-                console.print(f"[red]X Failed to build {version}![/red]")
                 self._display_build_error(result)
             
             console.print()
         
-        self._display_summary(success_count, total, "versioned folders")
+        self._display_quest_complete(total)
     
     def build_specific_version(self):
-        """Build a specific Minecraft version"""
-        self._display_header("BUILD SPECIFIC VERSION")
+        """Build a specific Minecraft version with gamification"""
+        clear_screen()
+        self._display_header("🛡️  SELECT YOUR TARGET", "Choose a dimension to conquer")
         
-        table = Table(show_header=False, box=box.ROUNDED, border_style="cyan")
-        table.add_column("Option", style="green")
-        table.add_column("Version", style="white")
+        table = Table(show_header=True, header_style="bold bright_cyan", box=box.HEAVY_EDGE)
+        table.add_column("Quest", style="bold yellow", justify="center")
+        table.add_column("Dimension", style="white")
+        table.add_column("Difficulty", style="bright_magenta")
         
+        difficulties = ["⭐⭐", "⭐⭐⭐", "⭐⭐⭐⭐", "⭐⭐⭐⭐⭐"]
         for i, v in enumerate(self.VERSIONS, 1):
-            table.add_row(f"[{i}]", f"Minecraft {v}")
-        table.add_row("[5]", "Back to main menu")
+            table.add_row(f"[{i}]", f"Minecraft {v}", difficulties[i-1])
+        
+        table.add_row("[5]", "[dim]Return to Base Camp[/dim]", "-")
         
         console.print(Align.center(table))
         console.print()
         
-        choice = Prompt.ask("[cyan]Enter your choice[/cyan]", choices=["1", "2", "3", "4", "5"])
+        choice = Prompt.ask("[bold cyan]Select your target[/bold cyan]", choices=["1", "2", "3", "4", "5"])
         
         if choice == "5":
             return
@@ -751,17 +752,18 @@ class ViscordBuildMenu:
         version = self.VERSIONS[int(choice) - 1]
         build_type = self._select_build_type()
         
-        self._display_header(f"BUILDING MINECRAFT {version}")
+        clear_screen()
+        self._display_header(f"⚔️  CONQUERING: MINECRAFT {version}", "Single dimension assault")
         
         result = self._build_version(version, build_type)
         
         if result.success:
-            console.print(f"[green]+ Build {version} successful![/green]")
+            self._display_success_message()
             console.print()
-            console.print("[cyan]Where would you like to copy the jars?[/cyan]")
+            console.print("[bold cyan]🎒 Where shall we store the artifact?[/bold cyan]")
             
             dest_choice = Prompt.ask(
-                "[cyan]Choose destination[/cyan]",
+                "[cyan]Choose storage[/cyan]",
                 choices=["1", "2", "3"],
                 default="3"
             )
@@ -779,52 +781,49 @@ class ViscordBuildMenu:
                 self._copy_jars(version, version_dir, rename=False)
                 os.chdir(self.root_dir)
             else:
-                console.print("[yellow]+ Jars not copied.[/yellow]")
+                console.print("[yellow]📦 Artifacts left at forge[/yellow]")
         else:
-            console.print(f"[red]X Failed to build {version}![/red]")
             self._display_build_error(result)
         
-        Prompt.ask("[cyan]Press Enter to continue...[/cyan]")
+        Prompt.ask("[dim]Press Enter to return...[/dim]")
     
     def build_custom_folder(self):
-        """Build to custom folder"""
-        self._display_header("BUILD TO CUSTOM FOLDER")
+        """Build to custom folder with gamification"""
+        clear_screen()
+        self._display_header("🏰 CUSTOM ADVENTURE", "Forge your own destiny")
         
-        custom_folder = Prompt.ask("[cyan]Enter custom release folder name[/cyan]")
+        custom_folder = Prompt.ask("[bold cyan]Name your custom vault[/bold cyan]")
         
         if not custom_folder.strip():
-            console.print("[red]Folder name cannot be empty.[/red]")
-            Prompt.ask("[cyan]Press Enter to continue...[/cyan]")
+            console.print("[bold red]💀 Vault name cannot be empty![/bold red]")
+            Prompt.ask("[dim]Press Enter...[/dim]")
             return self.build_custom_folder()
         
         build_type = self._select_build_type()
         
-        self._display_header(f"BUILDING TO CUSTOM FOLDER: {custom_folder}")
+        clear_screen()
+        self._display_header(f"🏰 QUEST: FORGE TO {custom_folder.upper()}", "Custom dimension expedition")
         
         custom_dir = self.root_dir / custom_folder
         custom_dir.mkdir(exist_ok=True)
         
         total = len(self.VERSIONS)
-        success_count = 0
         
         for version in self.VERSIONS:
-            console.print(f"[yellow]Processing Minecraft {version}...[/yellow]")
+            console.print(Rule(f"[bold magenta]🌌 Processing {version}...[/bold magenta]", style="bright_magenta"))
             
             result = self._build_version(version, build_type)
             
             if result.success:
-                console.print(f"[green]+ Build {version} successful. Copying to {custom_folder}...[/green]")
                 os.chdir(self._get_version_dir(version))
                 self._copy_jars(version, custom_dir, rename=True)
                 os.chdir(self.root_dir)
-                success_count += 1
             else:
-                console.print(f"[red]X Failed to build {version}![/red]")
                 self._display_build_error(result)
             
             console.print()
         
-        self._display_summary(success_count, total, custom_folder)
+        self._display_quest_complete(total)
     
     def _display_success_message(self):
         """Display random success message"""
@@ -858,11 +857,14 @@ class ViscordBuildMenu:
         Prompt.ask("[cyan]Press Enter to continue...[/cyan]")
     
     def run(self):
-        """Main application loop"""
+        """Main game loop"""
         while True:
             self._display_menu()
             
-            choice = Prompt.ask("[cyan]Enter your choice[/cyan]", choices=["1", "2", "3", "4", "5", "6"])
+            choice = Prompt.ask(
+                "[bold bright_cyan]Select your quest[/bold bright_cyan]",
+                choices=["1", "2", "3", "4", "5", "6"]
+            )
             
             if choice == "1":
                 self.build_all_releases()
@@ -877,6 +879,32 @@ class ViscordBuildMenu:
             elif choice == "6":
                 self._display_exit_screen()
                 break
+    
+    def _display_exit_screen(self):
+        """Display epic exit screen"""
+        clear_screen()
+        
+        duration = datetime.now() - self.session_start
+        minutes = int(duration.total_seconds() / 60)
+        
+        exit_art = f"""
+[bold bright_cyan]╔═══════════════════════════════════════════════════════════════════╗[/bold bright_cyan]
+[bold bright_cyan]║[/bold bright_cyan]                                                                   [bold bright_cyan]║[/bold bright_cyan]
+[bold bright_cyan]║[/bold bright_cyan]    [bold bright_yellow]╔═══════════════════════════════════════════════════════════╗[/bold bright_yellow]     [bold bright_cyan]║[/bold bright_cyan]
+[bold bright_cyan]║[/bold bright_cyan]    [bold bright_yellow]║[/bold bright_yellow]                                                           [bold bright_yellow]║[/bold bright_yellow]     [bold bright_cyan]║[/bold bright_cyan]
+[bold bright_cyan]║[/bold bright_cyan]    [bold bright_yellow]║[/bold bright_yellow]   [bold bright_green]THANKS FOR FORGING WITH VISCORD BUILD MENU![/bold bright_green]       [bold bright_yellow]║[/bold bright_yellow]     [bold bright_cyan]║[/bold bright_cyan]
+[bold bright_cyan]║[/bold bright_cyan]    [bold bright_yellow]║[/bold bright_yellow]                                                           [bold bright_yellow]║[/bold bright_yellow]     [bold bright_cyan]║[/bold bright_cyan]
+[bold bright_cyan]║[/bold bright_cyan]    [bold bright_yellow]║[/bold bright_yellow]      [dim]Session Duration: {minutes} minutes[/dim]                           [bold bright_yellow]║[/bold bright_yellow]     [bold bright_cyan]║[/bold bright_cyan]
+[bold bright_cyan]║[/bold bright_cyan]    [bold bright_yellow]║[/bold bright_yellow]      [dim]Builds Completed: {self.total_builds}[/dim]                               [bold bright_yellow]║[/bold bright_yellow]     [bold bright_cyan]║[/bold bright_cyan]
+[bold bright_cyan]║[/bold bright_cyan]    [bold bright_yellow]║[/bold bright_yellow]                                                           [bold bright_yellow]║[/bold bright_yellow]     [bold bright_cyan]║[/bold bright_cyan]
+[bold bright_cyan]║[/bold bright_cyan]    [bold bright_yellow]║[/bold bright_yellow]        [italic bright_cyan]May your builds always succeed![/italic bright_cyan]               [bold bright_yellow]║[/bold bright_yellow]     [bold bright_cyan]║[/bold bright_cyan]
+[bold bright_cyan]║[/bold bright_cyan]    [bold bright_yellow]║[/bold bright_yellow]                                                           [bold bright_yellow]║[/bold bright_yellow]     [bold bright_cyan]║[/bold bright_cyan]
+[bold bright_cyan]║[/bold bright_cyan]    [bold bright_yellow]╚═══════════════════════════════════════════════════════════╝[/bold bright_yellow]     [bold bright_cyan]║[/bold bright_cyan]
+[bold bright_cyan]║[/bold bright_cyan]                                                                   [bold bright_cyan]║[/bold bright_cyan]
+[bold bright_cyan]╚═══════════════════════════════════════════════════════════════════╝[/bold bright_cyan]
+        """
+        console.print(exit_art)
+        time.sleep(1.5)
     
     def _display_quest_complete(self, total_count: int):
         """Display quest completion screen"""
