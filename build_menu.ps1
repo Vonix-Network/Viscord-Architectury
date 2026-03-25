@@ -604,6 +604,7 @@ function Build-AllReleases {
                                         $foundJars = $true
                                     }
                                 }
+                                break  # Exit pattern loop once jars are found
                             }
                         }
                         
@@ -710,7 +711,7 @@ function Build-AllVersioned {
                                         $foundJars = $true
                                     }
                                 }
-                            }
+                                break  # Exit pattern loop once jars are found
                         }
                         
                         if (-not $foundJars) {
@@ -859,7 +860,7 @@ function Build-SpecificVersion {
                                             $foundJars = $true
                                         }
                                     }
-                                }
+                                    break  # Exit pattern loop once jars are found
                             }
                             
                             if (-not $foundJars) {
@@ -902,7 +903,7 @@ function Build-SpecificVersion {
                                             $foundJars = $true
                                         }
                                     }
-                                }
+                                    break  # Exit pattern loop once jars are found
                             }
                             
                             if (-not $foundJars) {
@@ -1034,6 +1035,7 @@ function Build-CustomFolder {
                                         $foundJars = $true
                                     }
                                 }
+                                break  # Exit pattern loop once jars are found
                             }
                         }
                         
