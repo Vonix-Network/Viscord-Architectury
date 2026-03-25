@@ -5,27 +5,29 @@ All notable changes to Viscord will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [2.4.9] - 2026-03-24
+
+### 🐛 Fixed (Fluxer Gateway Deep-Fix)
+- **Gateway API Version**: Switched WebSocket connection to API `v=1` (Fluxer's own protocol version). Historically set to `v=10` (Discord), which was the primary cause of bots being persistent offline.
+- **Handshake Properties**: Updated `$browser` and `$device` identify properties to `discord.js` to ensure 100% compatibility with Fluxer's handshake expectations.
+- **Intents**: Added `GUILD_MESSAGES` (bit 9) allowing the bot to receive `MESSAGE_CREATE` events on bridged channels. Total intents now: `(1 << 9) | (1 << 15)`.
+- **Initial Presence**: Implemented immediate `online` presence during the `Identify` (OP 2) phase.
+- **Post-READY status**: Added a delayed presence update after `READY` completion to set the initial status text before player counts start ticking.
+- **Resume Stability**: Added `RESUMED` event handling to re-assert presence after session reconnects.
+- **Protocol Compliance**: Fixed the `since` field in presence updates to be `null` when status is `"online"`, as required by the gateway spec.
+
 ## [2.4.8] - 2026-03-24
 
 ### 🐛 Fixed
-- **Fluxer Bot Compilation** - Resolved `method does not override or implement a method from a supertype` error in `FluxerBotClient` across all versions.
-  - Removed invalid 5-argument `onDisconnected` override in favor of the standard 4-argument version.
+- **Fluxer Bot Compilation** - Resolved `method does not override or implement a method from a supertype` error in `FluxerBotClient`.
+  - Removed invalid 5-argument `onDisconnected` override.
 
 ### 🚀 Improved
-- **Build System** - Updated `build_menu.ps1` with 2.4.8 defaults and refined Java 21 detection logic for legacy Minecraft versions.
+- **Build System** - Updated `build_menu.ps1` with 2.4.9 defaults and refined Java 21 detection.
 
 ### 🔧 chore
-- Bumped mod version to 2.4.8 across all templates.
-- Updated `Release_Notes.md` for v2.4.4–v2.4.8.
-
-### 🐛 Fixed (patch — presence/status deep-fix)
-- **Gateway API Version**: Changed WebSocket URL from `v=10` (Discord) to `v=1` (Fluxer's own API version). This was the primary root cause of bots showing Offline.
-- **Identify Properties**: Updated `$browser` / `$device` to `discord.js` to match Fluxer's expected client handshake.
-- **Intents**: Now sends `GUILD_MESSAGES | MESSAGE_CONTENT` (512 | 32768 = 33280) so `MESSAGE_CREATE` fires correctly.
-- **Initial Presence**: Added `presence` block to `Identify` (OP 2) so the bot is immediately `online` on connect.
-- **Post-READY Presence Dispatch**: Added a 500ms-delayed OP 3 presence update after `READY` so status text (e.g. `Online: 0/20`) is pushed before `DiscordManager.updateBotStatus()` fires with the real count.
-- **RESUMED Event**: Added handler for `RESUMED` dispatch event — re-pushes presence on resume so status doesn't vanish after reconnects.
-- **`since` Field Fix**: Changed `since` in OP 3 Presence Update from `System.currentTimeMillis()` to `null` (required when `status` is `"online"`).
+- Bumped mod version to 2.4.9 across all templates.
+- Updated `Release_Notes.md` for v2.4.4–v2.4.9.
 
 
 ## [2.4.7] - 2026-03-24

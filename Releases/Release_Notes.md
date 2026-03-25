@@ -1,4 +1,4 @@
-# Viscord Release Notes (v2.4.4 - v2.4.8)
+# Viscord Release Notes (v2.4.4 - v2.4.9)
 
 Detailed summary of key changes and fixes.
 
@@ -13,13 +13,22 @@ Detailed summary of key changes and fixes.
 *   **New Utility Commands**: `/viscord fluxer invite` and the `/fluxer` alias now provide easy clickable links to install and set up your bot.
 
 ### 🐛 Critical Bug Fixes
-*   **Java 21 Compatibility (v2.4.8)**: Corrected `FluxerBotClient` compilation errors and refined the `build_menu.ps1` script to ensure Java 21 is automatically used for Gradle operations across all versions (even legacy ones).
-*   **Gateway Connectivity (v2.4.7)**: Resolved an issue causing infinite reconnection loops. Improved authentication handshake logic ensuring the bot is fully ready before completing status updates.
-*   **Advancement Spam (v2.4.6)**: Fixed an issue where achievements would broadcast "progress" instead of "completion." Added the `isDone()` check to ensure only fully completed achievements trigger a bridge event.
+*   **Fluxer Online Status (v2.4.9)**: Resolved a major issue where the bot would persistently show as "Offline" on the Fluxer dash. 
+  - Switched internal gateway version to `v=1`.
+  - Added correct intents (`GUILD_MESSAGES`) to ensure message receiving.
+  - Corrected protocol handshakes and presence updates.
+*   **Java 21 Compatibility (v2.4.8)**: Corrected `FluxerBotClient` compilation errors and refined the `build_menu.ps1` script to ensure Java 21 is automatically used for Gradle operations.
 
 ---
 
 ## 📝 Change Details
+
+### v2.4.9
+- **Fluxer Connectivity Fixes**: 
+  - Fixed bot status/presence always showing Offline by switching to API `v=1`.
+  - Added initial presence to connection handshake.
+  - Implemented `RESUMED` event handling to persist status after reconnection.
+- **Improved Platform compatibility**: Added bridge support for Discord → Fluxer message routing.
 
 ### v2.4.8
 - **Compilation Fixes**: 
