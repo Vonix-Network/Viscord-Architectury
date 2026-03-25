@@ -37,6 +37,7 @@ public class ViscordConfig {
         public final SimpleConfigValue<String> fluxerApiKey;
         public final SimpleConfigValue<String> fluxerChannelId;
         public final SimpleConfigValue<String> fluxerEventChannelId;
+        public final SimpleConfigValue<String> fluxerWebhookUrl;
 
         // Server identity
         public final SimpleConfigValue<String> serverPrefix;
@@ -198,6 +199,13 @@ public class ViscordConfig {
                                 "Join/leave/death/advancement notifications go here",
                                 "Leave empty to use the main channel_id above")
                                 .define("event_channel_id", "");
+                
+                fluxerWebhookUrl = builder.comment(
+                                "Fluxer Webhook URL (optional)",
+                                "For custom usernames/avatars on Minecraft -> Fluxer messages",
+                                "Create webhook in Fluxer: Channel Settings -> Integrations -> Webhooks",
+                                "If empty, messages are sent via Bot API (always shows bot name)")
+                                .define("webhook_url", "");
 
                 builder.pop().comment(
                                 "Server Identity",

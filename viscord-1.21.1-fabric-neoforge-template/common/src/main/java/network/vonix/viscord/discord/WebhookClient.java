@@ -57,9 +57,8 @@ public class WebhookClient {
 
         JsonObject json = new JsonObject();
         json.addProperty("username", username);
-        if (avatarUrl != null)
-            json.addProperty("avatar_url", avatarUrl);
-
+        if (avatarUrl != null) json.addProperty("avatar_url", avatarUrl);
+        
         com.google.gson.JsonArray embeds = new com.google.gson.JsonArray();
         embeds.add(embed);
         json.add("embeds", embeds);

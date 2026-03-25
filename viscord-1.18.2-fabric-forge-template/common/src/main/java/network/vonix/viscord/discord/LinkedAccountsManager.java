@@ -4,7 +4,7 @@ import com.google.gson.Gson;
 import com.google.gson.GsonBuilder;
 import com.google.gson.reflect.TypeToken;
 import network.vonix.viscord.Viscord;
-import network.vonix.viscord.config.ViscordConfig;
+import network.vonix.viscord.config.toml.ViscordConfigToml;
 
 import java.io.*;
 import java.lang.reflect.Type;
@@ -50,7 +50,7 @@ public class LinkedAccountsManager {
         } while (pendingLinks.containsKey(code));
 
         // Store pending link
-        long expiryTime = System.currentTimeMillis() + (ViscordConfig.CONFIG.linkCodeExpiry.get() * 1000L);
+        long expiryTime = System.currentTimeMillis() + (ViscordConfigToml.AccountLinking.CODE_EXPIRY.get() * 1000L);
         pendingLinks.put(code, new PendingLink(minecraftUUID, minecraftUsername, expiryTime));
 
         Viscord.LOGGER.info("Generated link code {} for player {} ({})", code, minecraftUsername, minecraftUUID);
@@ -191,7 +191,7 @@ public class LinkedAccountsManager {
                 GSON.toJson(linkedAccounts, type, writer);
             }
 
-            if (ViscordConfig.CONFIG.debugLogging.get()) {
+            if (ViscordConfigToml.General.DEBUG.get()) {
                 Viscord.LOGGER.debug("Saved {} linked accounts to {}", linkedAccounts.size(), dataFile);
             }
         } catch (IOException e) {

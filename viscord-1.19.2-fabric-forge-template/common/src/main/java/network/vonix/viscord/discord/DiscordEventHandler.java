@@ -12,9 +12,9 @@ import net.minecraft.network.chat.ClickEvent;
 import net.minecraft.network.chat.Component;
 import net.minecraft.network.chat.MutableComponent;
 import net.minecraft.server.level.ServerPlayer;
-import network.vonix.viscord.config.ViscordConfig;
+import network.vonix.viscord.config.toml.TomlConfigManager;
+import network.vonix.viscord.config.toml.ViscordConfigToml;
 import network.vonix.viscord.Viscord;
-import network.vonix.viscord.config.simple.SimpleConfigManager;
 import java.nio.file.Path;
 
 /**
@@ -47,7 +47,7 @@ public class DiscordEventHandler {
         EntityEvent.LIVING_DEATH.register((entity, source) -> {
             if (entity instanceof ServerPlayer) {
                 ServerPlayer player = (ServerPlayer) entity;
-                if (ViscordConfig.CONFIG.sendDeath.get()) {
+                if (ViscordConfigToml.Messages.Events.DEATH.get()) {
                     String deathMessage = source.getLocalizedDeathMessage(player).getString();
                     DiscordManager.getInstance().sendDeathEmbed(deathMessage);
                 }
@@ -65,7 +65,7 @@ public class DiscordEventHandler {
                 Commands.literal("discord")
                         .requires(source -> source.hasPermission(0))
                         .executes(context -> {
-                            String invite = ViscordConfig.CONFIG.discordInviteUrl.get();
+                            String invite = ViscordConfigToml.Discord.INVITE_URL.get();
                             CommandSourceStack source = context.getSource();
 
                             if (invite == null || invite.isEmpty()) {
@@ -84,9 +84,9 @@ public class DiscordEventHandler {
                         })
                         .then(Commands.literal("invite")
                                 .executes(context -> {
-                                    String invite = ViscordConfig.CONFIG.discordInviteUrl.get();
+                                    String invite = ViscordConfigToml.Discord.INVITE_URL.get();
                                     CommandSourceStack source = context.getSource();
-        
+
                                     if (invite == null || invite.isEmpty()) {
                                         source.sendSuccess(Component.literal(
                                                 "§cDiscord invite URL is not configured."), false);
@@ -194,7 +194,7 @@ public class DiscordEventHandler {
                                 .executes(context -> {
                                     context.getSource().sendSuccess(Component.literal(
                                             "§aReloading Viscord configuration..."), false);
-                                    
+
                                     // Run reload async to prevent blocking
                                     Viscord.ASYNC_EXECUTOR.submit(() -> {
                                         try {
@@ -203,14 +203,14 @@ public class DiscordEventHandler {
                                                 DiscordManager.getInstance().shutdown();
                                                 Thread.sleep(1000); // Wait for clean shutdown
                                             }
-                                            
+
                                             // Reload config
                                             Path configPath = dev.architectury.platform.Platform.getConfigFolder()
-                                                    .resolve("viscord").resolve("viscord.json");
-                                            SimpleConfigManager.load(configPath, ViscordConfig.SPEC);
-                                            
+                                                    .resolve("viscord");
+                                            TomlConfigManager.load(configPath);
+
                                             // Re-initialize if enabled
-                                            if (ViscordConfig.CONFIG.enabled.get()) {
+                                            if (ViscordConfigToml.General.ENABLED.get()) {
                                                 DiscordManager.getInstance().initialize(
                                                         context.getSource().getServer());
                                                 context.getSource().sendSuccess(Component.literal(
@@ -230,12 +230,12 @@ public class DiscordEventHandler {
                         .then(Commands.literal("status")
                                 .executes(context -> {
                                     boolean running = DiscordManager.getInstance().isRunning();
-                                    String platform = ViscordConfig.CONFIG.platform.get();
+                                    String platform = ViscordConfigToml.General.PLATFORM.get();
                                     context.getSource().sendSuccess(Component.literal(
                                             "§6§l=== Viscord Status ===\n" +
                                             "§7Status: " + (running ? "§aRunning" : "§cStopped") + "\n" +
                                             "§7Platform: §b" + platform + "\n" +
-                                            "§7Enabled: " + (ViscordConfig.CONFIG.enabled.get() ? "§aYes" : "§cNo")),
+                                            "§7Enabled: " + (ViscordConfigToml.General.ENABLED.get() ? "§aYes" : "§cNo")),
                                             false);
                                     return 1;
                                 })));
@@ -246,7 +246,7 @@ public class DiscordEventHandler {
                         .then(Commands.literal("discord")
                                 .then(Commands.literal("link")
                                         .executes(context -> {
-                                            if (!ViscordConfig.CONFIG.enableAccountLinking.get()) {
+                                            if (!ViscordConfigToml.AccountLinking.ENABLED.get()) {
                                                 context.getSource().sendFailure(
                                                         Component.literal("§cAccount linking is disabled."));
                                                 return 0;
@@ -256,7 +256,7 @@ public class DiscordEventHandler {
                                             String code = DiscordManager.getInstance().generateLinkCode(player);
 
                                             if (code != null) {
-                                                int expiryMinutes = ViscordConfig.CONFIG.linkCodeExpiry.get() / 60;
+                                                int expiryMinutes = ViscordConfigToml.AccountLinking.CODE_EXPIRY.get() / 60;
                                                 context.getSource().sendSuccess(Component.literal(
                                                         "§aYour link code is: §e" + code + "\n" +
                                                                 "§7Use §b/link " + code
@@ -271,7 +271,7 @@ public class DiscordEventHandler {
                                                     context.getSource().sendFailure(
                                                             Component.literal("§cDiscord bot is not connected. Please contact an administrator."));
                                                     Viscord.LOGGER.warn("[Viscord] Link code generation failed - Discord bot is not running");
-                                                } else if (!ViscordConfig.CONFIG.enableAccountLinking.get()) {
+                                                } else if (!ViscordConfigToml.AccountLinking.ENABLED.get()) {
                                                     context.getSource().sendFailure(
                                                             Component.literal("§cAccount linking is disabled in configuration."));
                                                 } else {
@@ -285,7 +285,7 @@ public class DiscordEventHandler {
                                         }))
                                 .then(Commands.literal("unlink")
                                         .executes(context -> {
-                                            if (!ViscordConfig.CONFIG.enableAccountLinking.get()) {
+                                            if (!ViscordConfigToml.AccountLinking.ENABLED.get()) {
                                                 context.getSource().sendFailure(
                                                         Component.literal("§cAccount linking is disabled."));
                                                 return 0;

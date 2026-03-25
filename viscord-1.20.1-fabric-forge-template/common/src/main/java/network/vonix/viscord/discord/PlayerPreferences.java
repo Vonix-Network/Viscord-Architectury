@@ -4,7 +4,7 @@ import com.google.gson.Gson;
 import com.google.gson.GsonBuilder;
 import com.google.gson.JsonObject;
 import network.vonix.viscord.Viscord;
-import network.vonix.viscord.config.ViscordConfig;
+import network.vonix.viscord.config.toml.ViscordConfigToml;
 
 import java.io.IOException;
 import java.nio.file.Files;
@@ -159,7 +159,7 @@ public class PlayerPreferences {
             String json = GSON.toJson(root);
             Files.writeString(preferencesFile, json);
 
-            if (ViscordConfig.CONFIG.debugLogging.get()) {
+            if (ViscordConfigToml.General.DEBUG.get()) {
                 Viscord.LOGGER.debug("Saved Discord player preferences to file");
             }
         } catch (IOException e) {

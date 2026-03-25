@@ -67,11 +67,13 @@ public class BotClient {
         // Register Listeners
         api.addMessageCreateListener(event -> {
             if (messageHandler != null) {
-                // Ignore self
-                if (event.getMessageAuthor().isYourself())
-                    return;
+                if (messageHandler != null) {
+                    // Ignore self
+                    if (event.getMessageAuthor().isYourself())
+                        return;
 
-                messageHandler.accept(event);
+                    messageHandler.accept(event);
+                }
             }
         });
     }
@@ -96,11 +98,10 @@ public class BotClient {
             Viscord.LOGGER.warn("[Discord] Cannot send embed - API is null (bot not connected)");
             return CompletableFuture.completedFuture(null);
         }
-
-        Viscord.LOGGER.info("[Discord] Attempting to send embed to channel ID: {}", channelId);
         
+        Viscord.LOGGER.info("[Discord] Attempting to send embed to channel ID: {}", channelId);
+
         return api.getTextChannelById(channelId).map(channel -> {
-            Viscord.LOGGER.info("[Discord] Found text channel, canYouWrite: {}", channel.canYouWrite());
             org.javacord.api.entity.message.embed.EmbedBuilder embed = new org.javacord.api.entity.message.embed.EmbedBuilder();
 
             if (embedJson.has("title"))
@@ -134,25 +135,8 @@ public class BotClient {
             // Set timestamp to now
             embed.setTimestampToNow();
 
-            return channel.sendMessage(embed).exceptionally(e -> {
-                Viscord.LOGGER.warn("[Discord] Failed to send embed to channel {}: {}", channelId, e.getMessage());
-                return null;
-            });
-        }).orElseGet(() -> {
-            Viscord.LOGGER.warn("[Discord] Channel {} not found. Possible causes:", channelId);
-            Viscord.LOGGER.warn("  1. Bot is not in the Discord server");
-            Viscord.LOGGER.warn("  2. Bot doesn't have 'View Channel' permission for this channel");
-            Viscord.LOGGER.warn("  3. Channel ID is incorrect");
-            Viscord.LOGGER.warn("  4. Bot was not invited with proper permissions");
-            if (api != null) {
-                Viscord.LOGGER.warn("[Discord] Bot connected as: {}", api.getYourself().getDiscriminatedName());
-                Viscord.LOGGER.warn("[Discord] Bot is in {} servers", api.getServers().size());
-                api.getServers().forEach(server -> {
-                    Viscord.LOGGER.warn("[Discord]   - Server: {} (ID: {})", server.getName(), server.getIdAsString());
-                });
-            }
-            return CompletableFuture.completedFuture(null);
-        });
+            return channel.sendMessage(embed);
+        }).orElse(CompletableFuture.completedFuture(null));
     }
 
     public boolean isConnected() {

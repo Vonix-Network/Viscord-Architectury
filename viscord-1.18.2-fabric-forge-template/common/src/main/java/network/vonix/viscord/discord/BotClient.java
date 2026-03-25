@@ -18,6 +18,7 @@ public class BotClient {
 
     private DiscordApi api;
     private String token;
+    private String channelId;
     private Consumer<MessageCreateEvent> messageHandler;
 
     public BotClient() {
@@ -30,8 +31,7 @@ public class BotClient {
 
     public CompletableFuture<Void> connect(String token, String channelId) {
         this.token = token;
-        // channelId is passed but not stored - filtering is done in
-        // DiscordManager.onDiscordMessage
+        this.channelId = channelId;
         return connect();
     }
 
@@ -67,11 +67,13 @@ public class BotClient {
         // Register Listeners
         api.addMessageCreateListener(event -> {
             if (messageHandler != null) {
-                // Ignore self
-                if (event.getMessageAuthor().isYourself())
-                    return;
+                if (messageHandler != null) {
+                    // Ignore self
+                    if (event.getMessageAuthor().isYourself())
+                        return;
 
-                messageHandler.accept(event);
+                    messageHandler.accept(event);
+                }
             }
         });
     }

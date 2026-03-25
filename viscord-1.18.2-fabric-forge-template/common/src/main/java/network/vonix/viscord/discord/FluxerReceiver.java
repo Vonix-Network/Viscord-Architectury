@@ -7,7 +7,7 @@ import com.sun.net.httpserver.HttpExchange;
 import com.sun.net.httpserver.HttpHandler;
 import com.sun.net.httpserver.HttpServer;
 import network.vonix.viscord.Viscord;
-import network.vonix.viscord.config.ViscordConfig;
+import network.vonix.viscord.config.toml.ViscordConfigToml;
 
 import java.io.IOException;
 import java.io.InputStream;
@@ -78,7 +78,7 @@ public class FluxerReceiver implements HttpHandler {
         String method = exchange.getRequestMethod();
         String remoteAddress = exchange.getRemoteAddress().toString();
 
-        if (ViscordConfig.CONFIG.debugLogging.get()) {
+        if (ViscordConfigToml.General.DEBUG.get()) {
             Viscord.LOGGER.debug("[Fluxer] Received {} request from {}", method, remoteAddress);
         }
 
@@ -92,7 +92,7 @@ public class FluxerReceiver implements HttpHandler {
             // Read request body
             String body = readBody(exchange);
             
-            if (ViscordConfig.CONFIG.debugLogging.get()) {
+            if (ViscordConfigToml.General.DEBUG.get()) {
                 Viscord.LOGGER.debug("[Fluxer] Received webhook payload: {}", body);
             }
 
@@ -123,7 +123,7 @@ public class FluxerReceiver implements HttpHandler {
             // Send success response
             sendResponse(exchange, 200, "OK");
 
-            if (ViscordConfig.CONFIG.debugLogging.get()) {
+            if (ViscordConfigToml.General.DEBUG.get()) {
                 Viscord.LOGGER.debug("[Fluxer] Message processed from {}", username);
             }
 

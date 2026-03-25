@@ -1,7 +1,6 @@
 package network.vonix.viscord.discord;
 
 import network.vonix.viscord.Viscord;
-import network.vonix.viscord.config.ViscordConfig;
 import org.javacord.api.entity.server.Server;
 
 import java.util.HashMap;

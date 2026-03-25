@@ -36,6 +36,10 @@ public class WebhookClient {
     public String getUrl() {
         return webhookUrl;
     }
+    
+    public String getWebhookUrl() {
+        return webhookUrl;
+    }
 
     public void sendMessage(String username, String avatarUrl, String content) {
         if (webhookUrl == null || webhookUrl.isEmpty() || webhookUrl.isEmpty()) return;

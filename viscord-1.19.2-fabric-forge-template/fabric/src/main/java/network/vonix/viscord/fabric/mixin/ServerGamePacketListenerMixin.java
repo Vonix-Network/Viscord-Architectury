@@ -5,7 +5,7 @@ import net.minecraft.network.protocol.game.ServerboundChatPacket;
 import net.minecraft.server.level.ServerPlayer;
 import net.minecraft.server.network.ServerGamePacketListenerImpl;
 import network.vonix.viscord.Viscord;
-import network.vonix.viscord.config.ViscordConfig;
+import network.vonix.viscord.config.toml.ViscordConfigToml;
 import network.vonix.viscord.discord.DiscordManager;
 import org.spongepowered.asm.mixin.Mixin;
 import org.spongepowered.asm.mixin.Shadow;
@@ -23,8 +23,8 @@ public abstract class ServerGamePacketListenerMixin {
             String rawMessage = packet.message();
             if (DiscordManager.getInstance().isRunning()) {
                 boolean shouldSend = true;
-                if (ViscordConfig.CONFIG.enableChatFilter.get()) {
-                    String filterPrefix = ViscordConfig.CONFIG.chatFilterPrefix.get();
+                if (ViscordConfigToml.Filters.Chat.ENABLED.get()) {
+                    String filterPrefix = ViscordConfigToml.Filters.Chat.PREFIX.get();
                     if (filterPrefix != null && !filterPrefix.isEmpty() && rawMessage.startsWith(filterPrefix)) {
                         shouldSend = false;
                     }

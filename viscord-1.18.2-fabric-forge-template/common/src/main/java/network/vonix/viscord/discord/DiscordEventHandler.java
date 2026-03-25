@@ -9,14 +9,14 @@ import net.minecraft.ChatFormatting;
 import net.minecraft.commands.CommandSourceStack;
 import net.minecraft.commands.Commands;
 import net.minecraft.network.chat.ClickEvent;
+import net.minecraft.network.chat.Component;
 import net.minecraft.network.chat.MutableComponent;
-import net.minecraft.network.chat.Style;
-import net.minecraft.network.chat.TextComponent;
 import net.minecraft.server.level.ServerPlayer;
-import network.vonix.viscord.config.ViscordConfig;
+import network.vonix.viscord.config.toml.TomlConfigManager;
+import network.vonix.viscord.config.toml.ViscordConfigToml;
 import network.vonix.viscord.Viscord;
-import network.vonix.viscord.config.simple.SimpleConfigManager;
 import java.nio.file.Path;
+import net.minecraft.network.chat.TextComponent;
 
 /**
  * Minecraft event handler for Discord integration.
@@ -25,7 +25,7 @@ import java.nio.file.Path;
 public class DiscordEventHandler {
 
     public static void register() {
-        CommandRegistrationEvent.EVENT.register((dispatcher, registry) -> {
+        CommandRegistrationEvent.EVENT.register((dispatcher, selection) -> {
             registerCommands(dispatcher);
         });
 
@@ -48,7 +48,7 @@ public class DiscordEventHandler {
         EntityEvent.LIVING_DEATH.register((entity, source) -> {
             if (entity instanceof ServerPlayer) {
                 ServerPlayer player = (ServerPlayer) entity;
-                if (ViscordConfig.CONFIG.sendDeath.get()) {
+                if (ViscordConfigToml.Messages.Events.DEATH.get()) {
                     String deathMessage = source.getLocalizedDeathMessage(player).getString();
                     DiscordManager.getInstance().sendDeathEmbed(deathMessage);
                 }
@@ -66,7 +66,7 @@ public class DiscordEventHandler {
                 Commands.literal("discord")
                         .requires(source -> source.hasPermission(0))
                         .executes(context -> {
-                            String invite = ViscordConfig.CONFIG.discordInviteUrl.get();
+                            String invite = ViscordConfigToml.Discord.INVITE_URL.get();
                             CommandSourceStack source = context.getSource();
 
                             if (invite == null || invite.isEmpty()) {
@@ -84,9 +84,9 @@ public class DiscordEventHandler {
                         })
                         .then(Commands.literal("invite")
                                 .executes(context -> {
-                                    String invite = ViscordConfig.CONFIG.discordInviteUrl.get();
+                                    String invite = ViscordConfigToml.Discord.INVITE_URL.get();
                                     CommandSourceStack source = context.getSource();
-        
+
                                     if (invite == null || invite.isEmpty()) {
                                         source.sendSuccess(new TextComponent(
                                                 "§cDiscord invite URL is not configured."), false);
@@ -106,7 +106,7 @@ public class DiscordEventHandler {
                                             ServerPlayer player = context.getSource().getPlayerOrException();
                                             DiscordManager.getInstance()
                                                     .setServerMessagesFiltered(player.getUUID(), false);
-                                            context.getSource().sendSuccess( new TextComponent(
+                                            context.getSource().sendSuccess(new TextComponent(
                                                     "§aCross-server messages enabled!"), false);
                                             return 1;
                                         }))
@@ -115,7 +115,7 @@ public class DiscordEventHandler {
                                             ServerPlayer player = context.getSource().getPlayerOrException();
                                             DiscordManager.getInstance()
                                                     .setServerMessagesFiltered(player.getUUID(), true);
-                                            context.getSource().sendSuccess( new TextComponent(
+                                            context.getSource().sendSuccess(new TextComponent(
                                                     "§cCross-server messages disabled!"), false);
                                             return 1;
                                         }))
@@ -123,7 +123,7 @@ public class DiscordEventHandler {
                                     ServerPlayer player = context.getSource().getPlayerOrException();
                                     boolean isFiltered = DiscordManager.getInstance()
                                             .hasServerMessagesFiltered(player.getUUID());
-                                    context.getSource().sendSuccess( new TextComponent(
+                                    context.getSource().sendSuccess(new TextComponent(
                                             "§7Cross-server messages: " + (isFiltered ? "§cDisabled" : "§aEnabled")),
                                             false);
                                     return 1;
@@ -134,7 +134,7 @@ public class DiscordEventHandler {
                                             ServerPlayer player = context.getSource().getPlayerOrException();
                                             DiscordManager.getInstance()
                                                     .setEventsFiltered(player.getUUID(), false);
-                                            context.getSource().sendSuccess( new TextComponent(
+                                            context.getSource().sendSuccess(new TextComponent(
                                                     "§aEvent messages enabled!"), false);
                                             return 1;
                                         }))
@@ -143,7 +143,7 @@ public class DiscordEventHandler {
                                             ServerPlayer player = context.getSource().getPlayerOrException();
                                             DiscordManager.getInstance()
                                                     .setEventsFiltered(player.getUUID(), true);
-                                            context.getSource().sendSuccess( new TextComponent(
+                                            context.getSource().sendSuccess(new TextComponent(
                                                     "§cEvent messages disabled!"), false);
                                             return 1;
                                         }))
@@ -151,7 +151,7 @@ public class DiscordEventHandler {
                                     ServerPlayer player = context.getSource().getPlayerOrException();
                                     boolean isFiltered = DiscordManager.getInstance()
                                             .hasEventsFiltered(player.getUUID());
-                                    context.getSource().sendSuccess( new TextComponent(
+                                    context.getSource().sendSuccess(new TextComponent(
                                             "§7Event messages: " + (isFiltered ? "§cDisabled" : "§aEnabled")),
                                             false);
                                     return 1;
@@ -162,7 +162,7 @@ public class DiscordEventHandler {
                                             ServerPlayer player = context.getSource().getPlayerOrException();
                                             DiscordManager.getInstance()
                                                     .setServerSystemMessagesFiltered(player.getUUID(), false);
-                                            context.getSource().sendSuccess( new TextComponent(
+                                            context.getSource().sendSuccess(new TextComponent(
                                                     "§aServer system messages enabled!"), false);
                                             return 1;
                                         }))
@@ -171,7 +171,7 @@ public class DiscordEventHandler {
                                             ServerPlayer player = context.getSource().getPlayerOrException();
                                             DiscordManager.getInstance()
                                                     .setServerSystemMessagesFiltered(player.getUUID(), true);
-                                            context.getSource().sendSuccess( new TextComponent(
+                                            context.getSource().sendSuccess(new TextComponent(
                                                     "§cServer system messages disabled!"), false);
                                             return 1;
                                         }))
@@ -179,7 +179,7 @@ public class DiscordEventHandler {
                                     ServerPlayer player = context.getSource().getPlayerOrException();
                                     boolean isFiltered = DiscordManager.getInstance()
                                             .hasServerSystemMessagesFiltered(player.getUUID());
-                                    context.getSource().sendSuccess( new TextComponent(
+                                    context.getSource().sendSuccess(new TextComponent(
                                             "§7Server system messages: " + (isFiltered ? "§cDisabled" : "§aEnabled")),
                                             false);
                                     return 1;
@@ -191,9 +191,9 @@ public class DiscordEventHandler {
                         .requires(source -> source.hasPermission(4)) // OP only
                         .then(Commands.literal("reload")
                                 .executes(context -> {
-                                    context.getSource().sendSuccess( new TextComponent(
+                                    context.getSource().sendSuccess(new TextComponent(
                                             "§aReloading Viscord configuration..."), false);
-                                    
+
                                     // Run reload async to prevent blocking
                                     Viscord.ASYNC_EXECUTOR.submit(() -> {
                                         try {
@@ -202,20 +202,20 @@ public class DiscordEventHandler {
                                                 DiscordManager.getInstance().shutdown();
                                                 Thread.sleep(1000); // Wait for clean shutdown
                                             }
-                                            
+
                                             // Reload config
                                             Path configPath = dev.architectury.platform.Platform.getConfigFolder()
-                                                    .resolve("viscord").resolve("viscord.json");
-                                            SimpleConfigManager.load(configPath, ViscordConfig.SPEC);
-                                            
+                                                    .resolve("viscord");
+                                            TomlConfigManager.load(configPath);
+
                                             // Re-initialize if enabled
-                                            if (ViscordConfig.CONFIG.enabled.get()) {
+                                            if (ViscordConfigToml.General.ENABLED.get()) {
                                                 DiscordManager.getInstance().initialize(
                                                         context.getSource().getServer());
-                                                context.getSource().sendSuccess( new TextComponent(
+                                                context.getSource().sendSuccess(new TextComponent(
                                                         "§aViscord reloaded successfully!"), false);
                                             } else {
-                                                context.getSource().sendSuccess( new TextComponent(
+                                                context.getSource().sendSuccess(new TextComponent(
                                                         "§eViscord is disabled in config."), false);
                                             }
                                         } catch (Exception e) {
@@ -229,12 +229,12 @@ public class DiscordEventHandler {
                         .then(Commands.literal("status")
                                 .executes(context -> {
                                     boolean running = DiscordManager.getInstance().isRunning();
-                                    String platform = ViscordConfig.CONFIG.platform.get();
-                                    context.getSource().sendSuccess( new TextComponent(
+                                    String platform = ViscordConfigToml.General.PLATFORM.get();
+                                    context.getSource().sendSuccess(new TextComponent(
                                             "§6§l=== Viscord Status ===\n" +
                                             "§7Status: " + (running ? "§aRunning" : "§cStopped") + "\n" +
                                             "§7Platform: §b" + platform + "\n" +
-                                            "§7Enabled: " + (ViscordConfig.CONFIG.enabled.get() ? "§aYes" : "§cNo")),
+                                            "§7Enabled: " + (ViscordConfigToml.General.ENABLED.get() ? "§aYes" : "§cNo")),
                                             false);
                                     return 1;
                                 })));
@@ -245,7 +245,7 @@ public class DiscordEventHandler {
                         .then(Commands.literal("discord")
                                 .then(Commands.literal("link")
                                         .executes(context -> {
-                                            if (!ViscordConfig.CONFIG.enableAccountLinking.get()) {
+                                            if (!ViscordConfigToml.AccountLinking.ENABLED.get()) {
                                                 context.getSource().sendFailure(
                                                         new TextComponent("§cAccount linking is disabled."));
                                                 return 0;
@@ -255,8 +255,8 @@ public class DiscordEventHandler {
                                             String code = DiscordManager.getInstance().generateLinkCode(player);
 
                                             if (code != null) {
-                                                int expiryMinutes = ViscordConfig.CONFIG.linkCodeExpiry.get() / 60;
-                                                context.getSource().sendSuccess( new TextComponent(
+                                                int expiryMinutes = ViscordConfigToml.AccountLinking.CODE_EXPIRY.get() / 60;
+                                                context.getSource().sendSuccess(new TextComponent(
                                                         "§aYour link code is: §e" + code + "\n" +
                                                                 "§7Use §b/link " + code
                                                                 + "§7 in Discord to link your account.\n" +
@@ -270,7 +270,7 @@ public class DiscordEventHandler {
                                                     context.getSource().sendFailure(
                                                             new TextComponent("§cDiscord bot is not connected. Please contact an administrator."));
                                                     Viscord.LOGGER.warn("[Viscord] Link code generation failed - Discord bot is not running");
-                                                } else if (!ViscordConfig.CONFIG.enableAccountLinking.get()) {
+                                                } else if (!ViscordConfigToml.AccountLinking.ENABLED.get()) {
                                                     context.getSource().sendFailure(
                                                             new TextComponent("§cAccount linking is disabled in configuration."));
                                                 } else {
@@ -284,7 +284,7 @@ public class DiscordEventHandler {
                                         }))
                                 .then(Commands.literal("unlink")
                                         .executes(context -> {
-                                            if (!ViscordConfig.CONFIG.enableAccountLinking.get()) {
+                                            if (!ViscordConfigToml.AccountLinking.ENABLED.get()) {
                                                 context.getSource().sendFailure(
                                                         new TextComponent("§cAccount linking is disabled."));
                                                 return 0;
@@ -295,7 +295,7 @@ public class DiscordEventHandler {
                                                     .unlinkAccount(player.getUUID());
 
                                             if (success) {
-                                                context.getSource().sendSuccess( new TextComponent(
+                                                context.getSource().sendSuccess(new TextComponent(
                                                         "§aYour Discord account has been unlinked."), false);
                                                 return 1;
                                             } else {
@@ -310,7 +310,7 @@ public class DiscordEventHandler {
                                                     ServerPlayer player = context.getSource().getPlayerOrException();
                                                     DiscordManager.getInstance()
                                                             .setServerMessagesFiltered(player.getUUID(), false);
-                                                    context.getSource().sendSuccess( new TextComponent(
+                                                    context.getSource().sendSuccess(new TextComponent(
                                                             "§aServer messages enabled!"), false);
                                                     return 1;
                                                 }))
@@ -319,7 +319,7 @@ public class DiscordEventHandler {
                                                     ServerPlayer player = context.getSource().getPlayerOrException();
                                                     DiscordManager.getInstance()
                                                             .setServerMessagesFiltered(player.getUUID(), true);
-                                                    context.getSource().sendSuccess( new TextComponent(
+                                                    context.getSource().sendSuccess(new TextComponent(
                                                             "§cServer messages disabled!"), false);
                                                     return 1;
                                                 }))
@@ -327,7 +327,7 @@ public class DiscordEventHandler {
                                             ServerPlayer player = context.getSource().getPlayerOrException();
                                             boolean isFiltered = DiscordManager.getInstance()
                                                     .hasServerMessagesFiltered(player.getUUID());
-                                            context.getSource().sendSuccess( new TextComponent(
+                                            context.getSource().sendSuccess(new TextComponent(
                                                     "§7Server messages: " + (isFiltered ? "§cDisabled" : "§aEnabled")),
                                                     false);
                                             return 1;
@@ -338,7 +338,7 @@ public class DiscordEventHandler {
                                                     ServerPlayer player = context.getSource().getPlayerOrException();
                                                     DiscordManager.getInstance()
                                                             .setEventsFiltered(player.getUUID(), false);
-                                                    context.getSource().sendSuccess( new TextComponent(
+                                                    context.getSource().sendSuccess(new TextComponent(
                                                             "§aEvent messages enabled!"), false);
                                                     return 1;
                                                 }))
@@ -347,7 +347,7 @@ public class DiscordEventHandler {
                                                     ServerPlayer player = context.getSource().getPlayerOrException();
                                                     DiscordManager.getInstance()
                                                             .setEventsFiltered(player.getUUID(), true);
-                                                    context.getSource().sendSuccess( new TextComponent(
+                                                    context.getSource().sendSuccess(new TextComponent(
                                                             "§cEvent messages disabled!"), false);
                                                     return 1;
                                                 }))
@@ -355,14 +355,14 @@ public class DiscordEventHandler {
                                             ServerPlayer player = context.getSource().getPlayerOrException();
                                             boolean isFiltered = DiscordManager.getInstance()
                                                     .hasEventsFiltered(player.getUUID());
-                                            context.getSource().sendSuccess( new TextComponent(
+                                            context.getSource().sendSuccess(new TextComponent(
                                                     "§7Event messages: " + (isFiltered ? "§cDisabled" : "§aEnabled")),
                                                     false);
                                             return 1;
                                         }))
                                 .then(Commands.literal("help")
                                         .executes(context -> {
-                                            context.getSource().sendSuccess( new TextComponent(
+                                            context.getSource().sendSuccess(new TextComponent(
                                                     "§6§l=== Viscord Discord Commands ===\n" +
                                                             "§b/discord§7 - Show Discord invite link\n" +
                                                             "§b/viscord discord link§7 - Generate account link code\n" +
@@ -392,13 +392,13 @@ public class DiscordEventHandler {
                         .requires(source -> source.hasPermission(4))
                         .then(Commands.literal("reload")
                                 .executes(context -> {
-                                    context.getSource().sendSuccess( new TextComponent(
+                                    context.getSource().sendSuccess(new TextComponent(
                                             "§e/vonix is deprecated. Use §b/viscord reload§e instead."), false);
                                     return 1;
                                 }))
                         .then(Commands.literal("discord")
                                 .executes(context -> {
-                                    context.getSource().sendSuccess( new TextComponent(
+                                    context.getSource().sendSuccess(new TextComponent(
                                             "§e/vonix is deprecated. Use §b/viscord discord§e instead."), false);
                                     return 1;
                                 })));

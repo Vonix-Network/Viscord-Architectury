@@ -6,7 +6,6 @@ import net.minecraft.network.chat.Component;
 import net.minecraft.network.chat.HoverEvent;
 import net.minecraft.network.chat.MutableComponent;
 import net.minecraft.network.chat.Style;
-import net.minecraft.network.chat.TextComponent;
 import net.minecraft.network.chat.TextColor;
 import org.javacord.api.entity.message.Message;
 import org.javacord.api.entity.message.MessageAttachment;
@@ -15,16 +14,16 @@ import org.javacord.api.entity.message.embed.EmbedField;
 
 import java.util.regex.Matcher;
 import java.util.regex.Pattern;
+import net.minecraft.network.chat.TextComponent;
 
 /**
  * Handles conversion between Discord messages/embeds and Minecraft components.
  * Implements "Embed Repairing" and "Chat Formatting".
- * 
- * Version: 1.18.2 (Uses TextComponent instead of Component.literal)
  */
 public class MessageConverter {
 
     private static final Pattern URL_PATTERN = Pattern.compile("https?:\\/\\/(www\\.)?[-a-zA-Z0-9@:%._\\+~#=]{1,256}\\.[a-zA-Z0-9()]{1,6}\\b([-a-zA-Z0-9()@:%_\\+.~#?&//=]*)");
+    private static final Pattern DISCORD_FORMATTING_PATTERN = Pattern.compile("(\\*\\*|\\*|__|~~|`|\\|\\|)");
 
     /**
      * Converts a Discord Message to a Minecraft Component.
@@ -131,6 +130,11 @@ public class MessageConverter {
      * Parses simple Markdown (bold, italic, underline, strikethrough) and Links.
      */
     private static Component parseMarkdown(String text) {
+        // This is a simplified parser. A full Markdown parser is complex.
+        // For now, we handle links and return the rest as literal text, 
+        // effectively stripping some markdown chars if we wanted, or just displaying them.
+        // Ideally, we'd split by pattern and style segments.
+        
         MutableComponent root = new TextComponent("");
         Matcher matcher = URL_PATTERN.matcher(text);
         
@@ -160,7 +164,14 @@ public class MessageConverter {
         return root;
     }
     
+    /**
+     * Apply basic formatting based on Discord markdown symbols.
+     * Note: This simple implementation doesn't handle nested formatting perfectly.
+     */
     private static Component formatText(String text) {
+        // For now, return literal text. 
+        // Implementing full markdown -> Component parsing is non-trivial without a library.
+        // We can just strip the markers or display them.
         return new TextComponent(text);
     }
 }

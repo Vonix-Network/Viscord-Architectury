@@ -4,7 +4,7 @@ import net.minecraft.advancements.Advancement;
 import net.minecraft.advancements.DisplayInfo;
 import net.minecraft.server.PlayerAdvancements;
 import net.minecraft.server.level.ServerPlayer;
-import network.vonix.viscord.config.ViscordConfig;
+import network.vonix.viscord.config.toml.ViscordConfigToml;
 import network.vonix.viscord.discord.DiscordManager;
 import org.spongepowered.asm.mixin.Mixin;
 import org.spongepowered.asm.mixin.Shadow;
@@ -39,7 +39,7 @@ public abstract class PlayerAdvancementsMixin {
         }
 
         // Check if advancement notifications are enabled
-        if (!ViscordConfig.CONFIG.sendAdvancement.get()) {
+        if (!ViscordConfigToml.Messages.Events.ADVANCEMENT.get()) {
             return;
         }
 

@@ -5,7 +5,122 @@ All notable changes to Viscord will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
-## [2.4.13] - 2026-03-25
+## [3.0.3] - 2026-03-25
+
+### 🐛 Fixed (Fluxer Bot Player Count Status)
+- **Fluxer Bot Status Now Shows Actual Player Count** - Fixed Fluxer bot displaying "0/0" instead of actual online/max player count
+  - **Root cause**: `FluxerBotClient` was hardcoding player counts to "0" in READY/RESUMED event handlers instead of using real server values
+  - **Fix**: Removed hardcoded status updates from `FluxerBotClient.handleMessage()` READY/RESUMED handlers (lines 310-321, 327-332)
+  - **Implementation**: Status updates now flow through `DiscordManager.updateBotStatus()` which:
+    - Reads actual player count from `server.getPlayerList()`
+    - Applies the configured format from `ViscordConfigToml.BotStatus.FORMAT.get()`
+    - Replaces `{online}` and `{max}` placeholders with real values
+    - Updates both Discord and Fluxer bots consistently
+  - **Result**: Fluxer bot now displays "Online: (Players)/(Max)" matching the config format, same as Discord bot
+  - **File modified**: `FluxerBotClient.java` in 1.21.1 (READY/RESUMED handlers)
+  - **Surgical edit location**: `handleMessage()` method, removed hardcoded status scheduler blocks
+
+### 🐛 Fixed (Config Reload Crash)
+- **Fixed Server Restart Crash** - Fixed `UnsupportedOperationException: StampedConfig does not support valueMap()` error on second server start
+  - **Root cause**: `ConfigSpec.correct()` calls `valueMap()` which isn't supported by NightConfig's concurrent `StampedConfig` used when autosave is enabled
+  - **Fix**: Modified `TomlConfigManager.loadToml()` to:
+    - Build config without autosave first
+    - Run `spec.correct()` and save
+    - Close and rebuild with autosave enabled
+    - Added try-catch for graceful degradation if correction fails
+  - **Result**: Server can now restart without config-related crashes
+  - **File modified**: `TomlConfigManager.java` in 1.21.1
+  - **Surgical edit location**: `loadToml()` method, lines 101-127
+
+## [3.0.2] - 2026-03-25
+
+### 🐛 Fixed (1.21.1 Compilation Issues)
+- **Java 21 Build Compatibility** - Fixed build failures for Minecraft 1.21.1 due to Java version requirements
+  - **Root cause**: Architectury Loom 1.11 requires Java 21+ but system was using Java 17
+  - **Fix**: Updated build system to auto-detect and use Java 21 when available
+  - **NeoForge API Migration**: Updated from old Forge APIs to NeoForge APIs
+    - Replaced `net.minecraftforge.common.MinecraftForge` with `net.neoforged.neoforge.common.NeoForge`
+    - Updated event bus registration for NeoForge compatibility
+    - Removed conflicting old Forge handler files
+  - **Command API Updates**: Fixed `sendSuccess()` method signature changes
+    - Updated all `sendSuccess(Component.literal(...))` calls to `sendSuccess(() -> Component.literal(...))`
+    - Required due to API change in 1.21.1 where method now expects `Supplier<Component>`
+  - **Advancement API Migration**: Updated advancement mixins for 1.21.1
+    - Changed `Advancement` parameter to `AdvancementHolder` in `award()` method
+    - Updated display info access: `advancement.getDisplay()` → `advancementHolder.value().display().orElse(null)`
+    - Applied to both Fabric and NeoForge mixins
+  - **TextColor API Fix**: Fixed `TextColor.parseColor()` DataResult handling
+    - Updated to handle new `DataResult<TextColor>` return type instead of direct `TextColor`
+    - Added proper fallback color handling for parsing failures
+  - **Config System Update**: Updated NeoForge chat handler to use TOML config
+    - Changed from `ViscordConfig.CONFIG` to `ViscordConfigToml.Filters.Chat` references
+  - **Files modified**: 
+    - `ViscordForge.java` → `ViscordNeoForge.java` (NeoForge main class)
+    - `NeoForgeChatEventHandler.java` (Component to String conversion)
+    - `DiscordEventHandler.java` (29 sendSuccess calls updated)
+    - `MessageConverter.java` (TextColor parsing)
+    - `PlayerAdvancementsMixin.java` (Fabric + NeoForge)
+  - **Build verification**: All platforms (Fabric + NeoForge) now compile successfully with Java 21
+
+## [3.0.1] - 2026-03-25
+
+### 🐛 Fixed (Fluxer to Discord Message Formatting)
+- **Fluxer Messages Showing Double Prefix/Username** - Fixed Fluxer messages appearing as "[Fluxer] OGPargon: [Fluxer] OGPargon: Hello o.o" in Discord.
+  - **Root cause**: `bridgeFluxerToDiscord()` was using `formatMessageForPlatform()` which added "[Fluxer] username:" prefix to message content, but the webhook username also needed the [Fluxer] prefix, causing duplication
+  - **Fix**: Modified `bridgeFluxerToDiscord()` to:
+    - Remove [Fluxer] prefix and username from message content before sending
+    - Add [Fluxer] prefix to the webhook username instead (line 489: `webhookClient.sendMessage("[Fluxer]" + username, "", convertedMessage)`)
+    - Clean message content by extracting only the actual message part after removing prefixes and usernames
+  - **Result**: Fluxer messages now display correctly in Discord as "[Fluxer]OGPargon: Hello o.o" with proper username formatting and no duplication
+  - **File modified**: `DiscordManager.java` in all versions (1.18.2, 1.19.2, 1.20.1, 1.21.1)
+  - **Surgical edit location**: `bridgeFluxerToDiscord()` method, lines 459-496
+
+## [3.0.0] - 2026-03-25
+
+### 🔄 Changed (Breaking Change - Config System Rewrite)
+- **Complete Configuration System Overhaul** - Migrated from JSON to TOML configuration format with full restructuring
+  - **New config file**: `config/viscord/viscord.toml` (replaces `viscord.json`)
+  - **Automatic migration**: Existing JSON configs are automatically migrated to TOML format on first run
+  - **Backup creation**: Old JSON configs are backed up as `viscord.json.backup` after migration
+  - **Restructured hierarchy**: Better organized config sections with cleaner naming conventions
+  - **Dependencies**: Added `night-config` library for TOML parsing (v3.6.7)
+  - **Files modified**: All configuration-related files across all versions
+  - **New classes**: `TomlConfigManager.java` and `ViscordConfigToml.java`
+  - **Updated files**: `Viscord.java`, `DiscordManager.java`, `DiscordEventHandler.java`, and all other files referencing config
+
+### 📝 Documentation
+- **Updated Configuration Documentation** - New TOML configuration examples and migration guide
+  - Added migration instructions from JSON to TOML
+  - Updated config field references throughout documentation
+  - New structured config examples reflecting the reorganized hierarchy
+
+## [2.4.15] - 2026-03-25
+
+### 🐛 Fixed (Fluxer Bot Online Status - Tri-Directional Mode)
+- **Fluxer Bot Showing Offline Despite Successful Authentication** - Fixed bot appearing offline when using tri-directional mode with `platform: "discord"`.
+  - **Root cause**: `DiscordManager.initializeFluxer()` calls `updateBotStatus()` immediately when connection future completes, but `FluxerBotClient.updateStatus()` validates `authenticated` flag which may not be set yet when READY dispatch hasn't been processed
+  - **Fix**: Added immediate status update when READY is received (lines 310-313 in FluxerBotClient.java), in addition to the existing 500ms scheduled backup
+  - **Also changed**: Enhanced logging from DEBUG to WARN level in `updateStatus()` to make connection/authentication state visible for troubleshooting
+  - **Files modified**: `FluxerBotClient.java` in all versions (1.18.2, 1.19.2, 1.20.1, 1.21.1)
+  - **Surgical edit locations**: 
+    - `handleMessage()` READY case: Added immediate `updateStatus()` call after `authenticated = true`
+    - `updateStatus()` method: Changed log level from DEBUG to WARN with detailed state info
+
+### 📝 Documentation
+- **Added Tri-Directional Setup Guide** - New documentation section explaining proper configuration for 3-way chat between Discord, Fluxer, and Minecraft
+  - Clarified that `platform` setting determines which service receives messages FROM Minecraft
+  - Added bot status configuration notes for tri-directional setups
+  - Included example configuration snippets
+
+## [2.4.14] - 2026-03-25
+
+### 🚀 Improved (Fluxer Bot Online Status)
+- **Verified Fluxer Bot Online Status** - Confirmed bot properly marks itself online during WebSocket Gateway connection
+  - Identify payload includes `presence: {status: "online"}` for immediate online status
+  - Uses modern Discord gateway v8+ format (`os`, `browser`, `device` properties)
+  - Compatible with Fluxer.app's Discord.js-style gateway protocol
+  - `updateStatus()` method available for custom status text after connection
+  - Verified across all Minecraft versions (1.18.2, 1.19.2, 1.20.1, 1.21.1)
 
 ### 🐛 Fixed (All Versions)
 - **Fluxer Gateway 4002 "Invalid identify payload" Error** - Fixed bot connection failures due to deprecated Discord gateway v6 properties format.

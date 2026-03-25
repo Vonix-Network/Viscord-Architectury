@@ -622,20 +622,35 @@ class ViscordBuildMenu:
         version = self.VERSIONS[int(choice) - 1]
         build_type = self._select_build_type()
         
-        console.clear()
-        self._display_header(f"BUILDING MINECRAFT {version}")
-        
+        # Build the version
         result = self._build_version(version, build_type)
         
+        # Show result screen with proper header
+        console.clear()
+        
         if result.success:
+            self._display_header(f"✓ BUILT FOR MINECRAFT {version}")
             console.print(f"[green]+ Build {version} successful![/green]")
             console.print()
             console.print("[cyan]Where would you like to copy the jars?[/cyan]")
+            console.print()
+            
+            # Show options table
+            options_table = Table(show_header=False, box=box.ROUNDED, border_style="cyan", width=60)
+            options_table.add_column("Option", style="green", justify="center")
+            options_table.add_column("Description", style="white")
+            options_table.add_row("[1]", "Copy to Releases folder (with version names)")
+            options_table.add_row("[2]", "Copy to version folder (raw names)")
+            options_table.add_row("[3]", "Copy to custom folder")
+            options_table.add_row("[4]", "Don't copy, return to menu")
+            
+            console.print(Align.center(options_table))
+            console.print()
             
             dest_choice = Prompt.ask(
                 "[cyan]Choose destination[/cyan]",
-                choices=["1", "2", "3"],
-                default="3"
+                choices=["1", "2", "3", "4"],
+                default="4"
             )
             
             if dest_choice == "1":
@@ -644,19 +659,35 @@ class ViscordBuildMenu:
                 os.chdir(self._get_version_dir(version))
                 self._copy_jars(version, releases_dir, rename=True)
                 os.chdir(self.root_dir)
+                console.print(f"[green]+ Jars copied to Releases folder[/green]")
             elif dest_choice == "2":
                 version_dir = self.root_dir / version
                 version_dir.mkdir(exist_ok=True)
                 os.chdir(self._get_version_dir(version))
                 self._copy_jars(version, version_dir, rename=False)
                 os.chdir(self.root_dir)
+                console.print(f"[green]+ Jars copied to {version}/ folder[/green]")
+            elif dest_choice == "3":
+                custom_path = Prompt.ask("[cyan]Enter custom folder path[/cyan]")
+                if custom_path.strip():
+                    custom_dir = Path(custom_path.strip())
+                    custom_dir.mkdir(parents=True, exist_ok=True)
+                    os.chdir(self._get_version_dir(version))
+                    self._copy_jars(version, custom_dir, rename=True)
+                    os.chdir(self.root_dir)
+                    console.print(f"[green]+ Jars copied to {custom_dir}[/green]")
+                else:
+                    console.print("[yellow]+ No path entered, jars not copied.[/yellow]")
             else:
                 console.print("[yellow]+ Jars not copied.[/yellow]")
         else:
-            console.print(f"[red]X Failed to build {version}![/red]")
+            self._display_header(f"✗ FAILED TO BUILD {version}")
+            console.print(f"[red]X Build failed for {version}![/red]")
+            console.print()
             self._display_build_error(result)
         
-        Prompt.ask("[cyan]Press Enter to continue...[/cyan]")
+        console.print()
+        Prompt.ask("[cyan]Press Enter to return to main menu...[/cyan]")
     
     def build_custom_folder(self):
         """Build to custom folder"""

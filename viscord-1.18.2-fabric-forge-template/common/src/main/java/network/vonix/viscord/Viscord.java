@@ -1,8 +1,8 @@
 package network.vonix.viscord;
 
 import dev.architectury.event.events.common.LifecycleEvent;
-import network.vonix.viscord.config.ViscordConfig;
-import network.vonix.viscord.config.simple.SimpleConfigManager;
+import network.vonix.viscord.config.toml.TomlConfigManager;
+import network.vonix.viscord.config.toml.ViscordConfigToml;
 import network.vonix.viscord.discord.DiscordManager;
 import network.vonix.viscord.discord.DiscordEventHandler;
 import org.apache.logging.log4j.LogManager;
@@ -38,9 +38,9 @@ public final class Viscord {
     private void onInitialize() {
         LOGGER.info("[{}] Initializing Viscord (Standalone Discord Integration)", MOD_ID);
 
-        // Load Discord config from config/viscord/ subdirectory
+        // Load TOML config from config/viscord/ subdirectory
         Path configDir = dev.architectury.platform.Platform.getConfigFolder().resolve("viscord");
-        Path discordConfigPath = configDir.resolve("viscord.json");
+        Path tomlConfigPath = configDir.resolve("viscord.toml");
         
         // Ensure config directory exists
         if (!configDir.toFile().exists()) {
@@ -48,22 +48,22 @@ public final class Viscord {
         }
         
         LOGGER.info("[{}] Config directory: {}", MOD_ID, configDir.toAbsolutePath());
-        LOGGER.info("[{}] Config file path: {}", MOD_ID, discordConfigPath.toAbsolutePath());
-        LOGGER.info("[{}] Config spec has {} values", MOD_ID, ViscordConfig.SPEC.getValues().size());
+        LOGGER.info("[{}] Config file path: {}", MOD_ID, tomlConfigPath.toAbsolutePath());
         
-        SimpleConfigManager.load(discordConfigPath, ViscordConfig.SPEC);
+        // Load TOML config (with auto-migration from JSON if needed)
+        TomlConfigManager.load(configDir);
         
-        if (discordConfigPath.toFile().exists()) {
-            LOGGER.info("[{}] Config file exists and was loaded successfully", MOD_ID);
+        if (tomlConfigPath.toFile().exists()) {
+            LOGGER.info("[{}] TOML config loaded successfully", MOD_ID);
         } else {
-            LOGGER.error("[{}] Config file still does not exist after load attempt!", MOD_ID);
+            LOGGER.error("[{}] TOML config file still does not exist after load attempt!", MOD_ID);
         }
 
         // Register Discord events
         DiscordEventHandler.register();
 
         LifecycleEvent.SERVER_STARTED.register(server -> {
-            if (ViscordConfig.CONFIG.enabled.get()) {
+            if (ViscordConfigToml.General.ENABLED.get()) {
                 // Non-blocking async initialization
                 java.util.concurrent.CompletableFuture.runAsync(() -> {
                     try {

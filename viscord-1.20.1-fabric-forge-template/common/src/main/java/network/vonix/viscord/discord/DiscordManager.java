@@ -11,7 +11,7 @@ import net.minecraft.network.chat.TextColor;
 import net.minecraft.server.MinecraftServer;
 import net.minecraft.server.level.ServerPlayer;
 import network.vonix.viscord.Viscord;
-import network.vonix.viscord.config.ViscordConfig;
+import network.vonix.viscord.config.toml.ViscordConfigToml;
 import network.vonix.viscord.utils.DiscordFormatter;
 import dev.architectury.platform.Platform;
 import org.javacord.api.entity.message.Message;
@@ -39,8 +39,8 @@ public class DiscordManager {
     private final BotClient botClient;
     private final WebhookClient webhookClient;
     private final MessageConverter messageConverter;
-    private FluxerReceiver fluxerReceiver;
     private final FluxerBotClient fluxerBotClient;
+    private final FluxerWebhookClient fluxerWebhookClient;
 
     // Embed detection and processing
     private final EventEmbedDetector eventDetector = new EventEmbedDetector();
@@ -68,6 +68,7 @@ public class DiscordManager {
         this.webhookClient = new WebhookClient();
         this.messageConverter = new MessageConverter();
         this.fluxerBotClient = new FluxerBotClient();
+        this.fluxerWebhookClient = new FluxerWebhookClient();
     }
 
     public static DiscordManager getInstance() {
@@ -79,10 +80,10 @@ public class DiscordManager {
 
     public boolean isRunning() {
         if (!running) return false;
-        String platform = ViscordConfig.CONFIG.platform.get();
+        String platform = ViscordConfigToml.General.PLATFORM.get();
         if ("fluxer".equalsIgnoreCase(platform)) {
             // Fluxer only uses webhooks, no bot connection needed, EXCEPT if bot status is enabled
-            if (ViscordConfig.CONFIG.setBotStatus.get() && botClient != null) {
+            if (ViscordConfigToml.BotStatus.ENABLED.get() && botClient != null) {
                 return true; // We don't strictly require the bot to be connected for Fluxer to be "running", as it can still send webhooks.
             }
             return true;
@@ -91,29 +92,21 @@ public class DiscordManager {
     }
     
     private boolean isFluxer() {
-        return "fluxer".equalsIgnoreCase(ViscordConfig.CONFIG.platform.get());
-    }
-    
-    private String getFluxerChannelId() {
-        return ViscordConfig.CONFIG.fluxerChannelId.get();
-    }
-    
-    private String getFluxerEventChannelId() {
-        String evtId = ViscordConfig.CONFIG.fluxerEventChannelId.get();
-        return (evtId != null && !evtId.isEmpty()) ? evtId : ViscordConfig.CONFIG.fluxerChannelId.get();
+        return "fluxer".equalsIgnoreCase(ViscordConfigToml.General.PLATFORM.get());
     }
     
     private String getMainWebhookUrl() {
-        // Fluxer uses bot API now — webhook only relevant for Discord
-        return ViscordConfig.CONFIG.discordWebhookUrl.get();
+        // Only Discord uses webhooks now
+        return ViscordConfigToml.Discord.WEBHOOK_URL.get();
     }
     
     private String getEventWebhookUrl() {
-        return ViscordConfig.CONFIG.discordWebhookUrl.get();
+        // Only Discord uses webhooks now
+        return ViscordConfigToml.Discord.WEBHOOK_URL.get();
     }
 
     public void initialize(MinecraftServer server) {
-        if (!ViscordConfig.CONFIG.enabled.get()) {
+        if (!ViscordConfigToml.General.ENABLED.get()) {
             Viscord.LOGGER.info("[Discord] Disabled in config.");
             return;
         }
@@ -128,9 +121,9 @@ public class DiscordManager {
         this.running = true;
         
         // Determine platform
-        String platform = ViscordConfig.CONFIG.platform.get();
+        String platform = ViscordConfigToml.General.PLATFORM.get();
         boolean useFluxer = "fluxer".equalsIgnoreCase(platform);
-        boolean tridirectional = ViscordConfig.CONFIG.enableTridirectionalChat.get();
+        boolean tridirectional = ViscordConfigToml.Tridirectional.ENABLED.get();
         
         if (tridirectional) {
             Viscord.LOGGER.info("[Viscord] Initializing Tridirectional Chat (Discord & Fluxer)");
@@ -146,12 +139,12 @@ public class DiscordManager {
     }
     
     private void initializeFluxer() {
-        String apiKey = ViscordConfig.CONFIG.fluxerApiKey.get();
-        String channelId = ViscordConfig.CONFIG.fluxerChannelId.get();
+        String apiKey = ViscordConfigToml.Fluxer.BOT_TOKEN.get();
+        String channelId = ViscordConfigToml.Fluxer.CHANNEL_ID.get();
         
         // Validate required fields
-        if (apiKey == null || apiKey.isEmpty() || apiKey.equals("YOUR_FLUXER_BOT_TOKEN")) {
-            Viscord.LOGGER.error("[Fluxer] Bot token not configured! Set fluxer.bot_token in config.");
+        if (apiKey == null || apiKey.isEmpty() || apiKey.equals("YOUR_FLUXER_API_KEY")) {
+            Viscord.LOGGER.error("[Fluxer] Bot token not configured! Set fluxer.api_key in config.");
             this.running = false;
             return;
         }
@@ -160,6 +153,10 @@ public class DiscordManager {
             this.running = false;
             return;
         }
+        
+        // Store channel IDs for later use
+        String eventChannelId = ViscordConfigToml.Fluxer.EVENT_CHANNEL_ID.get();
+        this.eventChannelId = (eventChannelId != null && !eventChannelId.isEmpty()) ? eventChannelId : channelId;
         
         // Initialize player preferences sub-system
         Path configDir = dev.architectury.platform.Platform.getConfigFolder().resolve("viscord");
@@ -173,18 +170,25 @@ public class DiscordManager {
         }
         
         // Connect Fluxer Bot via WebSocket Gateway
-        // The bot handles both receiving messages (via gateway) and sending (via Bot API)
         fluxerBotClient.setMessageHandler(this::onFluxerMessage);
         fluxerBotClient.connect(apiKey).thenRun(() -> {
             Viscord.LOGGER.info("[Fluxer] Bot connected successfully.");
-            if (ViscordConfig.CONFIG.setBotStatus.get()) {
+            
+            // Configure webhook URL if set
+            String webhookUrl = ViscordConfigToml.Fluxer.WEBHOOK_URL.get();
+            if (webhookUrl != null && !webhookUrl.isEmpty()) {
+                fluxerWebhookClient.updateUrl(webhookUrl);
+                Viscord.LOGGER.info("[Fluxer] Webhook configured for custom usernames/avatars");
+            }
+            
+            if (ViscordConfigToml.BotStatus.ENABLED.get()) {
                 updateBotStatus();
             }
-            if (!ViscordConfig.CONFIG.enableTridirectionalChat.get()) {
+            if (!ViscordConfigToml.Tridirectional.ENABLED.get()) {
                 // Send startup notification via bot API
                 String evtChannel = getFluxerEventChannelId();
                 fluxerBotClient.sendMessage(evtChannel, 
-                    "\uD83D\uDFE2 **" + ViscordConfig.CONFIG.serverName.get() + "** is now online!");
+                    "\uD83D\uDFE2 **" + ViscordConfigToml.Server.NAME.get() + "** is now online!");
             }
         }).exceptionally(ex -> {
             Viscord.LOGGER.error("[Fluxer] Failed to connect bot: {}", ex.getMessage());
@@ -195,49 +199,63 @@ public class DiscordManager {
             channelId, getFluxerEventChannelId());
     }
     
+    private String getFluxerEventChannelId() {
+        String evtId = ViscordConfigToml.Fluxer.EVENT_CHANNEL_ID.get();
+        return (evtId != null && !evtId.isEmpty()) ? evtId : ViscordConfigToml.Fluxer.CHANNEL_ID.get();
+    }
+    
     private void onFluxerMessage(String username, String message, String avatarUrl) {
         if (server == null) return;
         
-        // Filter our own bridged messages by server prefix to prevent loops
-        if (ViscordConfig.CONFIG.filterByPrefix.get()) {
-            String serverPrefix = ViscordConfig.CONFIG.serverPrefix.get();
-            if (serverPrefix != null && !serverPrefix.isEmpty() && username.startsWith(serverPrefix)) {
-                return;
+        // Apply similar filtering as Discord messages
+        if (ViscordConfigToml.Filters.FILTER_BY_PREFIX.get()) {
+            String serverPrefix = ViscordConfigToml.Server.PREFIX.get();
+            if (serverPrefix != null && !serverPrefix.isEmpty()) {
+                if (username.startsWith(serverPrefix)) {
+                    return;
+                }
             }
         }
         
-        // Format message for Minecraft display
+        // Format message for Minecraft
         String convertedMessage = DiscordFormatter.convertDiscordToMinecraftFormatting(message);
-        String rawFormat = ViscordConfig.CONFIG.discordToMinecraftFormat.get()
+        String rawFormat = ViscordConfigToml.Messages.DISCORD_TO_MINECRAFT.get()
                 .replace("{username}", username)
-                .replace("{message}", convertedMessage)
-                .replace("[Discord]", "[Fluxer]");
+                .replace("{message}", convertedMessage);
         
-        Component finalComponent = toMinecraftComponentWithLinks(rawFormat);
-        server.execute(() -> broadcastSystemMessageRespectingFilters(finalComponent));
+        // Replace [Discord] with [Fluxer] for clarity
+        String formatted = rawFormat.replace("[Discord]", "[Fluxer]");
+        
+        Component finalComponent = toMinecraftComponentWithLinks(formatted);
+        
+        // Broadcast to server with player preference filtering
+        server.execute(() -> {
+            broadcastSystemMessageRespectingFilters(finalComponent);
+        });
         
         // Tridirectional: Bridge to Discord if enabled
-        if (ViscordConfig.CONFIG.enableTridirectionalChat.get() && ViscordConfig.CONFIG.fluxerToDiscord.get()) {
+        if (ViscordConfigToml.Tridirectional.ENABLED.get() && 
+            ViscordConfigToml.Tridirectional.FLUXER_TO_DISCORD.get()) {
             // Pass the formatted content to bridgeFluxerToDiscord for proper echo detection
-            bridgeFluxerToDiscord(username, rawFormat);
+            bridgeFluxerToDiscord(username, formatted);
         }
     }
     
     private void initializeDiscord(boolean isStatusOnly) {
         // 1. Initialize Discord Clients
-        String webhookUrl = ViscordConfig.CONFIG.discordWebhookUrl.get();
-        String botToken = ViscordConfig.CONFIG.discordBotToken.get();
-        String channelId = ViscordConfig.CONFIG.discordChannelId.get();
+        String webhookUrl = ViscordConfigToml.Discord.WEBHOOK_URL.get();
+        String botToken = ViscordConfigToml.Discord.BOT_TOKEN.get();
+        String channelId = ViscordConfigToml.Discord.CHANNEL_ID.get();
 
         this.originalDiscordWebhookUrl = webhookUrl;
         
         // Only update webhook URL if we're not exclusively using Fluxer for webhooks
-        if (!isFluxer() || ViscordConfig.CONFIG.enableTridirectionalChat.get()) {
+        if (!isFluxer() || ViscordConfigToml.Tridirectional.ENABLED.get()) {
             this.webhookClient.updateUrl(webhookUrl);
         }
 
         // Determine event channel
-        String pEventChannelId = ViscordConfig.CONFIG.eventChannelId.get();
+        String pEventChannelId = ViscordConfigToml.Discord.Events.CHANNEL_ID.get();
         if (pEventChannelId != null && !pEventChannelId.isEmpty()) {
             this.eventChannelId = pEventChannelId;
             Viscord.LOGGER.info("[Discord] Using separate channel for events: {}", pEventChannelId);
@@ -254,7 +272,7 @@ public class DiscordManager {
         }
         try {
             this.playerPreferences = new PlayerPreferences(configDir);
-            if (ViscordConfig.CONFIG.enableAccountLinking.get()) {
+            if (ViscordConfigToml.AccountLinking.ENABLED.get()) {
                 this.linkedAccountsManager = new LinkedAccountsManager(configDir);
             }
         } catch (IOException e) {
@@ -271,7 +289,7 @@ public class DiscordManager {
                 Viscord.LOGGER.info("[Discord] Bot connected successfully for status updates only.");
             } else {
                 Viscord.LOGGER.info("[Discord] Bot connected successfully, sending startup embed to channel: {}", eventChannelId);
-                sendStartupEmbed(ViscordConfig.CONFIG.serverName.get());
+                sendStartupEmbed(ViscordConfigToml.Server.NAME.get());
             }
             // 5. Set initial bot status
             updateBotStatus();
@@ -285,43 +303,38 @@ public class DiscordManager {
     }
 
     public void shutdown() {
-        if (!running) return;
+        if (!running)
+            return;
 
-        Viscord.LOGGER.info("[Viscord] Sending shutdown message...");
-        
-        if (isFluxer() && fluxerBotClient != null && fluxerBotClient.isConnected()) {
-            // Send shutdown via Fluxer Bot API synchronously before disconnect
-            try {
-                String evtChannel = getFluxerEventChannelId();
-                fluxerBotClient.sendMessage(evtChannel,
-                    "\uD83D\uDD34 **" + ViscordConfig.CONFIG.serverName.get() + "** is shutting down."
-                ).get(3, TimeUnit.SECONDS);
-            } catch (Exception e) {
-                Viscord.LOGGER.warn("[Fluxer] Failed to send shutdown message: {}", e.getMessage());
-            }
+        Viscord.LOGGER.info("[Discord] Sending shutdown message...");
+        try {
+            // Use non-blocking async approach with timeout instead of blocking .get()
+            sendShutdownEmbed(ViscordConfigToml.Server.NAME.get())
+                .orTimeout(3, TimeUnit.SECONDS)
+                .whenComplete((msg, error) -> {
+                    if (error != null) {
+                        Viscord.LOGGER.warn("[Discord] Failed to send shutdown message: {}", error.getMessage());
+                    } else {
+                        Viscord.LOGGER.info("[Discord] Shutdown message sent successfully");
+                    }
+                    
+                    // Continue cleanup after message is sent or times out
+                    continueShutdown();
+                });
+            
+            // Give a short time for the async operation to complete
+            // but don't block the main thread
+            Thread.sleep(100);
+        } catch (Exception e) {
+            Viscord.LOGGER.warn("[Discord] Failed to send shutdown message: {}", e.getMessage());
             continueShutdown();
-        } else {
-            try {
-                sendShutdownEmbed(ViscordConfig.CONFIG.serverName.get())
-                    .orTimeout(3, TimeUnit.SECONDS)
-                    .whenComplete((msg, error) -> {
-                        if (error != null) {
-                            Viscord.LOGGER.warn("[Discord] Failed to send shutdown message: {}", error.getMessage());
-                        }
-                        continueShutdown();
-                    });
-                Thread.sleep(100);
-            } catch (Exception e) {
-                Viscord.LOGGER.warn("[Discord] Failed to send shutdown message: {}", e.getMessage());
-                continueShutdown();
-            }
         }
 
         running = false;
     }
     
     private void continueShutdown() {
-        // Disconnect Discord bot client
+        // Disconnect bot client with error handling
         if (botClient != null) {
             try {
                 botClient.disconnect();
@@ -330,7 +343,7 @@ public class DiscordManager {
             }
         }
 
-        // Disconnect Fluxer bot client
+        // Disconnect Fluxer bot client with error handling
         if (fluxerBotClient != null) {
             try {
                 fluxerBotClient.disconnect();
@@ -339,12 +352,21 @@ public class DiscordManager {
             }
         }
 
-        // Shutdown webhook client (Discord only)
+        // Shutdown webhook client with error handling
         if (webhookClient != null) {
             try {
                 webhookClient.shutdown();
             } catch (Exception e) {
                 Viscord.LOGGER.error("[Discord] Error shutting down webhook client: {}", e.getMessage());
+            }
+        }
+
+        // Shutdown Fluxer webhook client
+        if (fluxerWebhookClient != null) {
+            try {
+                fluxerWebhookClient.shutdown();
+            } catch (Exception e) {
+                Viscord.LOGGER.error("[Fluxer] Error shutting down webhook client: {}", e.getMessage());
             }
         }
     }
@@ -358,8 +380,8 @@ public class DiscordManager {
 
         Message message = event.getMessage();
         String msgChannelId = message.getChannel().getIdAsString();
-        String mainChannelId = ViscordConfig.CONFIG.discordChannelId.get();
-        String eventChannelId = ViscordConfig.CONFIG.eventChannelId.get();
+        String mainChannelId = ViscordConfigToml.Discord.CHANNEL_ID.get();
+        String eventChannelId = ViscordConfigToml.Discord.Events.CHANNEL_ID.get();
 
         boolean isMainChannel = mainChannelId != null && mainChannelId.equals(msgChannelId);
         boolean isEventChannel = eventChannelId != null && !eventChannelId.isEmpty()
@@ -383,16 +405,16 @@ public class DiscordManager {
         }
 
         // If it's an event channel message, check if we should show other server events
-        if (isEventChannel && !ViscordConfig.CONFIG.showOtherServerEvents.get()) {
+        if (isEventChannel && !ViscordConfigToml.Filters.SHOW_OTHER_SERVER_EVENTS.get()) {
             return;
         }
 
         // Filter out bots if configured
-        if (ViscordConfig.CONFIG.ignoreBots.get() && message.getAuthor().isBotUser())
+        if (ViscordConfigToml.Filters.IGNORE_BOTS.get() && message.getAuthor().isBotUser())
             return;
 
         // Filter out webhooks if configured
-        if (ViscordConfig.CONFIG.ignoreWebhooks.get() && message.getAuthor().isWebhook())
+        if (ViscordConfigToml.Filters.IGNORE_WEBHOOKS.get() && message.getAuthor().isWebhook())
             return;
 
         // Store original message for tridirectional bridging
@@ -403,8 +425,8 @@ public class DiscordManager {
         processDiscordMessageForMinecraft(event);
         
         // Tridirectional: Bridge to Fluxer if enabled
-        if (ViscordConfig.CONFIG.enableTridirectionalChat.get() && 
-            ViscordConfig.CONFIG.discordToFluxer.get()) {
+        if (ViscordConfigToml.Tridirectional.ENABLED.get() && 
+            ViscordConfigToml.Tridirectional.DISCORD_TO_FLUXER.get()) {
             bridgeDiscordToFluxer(authorName, content, message);
         }
     }
@@ -413,11 +435,17 @@ public class DiscordManager {
      * Bridges Discord messages to Fluxer for tridirectional chat.
      */
     private void bridgeDiscordToFluxer(String authorName, String content, Message message) {
-        if (!isFluxerConfigured()) return;
+        if (!isFluxerConfigured()) {
+            return;
+        }
         
         try {
+            // Format message for Fluxer with source identification
+            // Discord messages don't need formatting conversion as they're plain text
             String fluxerMessage = formatMessageForPlatform(content, "Discord", authorName);
-            String channelId = getFluxerChannelId();
+            
+            // Send to Fluxer via Bot API (not webhook)
+            String channelId = ViscordConfigToml.Fluxer.CHANNEL_ID.get();
             fluxerBotClient.sendMessage(channelId, fluxerMessage);
             Viscord.LOGGER.debug("[Tridirectional] Bridged Discord message to Fluxer: {}", authorName);
         } catch (Exception e) {
@@ -441,32 +469,36 @@ public class DiscordManager {
         }
         
         try {
+            // Remove [Fluxer] prefix from message content to avoid duplication
+            String cleanMessage = message.replaceFirst("^\\[Fluxer\\]\\s*", "");
+
+            // Extract just the message part after the username if it exists
+            if (cleanMessage.matches(".*" + Pattern.quote(username) + ":\\s*.*")) {
+                cleanMessage = cleanMessage.replaceFirst(".*" + Pattern.quote(username) + ":\\s*", "");
+            }
+
             // Convert Minecraft formatting codes to Discord markdown for Fluxer messages
-            String convertedMessage = DiscordFormatter.convertToDiscordFormatting(message);
-            
-            // Format message for Discord with source identification
-            String discordMessage = formatMessageForPlatform(convertedMessage, "Fluxer", username);
-            
-            // Send to Discord via webhook
-            String discordWebhookUrl = ViscordConfig.CONFIG.discordWebhookUrl.get();
+            String convertedMessage = DiscordFormatter.convertToDiscordFormatting(cleanMessage);
+
+            // Send to Discord via webhook with [Fluxer] prefix in username
+            String discordWebhookUrl = ViscordConfigToml.Discord.WEBHOOK_URL.get();
             if (discordWebhookUrl != null && !discordWebhookUrl.isEmpty()) {
                 // Temporarily update webhook URL and send message
                 String originalUrl = originalDiscordWebhookUrl;
                 webhookClient.updateUrl(discordWebhookUrl);
-                webhookClient.sendMessage(username, "", discordMessage);
+                webhookClient.sendMessage("[Fluxer]" + username, "", convertedMessage);
                 webhookClient.updateUrl(originalUrl); // Restore original URL
                 Viscord.LOGGER.debug("[Tridirectional] Bridged Fluxer message to Discord: {}", username);
             }
         } catch (Exception e) {
             Viscord.LOGGER.error("[Tridirectional] Failed to bridge Fluxer message to Discord", e);
-        }
-    }
+        }    }
     
     /**
      * Formats message with platform source identification.
      */
     private String formatMessageForPlatform(String message, String sourcePlatform, String authorName) {
-        if (ViscordConfig.CONFIG.showPlatformSource.get()) {
+        if (ViscordConfigToml.Tridirectional.SHOW_SOURCE.get()) {
             return "[" + sourcePlatform + "] " + authorName + ": " + message;
         } else {
             return authorName + ": " + message;
@@ -477,7 +509,7 @@ public class DiscordManager {
      * Checks if Discord is properly configured.
      */
     private boolean isDiscordConfigured() {
-        String webhookUrl = ViscordConfig.CONFIG.discordWebhookUrl.get();
+        String webhookUrl = ViscordConfigToml.Discord.WEBHOOK_URL.get();
         return webhookUrl != null && !webhookUrl.isEmpty();
     }
     
@@ -485,9 +517,9 @@ public class DiscordManager {
      * Checks if Fluxer is properly configured (bot token + channel ID).
      */
     private boolean isFluxerConfigured() {
-        String token = ViscordConfig.CONFIG.fluxerApiKey.get();
-        String channelId = ViscordConfig.CONFIG.fluxerChannelId.get();
-        return token != null && !token.isEmpty() && !token.equals("YOUR_FLUXER_BOT_TOKEN")
+        String token = ViscordConfigToml.Fluxer.BOT_TOKEN.get();
+        String channelId = ViscordConfigToml.Fluxer.CHANNEL_ID.get();
+        return token != null && !token.isEmpty() && !token.equals("YOUR_FLUXER_API_KEY")
             && channelId != null && !channelId.isEmpty() && !channelId.equals("YOUR_FLUXER_CHANNEL_ID");
     }
     
@@ -500,8 +532,8 @@ public class DiscordManager {
 
         Message message = event.getMessage();
         String msgChannelId = message.getChannel().getIdAsString();
-        String mainChannelId = ViscordConfig.CONFIG.discordChannelId.get();
-        String eventChannelId = ViscordConfig.CONFIG.eventChannelId.get();
+        String mainChannelId = ViscordConfigToml.Discord.CHANNEL_ID.get();
+        String eventChannelId = ViscordConfigToml.Discord.Events.CHANNEL_ID.get();
 
         boolean isMainChannel = mainChannelId != null && mainChannelId.equals(msgChannelId);
         boolean isEventChannel = eventChannelId != null && !eventChannelId.isEmpty()
@@ -519,27 +551,27 @@ public class DiscordManager {
         }
 
         // If it's an event channel message, check if we should show other server events
-        if (isEventChannel && !ViscordConfig.CONFIG.showOtherServerEvents.get()) {
+        if (isEventChannel && !ViscordConfigToml.Filters.SHOW_OTHER_SERVER_EVENTS.get()) {
             return;
         }
 
         // Filter out bots if configured
-        if (ViscordConfig.CONFIG.ignoreBots.get() && message.getAuthor().isBotUser())
+        if (ViscordConfigToml.Filters.IGNORE_BOTS.get() && message.getAuthor().isBotUser())
             return;
 
         // Filter out webhooks if configured
-        if (ViscordConfig.CONFIG.ignoreWebhooks.get() && message.getAuthor().isWebhook())
+        if (ViscordConfigToml.Filters.IGNORE_WEBHOOKS.get() && message.getAuthor().isWebhook())
             return;
 
         // Filter by prefix to prevent echoing our own messages
-        if (ViscordConfig.CONFIG.filterByPrefix.get()) {
-            String serverPrefix = ViscordConfig.CONFIG.serverPrefix.get();
+        if (ViscordConfigToml.Filters.FILTER_BY_PREFIX.get()) {
+            String serverPrefix = ViscordConfigToml.Server.PREFIX.get();
             if (serverPrefix != null && !serverPrefix.isEmpty()) {
                 String authorName = message.getAuthor().getDisplayName();
                 if (authorName.startsWith(serverPrefix)) {
                     return;
                 }
-                String webhookFormat = ViscordConfig.CONFIG.webhookUsernameFormat.get();
+                String webhookFormat = ViscordConfigToml.Messages.WEBHOOK_USERNAME.get();
                 if (webhookFormat != null && webhookFormat.contains("{prefix}")) {
                     String expectedStart = webhookFormat.split("\\{prefix\\}")[0] + serverPrefix;
                     if (authorName.startsWith(expectedStart) || authorName.startsWith(serverPrefix)) {
@@ -634,7 +666,7 @@ public class DiscordManager {
                     String remainingName = displayName.substring(endBracket + 1).trim();
 
                     // Check if event channel
-                    String eventChanId = ViscordConfig.CONFIG.eventChannelId.get();
+                    String eventChanId = ViscordConfigToml.Discord.Events.CHANNEL_ID.get();
                     boolean isEvtChannel = eventChanId != null && !eventChanId.isEmpty()
                             && eventChanId.equals(msgChannelId);
 
@@ -657,9 +689,9 @@ public class DiscordManager {
                 finalComponent.append(toMinecraftComponentWithLinks(formattedMessage));
             } else {
                 // Regular Discord user: make [Discord] clickable
-                String inviteUrl = ViscordConfig.CONFIG.discordInviteUrl.get();
+                String inviteUrl = ViscordConfigToml.Discord.INVITE_URL.get();
                 String convertedContent = DiscordFormatter.convertDiscordToMinecraftFormatting(content);
-                String rawFormat = ViscordConfig.CONFIG.discordToMinecraftFormat.get()
+                String rawFormat = ViscordConfigToml.Messages.DISCORD_TO_MINECRAFT.get()
                         .replace("{username}", authorName)
                         .replace("{message}", convertedContent);
 
@@ -711,7 +743,7 @@ public class DiscordManager {
                 server.execute(() -> {
                     broadcastEventMessageRespectingFilters(eventComponent);
                 });
-                if (ViscordConfig.CONFIG.debugLogging.get()) {
+                if (ViscordConfigToml.General.DEBUG.get()) {
                     Viscord.LOGGER.debug("[Discord] Processed event embed: {} {}",
                             data.getPlayerName(), data.getActionString());
                 }
@@ -740,7 +772,7 @@ public class DiscordManager {
                 server.execute(() -> {
                     broadcastEventMessageRespectingFilters(advComponent);
                 });
-                if (ViscordConfig.CONFIG.debugLogging.get()) {
+                if (ViscordConfigToml.General.DEBUG.get()) {
                     Viscord.LOGGER.debug("[Discord] Processed advancement embed: {} - {}",
                             data.getPlayerName(), data.getAdvancementTitle());
                 }
@@ -766,7 +798,7 @@ public class DiscordManager {
                 server.execute(() -> {
                     broadcastEventMessageRespectingFilters(convertedComponent);
                 });
-                if (ViscordConfig.CONFIG.debugLogging.get()) {
+                if (ViscordConfigToml.General.DEBUG.get()) {
                     Viscord.LOGGER.debug("[Discord] Used embed conversion fallback");
                 }
                 return;
@@ -847,7 +879,7 @@ public class DiscordManager {
                 String prefix = authorName.substring(0, endBracket + 1);
                 formattedMessage = "§a" + prefix + " §f" + text;
             } else {
-                String serverPrefix = ViscordConfig.CONFIG.serverPrefix.get();
+                String serverPrefix = ViscordConfigToml.Server.PREFIX.get();
                 formattedMessage = "§a[" + serverPrefix + "] §f" + text;
             }
 
@@ -976,26 +1008,37 @@ public class DiscordManager {
     // =================================================================================
 
     public void sendMinecraftMessage(String username, String message) {
-        if (!running) return;
+        if (!running)
+            return;
 
-        String prefix = ViscordConfig.CONFIG.serverPrefix.get();
+        String prefix = ViscordConfigToml.Server.PREFIX.get();
+        String formattedUsername = ViscordConfigToml.Messages.WEBHOOK_USERNAME.get()
+                .replace("{prefix}", prefix)
+                .replace("{username}", username);
+
+        String avatarUrl = getAvatarUrl(username);
+        
+        // Convert Minecraft formatting codes to Discord markdown
         String formattedMessage = DiscordFormatter.convertToDiscordFormatting(message);
-
+        
         if (isFluxer()) {
-            // Fluxer: send via Bot API using channel ID
-            String channelId = getFluxerChannelId();
-            String displayName = ViscordConfig.CONFIG.webhookUsernameFormat.get()
-                    .replace("{prefix}", prefix)
-                    .replace("{username}", username);
-            String fluxerContent = "**" + displayName + "**: " + formattedMessage;
-            fluxerBotClient.sendMessage(channelId, fluxerContent);
+            String fluxerWebhookUrl = ViscordConfigToml.Fluxer.WEBHOOK_URL.get();
+            if (fluxerWebhookUrl != null && !fluxerWebhookUrl.isEmpty()) {
+                // Use webhook for custom username/avatar
+                fluxerWebhookClient.updateUrl(fluxerWebhookUrl);
+                fluxerWebhookClient.sendMessage(formattedUsername, avatarUrl, formattedMessage);
+            } else {
+                // Fall back to Bot API (shows bot name, not player name)
+                String channelId = ViscordConfigToml.Fluxer.CHANNEL_ID.get();
+                String displayName = ViscordConfigToml.Messages.WEBHOOK_USERNAME.get()
+                        .replace("{prefix}", prefix)
+                        .replace("{username}", username);
+                String fluxerContent = "**" + displayName + "**: " + formattedMessage;
+                fluxerBotClient.sendMessage(channelId, fluxerContent);
+            }
         } else {
             // Discord: send via webhook with avatar
             if (webhookClient == null) return;
-            String formattedUsername = ViscordConfig.CONFIG.webhookUsernameFormat.get()
-                    .replace("{prefix}", prefix)
-                    .replace("{username}", username);
-            String avatarUrl = getAvatarUrl(username);
             String webhookUrl = getMainWebhookUrl();
             if (webhookUrl != null && !webhookUrl.isEmpty()) {
                 webhookClient.updateUrl(webhookUrl);
@@ -1008,8 +1051,8 @@ public class DiscordManager {
         if (!running || webhookClient == null)
             return;
 
-        String prefix = ViscordConfig.CONFIG.serverPrefix.get();
-        String formattedUsername = ViscordConfig.CONFIG.webhookUsernameFormat.get()
+        String prefix = ViscordConfigToml.Server.PREFIX.get();
+        String formattedUsername = ViscordConfigToml.Messages.WEBHOOK_USERNAME.get()
                 .replace("{prefix}", prefix)
                 .replace("{username}", username);
 
@@ -1032,7 +1075,7 @@ public class DiscordManager {
 
     private CompletableFuture<Message> sendEventEmbedInternal(Consumer<JsonObject> embedBuilder) {
         if (!running) {
-            Viscord.LOGGER.debug("[Discord] Cannot send event embed - not running");
+            Viscord.LOGGER.debug("[Discord] Cannot send event embed - Discord not running");
             return CompletableFuture.completedFuture(null);
         }
 
@@ -1040,23 +1083,28 @@ public class DiscordManager {
         embedBuilder.accept(embed);
 
         if (isFluxer()) {
-            // Fluxer: send as plain text via Bot API (no embed support in Fluxer API v1)
-            String evtChannelId = getFluxerEventChannelId();
-            String textContent = embedToPlainText(embed);
-            fluxerBotClient.sendMessage(evtChannelId, textContent);
+            String webhookUrl = getEventWebhookUrl();
+            if (webhookUrl != null && !webhookUrl.isEmpty()) {
+                String originalUrl = webhookClient.getUrl();
+                webhookClient.updateUrl(webhookUrl);
+                webhookClient.sendEmbed(ViscordConfigToml.Server.NAME.get(), null, embed);
+                if (originalUrl != null) {
+                    webhookClient.updateUrl(originalUrl);
+                }
+            }
             
-            if (!ViscordConfig.CONFIG.enableTridirectionalChat.get()) {
+            // Stop here if not tridirectional
+            if (!ViscordConfigToml.Tridirectional.ENABLED.get()) {
                 return CompletableFuture.completedFuture(null);
             }
         }
 
-        // Discord path: send rich embed via botClient
         if (eventChannelId == null || eventChannelId.isEmpty()) {
             Viscord.LOGGER.warn("[Discord] Cannot send event embed - event channel ID not set");
             return CompletableFuture.completedFuture(null);
         }
 
-        if (ViscordConfig.CONFIG.debugLogging.get()) {
+        if (ViscordConfigToml.General.DEBUG.get()) {
             Viscord.LOGGER.debug("[Discord] Sending event embed to channel: {}", eventChannelId);
         }
 
@@ -1065,23 +1113,6 @@ public class DiscordManager {
                 Viscord.LOGGER.error("[Discord] Failed to send event embed to channel {}", eventChannelId, error);
             }
         });
-    }
-    
-    /**
-     * Converts an embed JSON object to a plain text string for Fluxer (which uses Bot API v1).
-     */
-    private String embedToPlainText(JsonObject embed) {
-        StringBuilder sb = new StringBuilder();
-        if (embed.has("title")) sb.append("**").append(embed.get("title").getAsString()).append("**");
-        if (embed.has("description")) sb.append(" ").append(embed.get("description").getAsString());
-        if (embed.has("fields")) {
-            embed.getAsJsonArray("fields").forEach(el -> {
-                com.google.gson.JsonObject f = el.getAsJsonObject();
-                sb.append(" | ").append(f.get("name").getAsString())
-                  .append(": ").append(f.get("value").getAsString());
-            });
-        }
-        return sb.toString().trim();
     }
 
     public void sendStartupEmbed(String serverName) {
@@ -1103,7 +1134,7 @@ public class DiscordManager {
     }
 
     public void sendJoinEmbed(String username, String uuid) {
-        if (!ViscordConfig.CONFIG.sendJoin.get())
+        if (!ViscordConfigToml.Messages.Events.JOIN.get())
             return;
 
         if (!isRunning()) {
@@ -1116,19 +1147,19 @@ public class DiscordManager {
                 username + " joined the game",
                 0x5865F2,
                 username,
-                ViscordConfig.CONFIG.serverName.get(),
+                ViscordConfigToml.Server.NAME.get(),
                 "Join",
                 getAvatarUrl(username))).whenComplete((msg, error) -> {
                     if (error != null) {
                         Viscord.LOGGER.error("[Discord] Failed to send join embed for {}", username, error);
-                    } else if (ViscordConfig.CONFIG.debugLogging.get()) {
+                    } else if (ViscordConfigToml.General.DEBUG.get()) {
                         Viscord.LOGGER.debug("[Discord] Sent join embed for {}", username);
                     }
                 });
     }
 
     public void sendLeaveEmbed(String username, String uuid) {
-        if (!ViscordConfig.CONFIG.sendLeave.get())
+        if (!ViscordConfigToml.Messages.Events.LEAVE.get())
             return;
 
         if (!isRunning()) {
@@ -1141,12 +1172,12 @@ public class DiscordManager {
                 username + " left the game",
                 0x99AAB5,
                 username,
-                ViscordConfig.CONFIG.serverName.get(),
+                ViscordConfigToml.Server.NAME.get(),
                 "Leave",
                 getAvatarUrl(username))).whenComplete((msg, error) -> {
                     if (error != null) {
                         Viscord.LOGGER.error("[Discord] Failed to send leave embed for {}", username, error);
-                    } else if (ViscordConfig.CONFIG.debugLogging.get()) {
+                    } else if (ViscordConfigToml.General.DEBUG.get()) {
                         Viscord.LOGGER.debug("[Discord] Sent leave embed for {}", username);
                     }
                 });
@@ -1170,7 +1201,7 @@ public class DiscordManager {
                 title,
                 description,
                 color,
-                ViscordConfig.CONFIG.serverName.get(),
+                ViscordConfigToml.Server.NAME.get(),
                 "Viscord"));
     }
 
@@ -1179,7 +1210,7 @@ public class DiscordManager {
     }
 
     public void sendDeathEmbed(String message) {
-        if (!ViscordConfig.CONFIG.sendDeath.get())
+        if (!ViscordConfigToml.Messages.Events.DEATH.get())
             return;
 
         if (!isRunning()) {
@@ -1194,7 +1225,7 @@ public class DiscordManager {
         }).whenComplete((msg, error) -> {
             if (error != null) {
                 Viscord.LOGGER.error("[Discord] Failed to send death embed", error);
-            } else if (ViscordConfig.CONFIG.debugLogging.get()) {
+            } else if (ViscordConfigToml.General.DEBUG.get()) {
                 Viscord.LOGGER.debug("[Discord] Sent death embed");
             }
         });
@@ -1204,7 +1235,7 @@ public class DiscordManager {
     private final java.util.Map<String, Long> recentAdvancements = new java.util.concurrent.ConcurrentHashMap<>();
 
     public void sendAdvancementEmbed(String username, String title, String desc) {
-        if (!ViscordConfig.CONFIG.sendAdvancement.get())
+        if (!ViscordConfigToml.Messages.Events.ADVANCEMENT.get())
             return;
 
         long now = System.currentTimeMillis();
@@ -1235,20 +1266,20 @@ public class DiscordManager {
                 desc)).whenComplete((msg, error) -> {
                     if (error != null) {
                         Viscord.LOGGER.error("[Discord] Failed to send advancement embed for {}", username, error);
-                    } else if (ViscordConfig.CONFIG.debugLogging.get()) {
+                    } else if (ViscordConfigToml.General.DEBUG.get()) {
                         Viscord.LOGGER.debug("[Discord] Sent advancement embed for {}", username);
                     }
                 });
     }
 
     public void updateBotStatus() {
-        if (server == null || !ViscordConfig.CONFIG.setBotStatus.get()) {
+        if (server == null || !ViscordConfigToml.BotStatus.ENABLED.get()) {
             return;
         }
         
         int online = server.getPlayerList().getPlayerCount();
         int max = server.getPlayerList().getMaxPlayers();
-        String format = ViscordConfig.CONFIG.botStatusFormat.get();
+        String format = ViscordConfigToml.BotStatus.FORMAT.get();
         String status = format.replace("{online}", String.valueOf(online))
                               .replace("{max}", String.valueOf(max));
         
@@ -1268,7 +1299,7 @@ public class DiscordManager {
      * Non-blocking and thread-safe.
      */
     public void scheduleStatusUpdate(int delayMs) {
-        if (server == null || !ViscordConfig.CONFIG.setBotStatus.get()) {
+        if (server == null || !ViscordConfigToml.BotStatus.ENABLED.get()) {
             return;
         }
         
@@ -1326,7 +1357,7 @@ public class DiscordManager {
             return null;
         }
         
-        if (!ViscordConfig.CONFIG.enableAccountLinking.get()) {
+        if (!ViscordConfigToml.AccountLinking.ENABLED.get()) {
             Viscord.LOGGER.warn("[Viscord] Account linking is disabled in configuration");
             return null;
         }
@@ -1356,7 +1387,7 @@ public class DiscordManager {
         int onlinePlayers = players.size();
         int maxPlayers = server.getPlayerList().getMaxPlayers();
 
-        String serverName = ViscordConfig.CONFIG.serverName.get();
+        String serverName = ViscordConfigToml.Server.NAME.get();
 
         org.javacord.api.entity.message.embed.EmbedBuilder embed = new org.javacord.api.entity.message.embed.EmbedBuilder()
                 .setTitle("📋 " + serverName)
@@ -1398,7 +1429,7 @@ public class DiscordManager {
 
     private void handleLinkCommand(org.javacord.api.event.message.MessageCreateEvent event) {
         try {
-            if (!ViscordConfig.CONFIG.enableAccountLinking.get()) {
+            if (!ViscordConfigToml.AccountLinking.ENABLED.get()) {
                 event.getChannel().sendMessage("❌ Account linking is disabled.");
                 return;
             }
@@ -1435,7 +1466,7 @@ public class DiscordManager {
     }
 
     private String getAvatarUrl(String username) {
-        String url = ViscordConfig.CONFIG.avatarUrl.get().replace("{username}", username);
+        String url = ViscordConfigToml.Messages.AVATAR_URL.get().replace("{username}", username);
         if (server != null) {
             ServerPlayer player = server.getPlayerList().getPlayerByName(username);
             if (player != null) {

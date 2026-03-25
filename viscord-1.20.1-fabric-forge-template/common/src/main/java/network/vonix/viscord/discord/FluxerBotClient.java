@@ -21,7 +21,7 @@ import java.util.concurrent.atomic.AtomicInteger;
 import java.util.concurrent.Executors;
 import java.util.concurrent.ScheduledExecutorService;
 import java.util.concurrent.TimeUnit;
-import network.vonix.viscord.config.ViscordConfig;
+import network.vonix.viscord.config.toml.ViscordConfigToml;
 
 /**
  * A WebSocket client for connecting to Fluxer.app's gateway.
@@ -302,30 +302,11 @@ public class FluxerBotClient {
                         if (connectFuture != null && !connectFuture.isDone()) {
                             connectFuture.complete(null);
                         }
-                        
-                        // Immediately push a presence update so status text and Online show right away.
-                        // The identify payload only carries an empty activities list (for Online indicator),
-                        // so we need a separate OP 3 to set the actual activity/status text.
-                        scheduler.schedule(() -> {
-                            if (authenticated && webSocket != null && webSocket.isOpen()) {
-                                String fmt = network.vonix.viscord.config.ViscordConfig.CONFIG.botStatusFormat.get();
-                                // Send "online" presence with placeholder counts; DiscordManager.updateBotStatus()
-                                // will immediately follow this with the real player count via its own call.
-                                updateStatus(fmt.replace("{online}", "0").replace("{max}", "0"));
-                            }
-                        }, 500, TimeUnit.MILLISECONDS);
                     } else if ("RESUMED".equals(t)) {
                         Viscord.LOGGER.info("[Fluxer Bot] Session resumed successfully.");
                         connected = true;
                         authenticated = true;
                         reconnectAttempts = 0;
-                        // Re-push presence after resume
-                        scheduler.schedule(() -> {
-                            if (authenticated && webSocket != null && webSocket.isOpen()) {
-                                String fmt = network.vonix.viscord.config.ViscordConfig.CONFIG.botStatusFormat.get();
-                                updateStatus(fmt.replace("{online}", "0").replace("{max}", "0"));
-                            }
-                        }, 500, TimeUnit.MILLISECONDS);
                     } else if ("MESSAGE_CREATE".equals(t)) {
                         handleMessageCreate(json.getAsJsonObject("d"));
                     }
@@ -371,7 +352,7 @@ public class FluxerBotClient {
             if (content.isEmpty()) return;
             if (author.has("bot") && author.get("bot").getAsBoolean()) return;
             
-            if (ViscordConfig.CONFIG.debugLogging.get()) {
+            if (ViscordConfigToml.General.DEBUG.get()) {
                 Viscord.LOGGER.debug("[Fluxer Bot] Received message from {}: {}", username, content);
             }
             
@@ -462,7 +443,8 @@ public class FluxerBotClient {
 
     public void updateStatus(String status) {
         if (!authenticated || webSocket == null || !webSocket.isOpen()) {
-            Viscord.LOGGER.debug("[Fluxer Bot] Cannot update status - not connected or authenticated");
+            Viscord.LOGGER.warn("[Fluxer Bot] Cannot update status - not connected (authenticated={}, wsOpen={})", 
+                authenticated, webSocket != null && webSocket.isOpen());
             return;
         }
 
@@ -567,7 +549,7 @@ public class FluxerBotClient {
                 
                 int responseCode = conn.getResponseCode();
                 if (responseCode >= 200 && responseCode < 300) {
-                    if (ViscordConfig.CONFIG.debugLogging.get()) {
+                    if (ViscordConfigToml.General.DEBUG.get()) {
                         Viscord.LOGGER.debug("[Fluxer Bot] Message sent successfully to channel {}", channelId);
                     }
                     return true;

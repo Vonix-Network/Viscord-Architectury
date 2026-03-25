@@ -5,7 +5,7 @@ import net.minecraftforge.event.ServerChatEvent;
 import net.minecraftforge.eventbus.api.EventPriority;
 import net.minecraftforge.eventbus.api.SubscribeEvent;
 import network.vonix.viscord.Viscord;
-import network.vonix.viscord.config.ViscordConfig;
+import network.vonix.viscord.config.toml.ViscordConfigToml;
 import network.vonix.viscord.discord.DiscordManager;
 
 public class ForgeChatEventHandler {
@@ -20,8 +20,8 @@ public class ForgeChatEventHandler {
             if (manager.isRunning()) {
                 boolean shouldSend = true;
 
-                if (ViscordConfig.CONFIG.enableChatFilter.get()) {
-                    String filterPrefix = ViscordConfig.CONFIG.chatFilterPrefix.get();
+                if (ViscordConfigToml.Filters.Chat.ENABLED.get()) {
+                    String filterPrefix = ViscordConfigToml.Filters.Chat.PREFIX.get();
                     if (filterPrefix != null && !filterPrefix.isEmpty()
                             && rawMessage.startsWith(filterPrefix)) {
                         shouldSend = false;

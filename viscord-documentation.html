@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Viscord 2.4.13 - Complete Documentation</title>
+    <title>Viscord 2.4.14 - Complete Documentation</title>
     <link href="https://fonts.googleapis.com/css2?family=Outfit:wght@300;400;500;600;700;800&display=swap" rel="stylesheet">
     <link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css" rel="stylesheet">
     <style>
@@ -741,6 +741,62 @@
                     <div class="step-content">
                         <h3>Point Fluxer Dashboard</h3>
                         <p>In your Fluxer provider settings, set the receiver endpoint to <code>http://your-server-ip:8080/webhook</code></p>
+                    </div>
+                </div>
+            </div>
+
+            <div class="card" style="margin-top: 30px;">
+                <h2><i class="fas fa-project-diagram"></i> Tri-Directional Setup (Discord + Fluxer)</h2>
+                <p>To enable 3-way chat synchronization between Discord, Fluxer, and Minecraft:</p>
+                
+                <div class="alert alert-warning" style="margin-bottom: 20px;">
+                    <i class="fas fa-info-circle"></i>
+                    <div>
+                        <strong>Mode Selection</strong>
+                        <p style="margin: 0; color: inherit;">When tridirectional is enabled, the <code>platform</code> setting determines which service receives messages FROM Minecraft. Both services will send messages TO Minecraft.</p>
+                    </div>
+                </div>
+
+                <div class="step">
+                    <div class="step-number">1</div>
+                    <div class="step-content">
+                        <h3>Configure Both Platforms</h3>
+                        <p>Ensure both Discord and Fluxer sections are properly configured with valid tokens and channel IDs.</p>
+                    </div>
+                </div>
+
+                <div class="step">
+                    <div class="step-number">2</div>
+                    <div class="step-content">
+                        <h3>Enable Tri-Directional Mode</h3>
+                        <p>Set the platform to receive messages from (discord or fluxer), then enable tridirectional:</p>
+                        <div class="code-block">
+                        <pre>{
+  "platform": "discord",
+  "tridirectional": {
+    "enabled": true,
+    "discord_to_fluxer": true,
+    "fluxer_to_discord": true,
+    "show_source": true
+  }
+}</pre>
+                        <button class="copy-btn" onclick="copyCode(this)"><i class="fas fa-copy"></i></button>
+                        </div>
+                    </div>
+                </div>
+
+                <div class="step">
+                    <div class="step-number">3</div>
+                    <div class="step-content">
+                        <h3>Bot Status Considerations</h3>
+                        <p>When using tri-directional with <code>platform: "discord"</code>, both bots will attempt to set their status. Ensure <code>bot.enabled</code> is true so the Fluxer bot also shows as online:</p>
+                        <div class="code-block">
+                        <pre>"bot": {
+  "enabled": true,
+  "format": "Online: {online}/{max}"
+}</pre>
+                        <button class="copy-btn" onclick="copyCode(this)"><i class="fas fa-copy"></i></button>
+                        </div>
                     </div>
                 </div>
             </div>

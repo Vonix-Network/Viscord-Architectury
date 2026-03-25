@@ -119,7 +119,7 @@ public class AdvancementDataExtractor {
                     }
                 } catch (Exception titleError) {
                     Viscord.LOGGER.warn("[Discord] Error accessing embed title for fallback extraction: {}", 
-                            titleError.getMessage());
+                        titleError.getMessage());
                 }
             }
             
@@ -133,7 +133,7 @@ public class AdvancementDataExtractor {
                     }
                 } catch (Exception descError) {
                     Viscord.LOGGER.warn("[Discord] Error accessing embed description for fallback extraction: {}", 
-                            descError.getMessage());
+                        descError.getMessage());
                 }
             }
             
