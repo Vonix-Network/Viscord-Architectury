@@ -298,18 +298,6 @@ class ViscordBuildMenu:
         console.print(f"[bold yellow]⚠️  Using default system Java for Minecraft {mc_version}[/bold yellow]")
         return None
     
-    def _display_header(self, title: str):
-        """Display a beautiful header"""
-        console.clear()
-        header = Panel(
-            Align.center(Text(title, style="bold white")),
-            box=box.ROUNDED,
-            style="cyan",
-            border_style="cyan"
-        )
-        console.print(header)
-        console.print()
-    
     def _display_menu(self):
         """Display the gamified main menu"""
         self._display_header("🎮 MAIN MENU", "Choose Your Adventure")
