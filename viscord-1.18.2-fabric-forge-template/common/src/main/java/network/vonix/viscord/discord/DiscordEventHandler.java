@@ -380,31 +380,11 @@ public class DiscordEventHandler {
                         .then(Commands.literal("fluxer")
                                 .then(Commands.literal("invite")
                                         .executes(context -> {
-                                            String appId = ViscordConfig.CONFIG.fluxerApplicationId.get();
                                             CommandSourceStack source = context.getSource();
-                                            
-                                            if (appId == null || appId.isEmpty() || appId.equals("YOUR_APPLICATION_ID")) {
-                                                source.sendFailure(new TextComponent(
-                                                        "§cFluxer Application ID is not configured.\n" +
-                                                        "§7Please set 'application_id' in the [fluxer] section of viscord.json"));
-                                                return 0;
-                                            }
-                                            
-                                            String inviteUrl = "https://fluxer.app/oauth2/authorize?client_id=" + appId + "&scope=bot";
-                                            
-                                            MutableComponent clickable = new TextComponent("§aClick here to invite the Fluxer bot to your server!")
-                                                    .setStyle(Style.EMPTY
-                                                            .withClickEvent(new ClickEvent(ClickEvent.Action.OPEN_URL, inviteUrl))
-                                                            .withUnderlined(true)
-                                                            .withColor(ChatFormatting.GREEN));
-                                            source.sendSuccess(clickable, false);
-                                            
-                                            if (ViscordConfig.CONFIG.debugLogging.get()) {
-                                                source.sendSuccess(new TextComponent(
-                                                        "§7URL: " + inviteUrl), false);
-                                            }
-                                            
-                                            return 1;
+                                            source.sendFailure(new TextComponent(
+                                                    "§cFluxer bot invite is not available.\n" +
+                                                    "§7Please invite the bot through the Fluxer Developer Portal."));
+                                            return 0;
                                         })))));
         // Backward compatibility alias for /vonix commands
         dispatcher.register(
@@ -428,25 +408,11 @@ public class DiscordEventHandler {
                 Commands.literal("fluxer")
                         .requires(source -> source.hasPermission(0))
                         .executes(context -> {
-                            String appId = ViscordConfig.CONFIG.fluxerApplicationId.get();
                             CommandSourceStack source = context.getSource();
-                            
-                            if (appId == null || appId.isEmpty() || appId.equals("YOUR_APPLICATION_ID")) {
-                                source.sendFailure(new TextComponent(
-                                        "§cFluxer Application ID is not configured.\n" +
-                                        "§7Please set 'application_id' in the [fluxer] section of viscord.json"));
-                                return 0;
-                            }
-                            
-                            String inviteUrl = "https://fluxer.app/oauth2/authorize?client_id=" + appId + "&scope=bot";
-                            
-                            MutableComponent clickable = new TextComponent("§aClick here to invite the Fluxer bot to your server!")
-                                    .setStyle(Style.EMPTY
-                                            .withClickEvent(new ClickEvent(ClickEvent.Action.OPEN_URL, inviteUrl))
-                                            .withUnderlined(true)
-                                            .withColor(ChatFormatting.GREEN));
-                            source.sendSuccess(clickable, false);
-                            return 1;
+                            source.sendFailure(new TextComponent(
+                                    "§cFluxer bot invite is not available.\n" +
+                                    "§7Please invite the bot through the Fluxer Developer Portal."));
+                            return 0;
                         })
         );
     }
