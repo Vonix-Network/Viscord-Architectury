@@ -16,7 +16,11 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
     - Applies the configured format from `ViscordConfigToml.BotStatus.FORMAT.get()`
     - Replaces `{online}` and `{max}` placeholders with real values
     - Updates both Discord and Fluxer bots consistently
-  - **Result**: Fluxer bot now displays "Online: (Players)/(Max)" matching the config format, same as Discord bot
+### 🔍 Fixed (Status Update Reliability)
+- **Enhanced Status Update Logging** - Added detailed INFO-level logging across all versions to trace the status update flow for both Discord and Fluxer bots.
+  - **Diagnostic Logs**: Added tracking for `server` instance availability, `BotStatus` configuration state, and WebSocket connection status.
+  - **Payload Verification**: Added logging of the exact status string being sent to the Fluxer gateway.
+  - **Async Trace**: Added logging inside the asynchronous executor to identify potential race conditions or authentication timing issues.
   - **File modified**: `FluxerBotClient.java` in 1.21.1 (READY/RESUMED handlers)
   - **Surgical edit location**: `handleMessage()` method, removed hardcoded status scheduler blocks
 
