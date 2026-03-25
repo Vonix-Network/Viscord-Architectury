@@ -16,7 +16,7 @@ function Get-ModVersion {
     }
     
     # Fallback version if gradle.properties not found
-    return "2.4.9"
+    return "2.4.10"
 }
 
 # Global variable to store mod version
@@ -774,7 +774,7 @@ function Build-SpecificVersion {
                                             # Create GitHub release-ready name: viscord-{version}-{platform}-{mcversion}.jar
                                             $baseName = $jar.BaseName
                                             $extension = $jar.Extension
-                                            $newName = "viscord-$buildVer-$platform-2.4.9$extension"
+                                            $newName = "viscord-$buildVer-$platform-2.4.10$extension"
                                             $newPath = Join-Path $releasesDir $newName
                                             
                                             Copy-Item $jar.FullName $newPath -Force

@@ -6,7 +6,7 @@ import network.vonix.viscord.config.simple.SimpleConfigValue;
 import org.apache.commons.lang3.tuple.Pair;
 
 /**
- * Discord integration configuration for Viscord.
+ * Discord/Fluxer integration configuration for Viscord.
  * Stored in config/viscord.json
  */
 public class ViscordConfig {
@@ -34,14 +34,9 @@ public class ViscordConfig {
         public final SimpleConfigValue<String> discordInviteUrl;
         
         // Fluxer settings
-        public final SimpleConfigValue<String> fluxerWebhookUrl;
-        public final SimpleConfigValue<String> fluxerEventWebhookUrl;
         public final SimpleConfigValue<String> fluxerApiKey;
-        public final SimpleConfigValue<String> fluxerApplicationId;
-        public final SimpleConfigValue<String> fluxerClientSecret;
-        public final SimpleConfigValue<Integer> fluxerReceiverPort;
-        public final SimpleConfigValue<String> fluxerReceiverPath;
-        public final SimpleConfigValue<Boolean> fluxerUseBotApi;
+        public final SimpleConfigValue<String> fluxerChannelId;
+        public final SimpleConfigValue<String> fluxerEventChannelId;
 
         // Server identity
         public final SimpleConfigValue<String> serverPrefix;
@@ -111,8 +106,8 @@ public class ViscordConfig {
 
                 platform = builder.comment(
                                 "Chat platform to use",
-                                "discord - Full Discord bot with webhooks",
-                                "fluxer - Simple webhook service")
+                                "discord - Full Discord bot integration (webhooks + bot API)",
+                                "fluxer  - Fluxer bot integration (bot API + Gateway, no port forwarding needed)")
                                 .define("platform", "discord");
                 
                 builder.pop().comment(
@@ -124,7 +119,7 @@ public class ViscordConfig {
                 enableTridirectionalChat = builder.comment(
                                 "Enable tridirectional chat",
                                 "Allows messages to flow between all three platforms",
-                                "Discord ↔ Minecraft ↔ Fluxer")
+                                "Discord <-> Minecraft <-> Fluxer")
                                 .define("enabled", false);
 
                 discordToFluxer = builder.comment(
@@ -139,7 +134,7 @@ public class ViscordConfig {
 
                 showPlatformSource = builder.comment(
                                 "Show message source platform",
-                                "Adds platform tags like [Discord] or [Fluxer] to messages")
+                                "Adds platform tags like [Discord] or [Fluxer] to bridged messages")
                                 .define("show_source", true);
                 
                 builder.pop().comment(
@@ -155,14 +150,15 @@ public class ViscordConfig {
                                 .define("bot_token", "YOUR_BOT_TOKEN_HERE");
 
                 discordChannelId = builder.comment(
-                                "Discord Channel ID",
+                                "Discord Channel ID for chat messages",
                                 "Right-click channel -> Copy Channel ID",
                                 "(Enable Developer Mode in Discord settings)")
                                 .define("channel_id", "YOUR_CHANNEL_ID_HERE");
 
                 discordWebhookUrl = builder.comment(
                                 "Discord Webhook URL",
-                                "Channel Settings -> Integrations -> Webhooks -> Copy URL")
+                                "Channel Settings -> Integrations -> Webhooks -> Copy URL",
+                                "Used to send Minecraft messages to Discord with player avatars")
                                 .define("webhook_url", "");
 
                 discordWebhookId = builder.comment(
@@ -177,66 +173,39 @@ public class ViscordConfig {
                 
                 builder.pop().comment(
                                 "Fluxer Configuration",
-                                "Required only when platform is set to 'fluxer'")
+                                "Required only when platform is set to 'fluxer'",
+                                "",
+                                "How it works:",
+                                "  - The bot connects to Fluxer via WebSocket Gateway (no port forwarding needed)",
+                                "  - Messages are sent using the Bot API with your bot token and channel IDs",
+                                "  - Events (join/leave/death) go to the event channel (or main if not set)")
                                 .push("fluxer");
                 
-                fluxerWebhookUrl = builder.comment(
-                                "Fluxer Webhook URL",
-                                "Get this from your Fluxer dashboard")
-                                .define("webhook_url", "");
-                
-                fluxerEventWebhookUrl = builder.comment(
-                                "Event Webhook URL (optional)",
-                                "Separate webhook for server events",
-                                "Leave empty to use main webhook")
-                                .define("event_webhook_url", "");
-                
                 fluxerApiKey = builder.comment(
-                                "Fluxer API Key (Bot Token)",
-                                "Get this from your Fluxer dashboard",
+                                "Fluxer Bot Token",
+                                "Get from: https://fluxer.app -> Developer Portal -> Bot -> Copy Token",
                                 "\nIMPORTANT: Keep this secret!")
-                                .define("api_key", "YOUR_FLUXER_API_KEY");
+                                .define("bot_token", "YOUR_FLUXER_BOT_TOKEN");
                 
-                fluxerApplicationId = builder.comment(
-                                "Fluxer Application ID (OAuth2 Client ID)",
-                                "Required for generating invite links",
-                                "Get this from your Fluxer application settings")
-                                .define("application_id", "YOUR_APPLICATION_ID");
+                fluxerChannelId = builder.comment(
+                                "Fluxer Channel ID for chat messages",
+                                "Right-click channel -> Copy Channel ID",
+                                "(Enable Developer Mode in Fluxer settings)")
+                                .define("channel_id", "YOUR_FLUXER_CHANNEL_ID");
                 
-                fluxerClientSecret = builder.comment(
-                                "Fluxer Client Secret (OAuth2)",
-                                "Required for Bot API authentication",
-                                "Get this from your Fluxer application settings",
-                                "\nIMPORTANT: Keep this secret!")
-                                .define("client_secret", "YOUR_CLIENT_SECRET");
-                
-                fluxerUseBotApi = builder.comment(
-                                "Use Bot API instead of webhooks",
-                                "When enabled, sends messages via Fluxer Bot API using the token",
-                                "More reliable than webhooks but requires a valid bot token")
-                                .define("use_bot_api", false);
-                
-                fluxerReceiverPort = builder.comment(
-                                "Receiver Port",
-                                "Port for receiving Fluxer messages via HTTP webhook",
-                                "Default: 8080",
-                                "Must be open in your firewall",
-                                "NOTE: If using WebSocket Gateway, port forwarding is not required")
-                                .defineInRange("port", 8080, 1024, 65535);
-                
-                fluxerReceiverPath = builder.comment(
-                                "Receiver Path",
-                                "Fluxer sends messages to: http://your-server:PORT/PATH",
-                                "Default: webhook")
-                                .define("path", "webhook");
+                fluxerEventChannelId = builder.comment(
+                                "Fluxer Channel ID for server events (optional)",
+                                "Join/leave/death/advancement notifications go here",
+                                "Leave empty to use the main channel_id above")
+                                .define("event_channel_id", "");
 
                 builder.pop().comment(
                                 "Server Identity",
-                                "How your server appears in Discord")
+                                "How your server appears in messages")
                                 .push("server");
 
                 serverPrefix = builder.comment(
-                                "Server prefix shown in Discord messages",
+                                "Server prefix shown in messages",
                                 "Example: [Survival], [Creative], [SMP]")
                                 .define("prefix", "[MC]");
 
@@ -255,17 +224,17 @@ public class ViscordConfig {
                                 .push("formats");
 
                 discordToMinecraftFormat = builder.comment(
-                                "Format for Discord -> Minecraft messages",
+                                "Format for Discord/Fluxer -> Minecraft messages",
                                 "Placeholders: {username}, {message}")
                                 .define("discord_to_minecraft", "[Discord] {username}: {message}");
 
                 minecraftToDiscordFormat = builder.comment(
-                                "Format for Minecraft -> Discord messages",
+                                "Format for Minecraft -> Discord/Fluxer messages",
                                 "Placeholder: {message}")
                                 .define("minecraft_to_discord", "{message}");
 
                 webhookUsernameFormat = builder.comment(
-                                "Webhook display name format",
+                                "Webhook display name format (Discord only)",
                                 "Placeholders: {prefix}, {username}")
                                 .define("webhook_username", "{prefix} {username}");
 
@@ -276,7 +245,7 @@ public class ViscordConfig {
 
                 builder.pop().comment(
                                 "Event Notifications",
-                                "Choose which events to send to Discord")
+                                "Choose which events to send to Discord/Fluxer")
                                 .push("events");
 
                 sendJoin = builder.comment("Send player join notifications")
@@ -292,13 +261,13 @@ public class ViscordConfig {
                                 .define("send_advancement", true);
 
                 eventChannelId = builder.comment(
-                                "Separate channel ID for events (optional)",
-                                "Leave empty to use main channel")
+                                "Separate Discord channel ID for events (optional)",
+                                "Leave empty to use main Discord channel")
                                 .define("event_channel_id", "");
 
                 eventWebhookUrl = builder.comment(
-                                "Separate webhook URL for events (optional)",
-                                "Leave empty to use main webhook")
+                                "Separate Discord webhook URL for events (optional)",
+                                "Leave empty to use main Discord webhook")
                                 .define("event_webhook_url", "");
 
                 builder.pop().comment(
@@ -306,44 +275,47 @@ public class ViscordConfig {
                                 "Prevent message loops and filter content")
                                 .push("filters");
 
-                ignoreBots = builder.comment("Ignore Discord bot messages")
+                ignoreBots = builder.comment("Ignore bot messages from Discord/Fluxer")
                                 .define("ignore_bots", true);
 
                 ignoreWebhooks = builder.comment("Ignore other webhook messages")
                                 .define("ignore_webhooks", true);
 
                 filterByPrefix = builder.comment(
-                                "Filter webhooks by server prefix",
-                                "Useful for multi-server setups sharing a channel")
+                                "Filter messages by server prefix",
+                                "Prevents echoing your own server's bridged messages back")
                                 .define("filter_by_prefix", true);
 
                 showOtherServerEvents = builder.comment(
-                                "Show events from other servers in Minecraft",
-                                "Only applies to multi-server setups")
+                                "Show events from other servers in Minecraft chat",
+                                "Only applies to multi-server setups sharing a channel")
                                 .define("show_other_server_events", true);
 
                 enableChatFilter = builder.comment(
-                                "Enable chat filter to prevent certain messages from being sent to Discord",
+                                "Enable chat filter to prevent certain messages from being bridged",
                                 "Messages starting with the filter prefix will only appear in-game")
                                 .define("enable_chat_filter", false);
 
                 chatFilterPrefix = builder.comment(
-                                "Prefix to filter chat messages from Discord relay",
-                                "Example: '!' means messages like '!test' won't be sent to Discord")
+                                "Prefix to suppress from bridge relay",
+                                "Example: '!' means '!test' stays in-game only")
                                 .define("chat_filter_prefix", "!");
 
                 builder.pop().comment(
                                 "Bot Status",
-                                "Discord bot presence configuration")
+                                "Bot presence and activity configuration")
                                 .push("bot");
 
-                setBotStatus = builder.comment("Update bot status with player count")
+                setBotStatus = builder.comment(
+                                "Update bot status with live player count",
+                                "Shows 'Online: X/Y' in the bot's activity")
                                 .define("enabled", true);
 
                 botStatusFormat = builder.comment(
-                                "Bot status format",
-                                "Placeholders: {online}, {max}")
-                                .define("format", "{online}/{max} players online");
+                                "Bot status format string",
+                                "Placeholders: {online}, {max}",
+                                "Example: Online: {online}/{max}")
+                                .define("format", "Online: {online}/{max}");
 
                 builder.pop().comment(
                                 "Account Linking",
@@ -362,7 +334,7 @@ public class ViscordConfig {
                                 "Performance and debugging options")
                                 .push("advanced");
 
-                debugLogging = builder.comment("Enable debug logging")
+                debugLogging = builder.comment("Enable verbose debug logging")
                                 .define("debug_logging", false);
 
                 messageQueueSize = builder.comment(
@@ -372,7 +344,7 @@ public class ViscordConfig {
 
                 rateLimitDelay = builder.comment(
                                 "Rate limit delay (milliseconds)",
-                                "Prevents Discord rate limiting")
+                                "Minimum delay between outgoing API calls")
                                 .defineInRange("rate_limit", 1000, 100, 5000);
 
                 builder.pop();

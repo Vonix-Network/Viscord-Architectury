@@ -5,6 +5,16 @@ All notable changes to Viscord will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [2.4.10] - 2026-03-24
+
+### 🚀 Improved (Fluxer Overhaul — Bot API + Channel IDs)
+- **Sending now uses Bot API**: All Minecraft → Fluxer messages (chat, join/leave/death, startup/shutdown) now use the Fluxer Bot REST API with channel IDs. No webhook URLs required.
+- **Simplified Config**: Removed `fluxerWebhookUrl`, `fluxerEventWebhookUrl`, `fluxerReceiverPort`, `fluxerReceiverPath`, `fluxerUseBotApi`, `fluxerApplicationId`, `fluxerClientSecret`. Added `fluxerChannelId` and `fluxerEventChannelId` to mirror Discord's pattern.
+- **No more port forwarding**: The old HTTP webhook receiver has been retired. All receiving is done via the WebSocket Gateway (already established in 2.4.9).
+- **Consistent platform pattern**: Fluxer now configured identically to Discord: `bot_token` + `channel_id` + optional `event_channel_id`.
+- **Event formatting for Fluxer**: Events are sent as plain bold-text messages (Fluxer Bot API v1 does not support embeds). Discord keeps its rich embed format unchanged.
+- **Shutdown notification**: Server shutdown now sends a 🔴 offline message to Fluxer via Bot API before disconnecting.
+
 ## [2.4.9] - 2026-03-24
 
 ### 🐛 Fixed (Fluxer Gateway Deep-Fix)
