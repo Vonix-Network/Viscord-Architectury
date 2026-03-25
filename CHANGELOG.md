@@ -16,6 +16,17 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### 🔧 chore
 - Bumped mod version to 2.4.8 across all templates.
+- Updated `Release_Notes.md` for v2.4.4–v2.4.8.
+
+### 🐛 Fixed (patch — presence/status deep-fix)
+- **Gateway API Version**: Changed WebSocket URL from `v=10` (Discord) to `v=1` (Fluxer's own API version). This was the primary root cause of bots showing Offline.
+- **Identify Properties**: Updated `$browser` / `$device` to `discord.js` to match Fluxer's expected client handshake.
+- **Intents**: Now sends `GUILD_MESSAGES | MESSAGE_CONTENT` (512 | 32768 = 33280) so `MESSAGE_CREATE` fires correctly.
+- **Initial Presence**: Added `presence` block to `Identify` (OP 2) so the bot is immediately `online` on connect.
+- **Post-READY Presence Dispatch**: Added a 500ms-delayed OP 3 presence update after `READY` so status text (e.g. `Online: 0/20`) is pushed before `DiscordManager.updateBotStatus()` fires with the real count.
+- **RESUMED Event**: Added handler for `RESUMED` dispatch event — re-pushes presence on resume so status doesn't vanish after reconnects.
+- **`since` Field Fix**: Changed `since` in OP 3 Presence Update from `System.currentTimeMillis()` to `null` (required when `status` is `"online"`).
+
 
 ## [2.4.7] - 2026-03-24
 

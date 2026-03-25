@@ -29,7 +29,7 @@ import network.vonix.viscord.config.ViscordConfig;
  */
 public class FluxerBotClient {
 
-    private static final String GATEWAY_URL = "wss://gateway.fluxer.app/?v=10&encoding=json";
+    private static final String GATEWAY_URL = "wss://gateway.fluxer.app/?v=1&encoding=json";
     
     private WebSocket webSocket;
     private String token;
@@ -302,6 +302,27 @@ public class FluxerBotClient {
                         if (connectFuture != null && !connectFuture.isDone()) {
                             connectFuture.complete(null);
                         }
+                        
+                        // Push initial presence so bot immediately shows as Online with status text.
+                        // Identify only sets empty activities; this OP 3 sets the actual display.
+                        scheduler.schedule(() -> {
+                            if (authenticated && webSocket != null && webSocket.isOpen()) {
+                                String fmt = ViscordConfig.CONFIG.botStatusFormat.get();
+                                updateStatus(fmt.replace("{online}", "0").replace("{max}", "0"));
+                            }
+                        }, 500, TimeUnit.MILLISECONDS);
+                    } else if ("RESUMED".equals(t)) {
+                        Viscord.LOGGER.info("[Fluxer Bot] Session resumed successfully.");
+                        connected = true;
+                        authenticated = true;
+                        reconnectAttempts = 0;
+                        // Re-push presence after resume so status doesn't vanish on reconnect
+                        scheduler.schedule(() -> {
+                            if (authenticated && webSocket != null && webSocket.isOpen()) {
+                                String fmt = ViscordConfig.CONFIG.botStatusFormat.get();
+                                updateStatus(fmt.replace("{online}", "0").replace("{max}", "0"));
+                            }
+                        }, 500, TimeUnit.MILLISECONDS);
                     } else if ("MESSAGE_CREATE".equals(t)) {
                         handleMessageCreate(json.getAsJsonObject("d"));
                     }
@@ -370,9 +391,9 @@ public class FluxerBotClient {
         d.addProperty("token", token);
         
         JsonObject properties = new JsonObject();
-        properties.addProperty("$os", "windows");
-        properties.addProperty("$browser", "viscord");
-        properties.addProperty("$device", "viscord");
+        properties.addProperty("$os", "linux");
+        properties.addProperty("$browser", "discord.js");
+        properties.addProperty("$device", "discord.js");
         d.add("properties", properties);
 
         JsonObject presence = new JsonObject();
@@ -394,9 +415,9 @@ public class FluxerBotClient {
             resume.add("d", r);
             webSocket.sendText(resume.toString());
         } else {
-            // Enable MESSAGE_CONTENT intent to receive message content
-            // Intent bit 15 = Message Content
-            d.addProperty("intents", 1 << 15);
+            // GUILD_MESSAGES (1<<9 = 512) to receive MESSAGE_CREATE events
+            // MESSAGE_CONTENT (1<<15 = 32768) to read message text
+            d.addProperty("intents", (1 << 9) | (1 << 15));
             identify.add("d", d);
             webSocket.sendText(identify.toString());
         }
