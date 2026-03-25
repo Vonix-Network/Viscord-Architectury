@@ -16,6 +16,9 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   - **Fix**: Modified `onFluxerMessage` to pass the `formatted` message (which includes `[Discord]` tags when `showPlatformSource` is enabled) to `bridgeFluxerToDiscord` for proper echo detection
   - **Enhancement**: Updated logging from DEBUG to INFO level for echo detection to make troubleshooting easier
   - This prevents messages originating from Discord from being re-bridged back to Discord via Fluxer
+- **Discord to Fluxer Messages Not Sending** - Fixed `bridgeDiscordToFluxer` in versions 1.19.2 and 1.21.1 still using deprecated webhook method instead of Bot API.
+  - Updated to use `fluxerBotClient.sendMessage(channelId, fluxerMessage)` like versions 1.18.2 and 1.20.1
+  - This ensures Discord messages are properly sent to Fluxer in tridirectional chat mode
 
 ## [2.4.10] - 2026-03-24
 

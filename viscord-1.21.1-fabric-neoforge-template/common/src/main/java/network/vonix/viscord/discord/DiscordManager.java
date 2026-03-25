@@ -450,16 +450,10 @@ public class DiscordManager {
             // Discord messages don't need formatting conversion as they're plain text
             String fluxerMessage = formatMessageForPlatform(content, "Discord", authorName);
             
-            // Send to Fluxer via webhook
-            String fluxerWebhookUrl = ViscordConfig.CONFIG.fluxerWebhookUrl.get();
-            if (fluxerWebhookUrl != null && !fluxerWebhookUrl.isEmpty()) {
-                // Temporarily update webhook URL and send message
-                String originalUrl = webhookClient.getWebhookUrl();
-                webhookClient.updateUrl(fluxerWebhookUrl);
-                webhookClient.sendMessage(authorName, "", fluxerMessage);
-                webhookClient.updateUrl(originalUrl); // Restore original URL
-                Viscord.LOGGER.debug("[Tridirectional] Bridged Discord message to Fluxer: {}", authorName);
-            }
+            // Send to Fluxer via Bot API (not webhook)
+            String channelId = getFluxerChannelId();
+            fluxerBotClient.sendMessage(channelId, fluxerMessage);
+            Viscord.LOGGER.debug("[Tridirectional] Bridged Discord message to Fluxer: {}", authorName);
         } catch (Exception e) {
             Viscord.LOGGER.error("[Tridirectional] Failed to bridge Discord message to Fluxer", e);
         }
