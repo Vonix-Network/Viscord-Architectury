@@ -379,16 +379,6 @@ public class DiscordEventHandler {
                                                     false);
                                             return 1;
                                         }))
-                .then(Commands.literal("fluxer")
-            .then(Commands.literal("invite")
-                .executes(context -> {
-                    CommandSourceStack source = context.getSource();
-                    source.sendFailure(Component.literal(
-                            "§cFluxer bot invite is not available.\n" +
-                            "§7Please invite the bot through the Fluxer Developer Portal."));
-                    return 0;
-                })
-            )
         ));
         // Backward compatibility alias for /vonix commands
         dispatcher.register(
