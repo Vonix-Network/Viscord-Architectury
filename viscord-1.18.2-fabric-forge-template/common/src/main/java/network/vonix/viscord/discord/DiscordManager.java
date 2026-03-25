@@ -216,7 +216,8 @@ public class DiscordManager {
         // Tridirectional: Bridge to Discord if enabled
         if (ViscordConfig.CONFIG.enableTridirectionalChat.get() && 
             ViscordConfig.CONFIG.fluxerToDiscord.get()) {
-            bridgeFluxerToDiscord(username, message);
+            // Pass the formatted content to bridgeFluxerToDiscord for proper echo detection
+            bridgeFluxerToDiscord(username, formatted);
         }
     }
     

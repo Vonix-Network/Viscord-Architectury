@@ -218,7 +218,8 @@ public class DiscordManager {
         
         // Tridirectional: Bridge to Discord if enabled
         if (ViscordConfig.CONFIG.enableTridirectionalChat.get() && ViscordConfig.CONFIG.fluxerToDiscord.get()) {
-            bridgeFluxerToDiscord(username, message);
+            // Pass the formatted content to bridgeFluxerToDiscord for proper echo detection
+            bridgeFluxerToDiscord(username, rawFormat);
         }
     }
     
@@ -435,7 +436,7 @@ public class DiscordManager {
         // Prevent echo: Skip messages that originated from Discord
         // These messages have [Discord] tag from formatMessageForPlatform
         if (message.contains("[Discord]")) {
-            Viscord.LOGGER.debug("[Tridirectional] Skipping Discord-originated message to prevent echo loop");
+            Viscord.LOGGER.info("[Tridirectional] Skipping Discord-originated message to prevent echo loop. Message: {}", message);
             return;
         }
         

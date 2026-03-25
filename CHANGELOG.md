@@ -12,9 +12,10 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   - Field was referenced in `DiscordManager.java` but not declared in `ViscordConfig.java`
   - Added proper builder configuration for `fluxer.event_webhook_url` setting
 - **Tridirectional Chat Echo Loop** - Fixed Discord messages echoing back when tridirectional chat was enabled.
-  - Added check in `bridgeFluxerToDiscord()` to detect Discord-originated messages (via "[Discord]" tag)
-  - Messages bridged from Discord → Fluxer are now correctly filtered and not re-bridged back to Discord
-  - This prevents the webhook message echo issue reported by users
+  - **Root cause**: `onFluxerMessage` was passing raw message content to `bridgeFluxerToDiscord` instead of the formatted content containing the `[Discord]` tag
+  - **Fix**: Modified `onFluxerMessage` to pass the `formatted` message (which includes `[Discord]` tags when `showPlatformSource` is enabled) to `bridgeFluxerToDiscord` for proper echo detection
+  - **Enhancement**: Updated logging from DEBUG to INFO level for echo detection to make troubleshooting easier
+  - This prevents messages originating from Discord from being re-bridged back to Discord via Fluxer
 
 ## [2.4.10] - 2026-03-24
 
