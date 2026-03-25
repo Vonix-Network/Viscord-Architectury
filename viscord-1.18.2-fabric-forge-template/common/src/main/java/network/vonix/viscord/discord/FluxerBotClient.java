@@ -374,6 +374,13 @@ public class FluxerBotClient {
         properties.addProperty("$browser", "viscord");
         properties.addProperty("$device", "viscord");
         d.add("properties", properties);
+
+        JsonObject presence = new JsonObject();
+        presence.addProperty("status", "online");
+        presence.addProperty("afk", false);
+        presence.add("activities", new JsonArray());
+        presence.add("since", com.google.gson.JsonNull.INSTANCE);
+        d.add("presence", presence);
         
         // If we have a session ID, try to resume instead of identify
         if (sessionId != null && !sessionId.isEmpty()) {
@@ -440,7 +447,7 @@ public class FluxerBotClient {
             presence.addProperty("op", 3);
             
             JsonObject d = new JsonObject();
-            d.addProperty("since", System.currentTimeMillis());
+            d.add("since", com.google.gson.JsonNull.INSTANCE);
             
             JsonArray activities = new JsonArray();
             JsonObject activity = new JsonObject();
