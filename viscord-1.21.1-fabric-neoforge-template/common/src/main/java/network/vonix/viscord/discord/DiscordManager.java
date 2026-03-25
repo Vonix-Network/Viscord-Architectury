@@ -451,7 +451,7 @@ public class DiscordManager {
             String fluxerMessage = formatMessageForPlatform(content, "Discord", authorName);
             
             // Send to Fluxer via Bot API (not webhook)
-            String channelId = getFluxerChannelId();
+            String channelId = ViscordConfig.CONFIG.fluxerChannelId.get();
             fluxerBotClient.sendMessage(channelId, fluxerMessage);
             Viscord.LOGGER.debug("[Tridirectional] Bridged Discord message to Fluxer: {}", authorName);
         } catch (Exception e) {
