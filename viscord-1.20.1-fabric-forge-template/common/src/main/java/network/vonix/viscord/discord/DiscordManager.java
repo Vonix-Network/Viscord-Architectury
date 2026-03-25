@@ -1273,7 +1273,11 @@ public class DiscordManager {
     }
 
     public void updateBotStatus() {
+        Viscord.LOGGER.info("[DiscordManager] updateBotStatus called - server={}, enabled={}", 
+            server != null, ViscordConfigToml.BotStatus.ENABLED.get());
+        
         if (server == null || !ViscordConfigToml.BotStatus.ENABLED.get()) {
+            Viscord.LOGGER.warn("[DiscordManager] Cannot update status - server null or disabled");
             return;
         }
         
@@ -1283,8 +1287,14 @@ public class DiscordManager {
         String status = format.replace("{online}", String.valueOf(online))
                               .replace("{max}", String.valueOf(max));
         
+        Viscord.LOGGER.info("[DiscordManager] Updating bot status to: {}", status);
+        
         // Update status asynchronously to avoid blocking main thread
         Viscord.ASYNC_EXECUTOR.submit(() -> {
+            Viscord.LOGGER.info("[DiscordManager] Async status update - bot connected={}, fluxer connected={}",
+                botClient != null && botClient.isConnected(),
+                fluxerBotClient != null && fluxerBotClient.isConnected());
+            
             if (botClient != null && botClient.isConnected()) {
                 botClient.updateStatus(status);
             }

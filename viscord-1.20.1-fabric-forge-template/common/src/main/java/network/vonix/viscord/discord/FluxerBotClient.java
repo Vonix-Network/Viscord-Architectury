@@ -448,6 +448,8 @@ public class FluxerBotClient {
             return;
         }
 
+        Viscord.LOGGER.info("[Fluxer Bot] Sending status update: {}", status);
+        
         try {
             JsonObject presence = new JsonObject();
             presence.addProperty("op", 3);
