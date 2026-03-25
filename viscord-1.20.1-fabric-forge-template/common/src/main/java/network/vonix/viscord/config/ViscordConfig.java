@@ -37,11 +37,6 @@ public class ViscordConfig {
         public final SimpleConfigValue<String> fluxerApiKey;
         public final SimpleConfigValue<String> fluxerChannelId;
         public final SimpleConfigValue<String> fluxerEventChannelId;
-        public final SimpleConfigValue<String> fluxerEventWebhookUrl;
-        public final SimpleConfigValue<String> fluxerWebhookUrl;
-        public final SimpleConfigValue<Integer> fluxerReceiverPort;
-        public final SimpleConfigValue<String> fluxerReceiverPath;
-        public final SimpleConfigValue<String> fluxerApplicationId;
 
         // Server identity
         public final SimpleConfigValue<String> serverPrefix;
@@ -203,32 +198,6 @@ public class ViscordConfig {
                                 "Join/leave/death/advancement notifications go here",
                                 "Leave empty to use the main channel_id above")
                                 .define("event_channel_id", "");
-                
-                fluxerEventWebhookUrl = builder.comment(
-                                "Fluxer Webhook URL for server events (optional)",
-                                "Leave empty to use the main webhook_url above")
-                                .define("event_webhook_url", "");
-                
-                fluxerWebhookUrl = builder.comment(
-                                "Fluxer Webhook URL for sending messages",
-                                "Optional: Use webhook instead of bot API for sending messages")
-                                .define("webhook_url", "");
-                
-                fluxerReceiverPort = builder.comment(
-                                "Fluxer HTTP Receiver Port",
-                                "Port for receiving incoming messages from Fluxer")
-                                .defineInRange("receiver_port", 8080, 1024, 65535);
-                
-                fluxerReceiverPath = builder.comment(
-                                "Fluxer HTTP Receiver Path",
-                                "URL path for receiving incoming messages")
-                                .define("receiver_path", "/fluxer");
-                
-                fluxerApplicationId = builder.comment(
-                                "Fluxer Application ID for bot invite",
-                                "Used to generate the bot invite URL",
-                                "Get from: https://fluxer.app -> Developer Portal -> Application ID")
-                                .define("application_id", "YOUR_APPLICATION_ID");
 
                 builder.pop().comment(
                                 "Server Identity",
