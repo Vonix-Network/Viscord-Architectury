@@ -7,10 +7,14 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [2.4.11] - 2026-03-25
 
-### 🐛 Fixed (All Versions Compilation)
+### 🐛 Fixed (All Versions Compilation + Tridirectional Chat)
 - **Missing `fluxerEventWebhookUrl` config field** - Added the missing field declaration and initialization that was causing `cannot find symbol` compilation errors across all Minecraft versions (1.18.2, 1.19.2, 1.20.1, 1.21.1).
   - Field was referenced in `DiscordManager.java` but not declared in `ViscordConfig.java`
   - Added proper builder configuration for `fluxer.event_webhook_url` setting
+- **Tridirectional Chat Echo Loop** - Fixed Discord messages echoing back when tridirectional chat was enabled.
+  - Added check in `bridgeFluxerToDiscord()` to detect Discord-originated messages (via "[Discord]" tag)
+  - Messages bridged from Discord → Fluxer are now correctly filtered and not re-bridged back to Discord
+  - This prevents the webhook message echo issue reported by users
 
 ## [2.4.10] - 2026-03-24
 

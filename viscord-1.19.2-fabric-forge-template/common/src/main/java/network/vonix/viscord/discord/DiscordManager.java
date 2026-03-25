@@ -472,6 +472,13 @@ public class DiscordManager {
             return;
         }
         
+        // Prevent echo: Skip messages that originated from Discord
+        // These messages have [Discord] tag from formatMessageForPlatform
+        if (message.contains("[Discord]")) {
+            Viscord.LOGGER.debug("[Tridirectional] Skipping Discord-originated message to prevent echo loop");
+            return;
+        }
+        
         try {
             // Convert Minecraft formatting codes to Discord markdown for Fluxer messages
             String convertedMessage = DiscordFormatter.convertToDiscordFormatting(message);
