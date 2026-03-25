@@ -5,6 +5,13 @@ All notable changes to Viscord will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [2.4.11] - 2026-03-25
+
+### 🐛 Fixed (All Versions Compilation)
+- **Missing `fluxerEventWebhookUrl` config field** - Added the missing field declaration and initialization that was causing `cannot find symbol` compilation errors across all Minecraft versions (1.18.2, 1.19.2, 1.20.1, 1.21.1).
+  - Field was referenced in `DiscordManager.java` but not declared in `ViscordConfig.java`
+  - Added proper builder configuration for `fluxer.event_webhook_url` setting
+
 ## [2.4.10] - 2026-03-24
 
 ### 🚀 Improved (Fluxer Overhaul — Bot API + Channel IDs)

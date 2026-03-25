@@ -288,62 +288,121 @@ function Set-OptimalJavaVersion {
     return $null
 }
 
+function Show-BuildTypePrompt {
+    Clear-Host
+    Write-CenterLine "=" -ForegroundColor Cyan
+    Write-CenterText "SELECT BUILD TYPE" -ForegroundColor Yellow
+    Write-CenterLine "=" -ForegroundColor Cyan
+    Write-Host ""
+    Write-CenterText "[1] -> Clean build (recommended)" -ForegroundColor Green
+    Write-CenterText "   Deletes previous build artifacts and rebuilds from scratch" -ForegroundColor Gray
+    Write-CenterText ""
+    Write-CenterText "[2] -> Quick build (faster)" -ForegroundColor Yellow
+    Write-CenterText "   Builds only changed files, preserves existing artifacts" -ForegroundColor Gray
+    Write-CenterText ""
+    Write-CenterLine "=" -ForegroundColor Cyan
+    Write-Host ""
+    Write-Host "Enter your choice (default: 1): " -ForegroundColor Cyan -NoNewline
+    
+    $choice = Read-Host
+    
+    switch ($choice) {
+        "2" { return "quick" }
+        default { return "clean" }
+    }
+}
+
 function Invoke-GradleBuildWithProgress {
     param(
         [string]$ProjectName = "project",
-        [string]$MinecraftVersion = ""
+        [string]$MinecraftVersion = "",
+        [string]$BuildType = "clean"
     )
     
-    Write-Host "Starting clean Gradle build for $ProjectName..." -ForegroundColor Blue
+    $statusText = if ($BuildType -eq "clean") { "Clean build" } else { "Quick build" }
+    
+    Write-Host "Starting $statusText for $ProjectName..." -ForegroundColor Blue
     Write-Host "Using Java: $env:JAVA_HOME" -ForegroundColor Cyan
-    Write-ProgressBar -PercentComplete 0 -Status "Cleaning and building..."
+    Write-ProgressBar -PercentComplete 0 -Status "$statusText - Initializing..."
+    
+    $outputFile = "$env:TEMP\gradle_output_$($ProjectName -replace ' ','_')_$((Get-Date).ToString('yyyyMMddHHmmss')).txt"
+    $errorFile = "$env:TEMP\gradle_error_$($ProjectName -replace ' ','_')_$((Get-Date).ToString('yyyyMMddHHmmss')).txt"
     
     try {
-        # Run gradle with live output capture using call operator
-        $outputLines = @()
-        $errorLines = @()
+        $arguments = if ($BuildType -eq "clean") { @("clean", "build") } else { @("build") }
+        $process = Start-Process -FilePath ".\gradlew.bat" -ArgumentList $arguments -NoNewWindow -PassThru -RedirectStandardOutput $outputFile -RedirectStandardError $errorFile
+        
         $currentProgress = 0
-        $lastStatus = "Cleaning and building..."
+        $lastStatus = "$statusText - Building..."
         $startTime = Get-Date
         $timeout = 300  # 5 minute timeout
         
-        # Use & call operator which properly inherits environment variables
-        & .\gradlew.bat clean build 2>&1 | ForEach-Object {
-            $line = $_
-            $outputLines += $line
+        while (-not $process.HasExited -and $timeout -gt 0) {
+            Start-Sleep -Seconds 1
+            $timeout--
             
-            # Check for errors
-            if ($line -match "^> Task .*FAILED" -or $line -match "BUILD FAILED" -or $line -match "error:") {
-                $errorLines += $line
-            }
-            
-            # Update progress based on output
+            # Gradual progress increase
             $elapsed = (Get-Date) - $startTime
             $timeBasedProgress = [math]::Min($elapsed.TotalSeconds * 2, 85)
             $currentProgress = [math]::Max($currentProgress, $timeBasedProgress)
             
-            $progressInfo = Get-BuildProgress -GradleOutput $line
-            if ($progressInfo.Progress -gt $currentProgress) {
-                $currentProgress = $progressInfo.Progress
-            }
-            if ($progressInfo.Task -ne "Building") {
-                $lastStatus = "$($progressInfo.Task) - $ProjectName"
+            # Try to read current output for status
+            if (Test-Path $outputFile) {
+                $output = Get-Content $outputFile -Tail 10 -ErrorAction SilentlyContinue
+                if ($output) {
+                    $progressInfo = Get-BuildProgress -GradleOutput ($output -join "`n")
+                    if ($progressInfo.Progress -gt $currentProgress) {
+                        $currentProgress = $progressInfo.Progress
+                    }
+                    $lastStatus = "$statusText - $($progressInfo.Task)"
+                }
             }
             
             Write-ProgressBar -PercentComplete $currentProgress -Status $lastStatus
         }
         
-        $exitCode = $LASTEXITCODE
-        Write-ProgressBar -PercentComplete 100 -Status "Build complete!"
+        # If process is still running after timeout, kill it and use fallback
+        if (-not $process.HasExited) {
+            Write-Host ""
+            Write-Host "Progress tracking timeout, using fallback build method..." -ForegroundColor Yellow
+            $process.Kill()
+            $process.WaitForExit()
+            
+            # Fallback to simple build
+            Write-Host "Running fallback build..." -ForegroundColor Blue
+            $fallbackArgs = if ($BuildType -eq "clean") { "clean build" } else { "build" }
+            $fallbackResult = & .\gradlew.bat $fallbackArgs.Split() 2>&1
+            $exitCode = $LASTEXITCODE
+            Write-ProgressBar -PercentComplete 100 -Status "Build complete!"
+            Write-Host ""
+            
+            # Check for BUILD SUCCESSFUL in output as additional verification
+            $buildSuccessful = ($exitCode -eq 0) -or ($fallbackResult -match "BUILD SUCCESSFUL")
+            
+            return @{
+                Success = $buildSuccessful
+                Output = $fallbackResult
+                Error = @()
+                ExitCode = $exitCode
+            }
+        }
+        
+        # Wait for process and get result
+        $process.WaitForExit()
+        $exitCode = $process.ExitCode
+        $buildResult = Get-Content $outputFile -ErrorAction SilentlyContinue
+        $buildError = Get-Content $errorFile -ErrorAction SilentlyContinue
+        
+        Write-ProgressBar -PercentComplete 100 -Status "$statusText complete!"
         Write-Host ""
         
         # Check for BUILD SUCCESSFUL in output as additional verification
-        $buildSuccessful = ($exitCode -eq 0) -or (($outputLines -join "`n") -match "BUILD SUCCESSFUL")
+        $buildSuccessful = ($exitCode -eq 0) -or ($buildResult -match "BUILD SUCCESSFUL")
         
         return @{
             Success = $buildSuccessful
-            Output = $outputLines
-            Error = $errorLines
+            Output = $buildResult
+            Error = $buildError
             ExitCode = $exitCode
         }
     }
@@ -357,6 +416,11 @@ function Invoke-GradleBuildWithProgress {
             Error = @($_)
             ExitCode = 1
         }
+    }
+    finally {
+        # Clean up temp files
+        Remove-Item $outputFile -ErrorAction SilentlyContinue
+        Remove-Item $errorFile -ErrorAction SilentlyContinue
     }
 }
 
@@ -429,6 +493,11 @@ function Select-JavaVersion {
 
 function Build-AllReleases {
     Clear-Host
+    
+    # Ask for build type first
+    $buildType = Show-BuildTypePrompt
+    
+    Clear-Host
     Write-CenterLine "=" -ForegroundColor Cyan
     Write-CenterText "BUILDING ALL VERSIONS TO RELEASES" -ForegroundColor Green
     Write-CenterLine "=" -ForegroundColor Cyan
@@ -468,8 +537,8 @@ function Build-AllReleases {
                 $env:PATH = $optimalJava.FullPath + "\bin;" + $env:PATH
             }
             
-            # Build with progress tracking
-            $buildResult = Invoke-GradleBuildWithProgress -ProjectName "Minecraft $version" -MinecraftVersion $version
+            # Build with progress tracking and selected build type
+            $buildResult = Invoke-GradleBuildWithProgress -ProjectName "Minecraft $version" -MinecraftVersion $version -BuildType $buildType
             
             # Restore original environment
             $env:JAVA_HOME = $originalJavaHome
@@ -479,10 +548,10 @@ function Build-AllReleases {
                 Write-Host "X Failed to build $version!" -ForegroundColor Red
                 Write-Host "Exit code: $($buildResult.ExitCode)" -ForegroundColor DarkRed
                 
-                # Always show the last 10 lines of output for debugging
+                # Always show the last 30 lines of output for debugging
                 if ($buildResult.Output) {
-                    Write-Host "Build output (last 10 lines):" -ForegroundColor DarkRed
-                    $lastLines = $buildResult.Output | Select-Object -Last 10
+                    Write-Host "Build output (last 30 lines):" -ForegroundColor DarkRed
+                    $lastLines = $buildResult.Output | Select-Object -Last 30
                     foreach ($line in $lastLines) {
                         $lineStr = "$line"
                         if ($lineStr.Trim()) {
@@ -493,7 +562,7 @@ function Build-AllReleases {
                 
                 if ($buildResult.Error) {
                     Write-Host "Build errors:" -ForegroundColor DarkRed
-                    foreach ($errorLine in $buildResult.Error[-5..-1]) {
+                    foreach ($errorLine in $buildResult.Error[-10..-1]) {
                         $errStr = "$errorLine"
                         if ($errStr.Trim()) {
                             Write-Host "  $errStr" -ForegroundColor Red
@@ -525,7 +594,7 @@ function Build-AllReleases {
                                     # Only copy the main jar, not dev-shadow or sources
                                     if ($jar.Name -notmatch "-dev-shadow" -and $jar.Name -notmatch "-sources" -and $jar.Name -notmatch "-transform") {
                                         # Create GitHub release-ready name: viscord-{version}-{platform}-{mcversion}.jar
-                                        $baseName = $jar.BaseName  # e.g., "viscord-fabric-2.4.4"
+                                        $baseName = $jar.BaseName
                                         $extension = $jar.Extension
                                         $newName = "viscord-$version-$platform-$script:ModVersion$extension"
                                         $newPath = Join-Path $releasesDir $newName
@@ -565,6 +634,11 @@ function Build-AllReleases {
 
 function Build-AllVersioned {
     Clear-Host
+    
+    # Ask for build type first
+    $buildType = Show-BuildTypePrompt
+    
+    Clear-Host
     Write-CenterLine "=" -ForegroundColor Cyan
     Write-CenterText "BUILDING ALL VERSIONS TO VERSIONED FOLDERS" -ForegroundColor Green
     Write-CenterLine "=" -ForegroundColor Cyan
@@ -592,8 +666,8 @@ function Build-AllVersioned {
                 $env:PATH = $optimalJava.FullPath + "\bin;" + $env:PATH
             }
             
-            # Build with progress tracking
-            $buildResult = Invoke-GradleBuildWithProgress -ProjectName "Minecraft $version" -MinecraftVersion $version
+            # Build with progress tracking and selected build type
+            $buildResult = Invoke-GradleBuildWithProgress -ProjectName "Minecraft $version" -MinecraftVersion $version -BuildType $buildType
             
             # Restore original environment
             $env:JAVA_HOME = $originalJavaHome
@@ -699,6 +773,9 @@ function Build-SpecificVersion {
     
     $buildVer = $versionMap[$choice]
     
+    # Ask for build type
+    $buildType = Show-BuildTypePrompt
+    
     Write-Host ""
     Write-Host "Building Minecraft $buildVer..." -ForegroundColor Yellow
     Write-Host "------------------------------------------------------------" -ForegroundColor Cyan
@@ -719,8 +796,8 @@ function Build-SpecificVersion {
             $env:PATH = $optimalJava.FullPath + "\bin;" + $env:PATH
         }
         
-        # Build with progress tracking
-        $buildResult = Invoke-GradleBuildWithProgress -ProjectName "Minecraft $buildVer" -MinecraftVersion $buildVer
+        # Build with progress tracking and selected build type
+        $buildResult = Invoke-GradleBuildWithProgress -ProjectName "Minecraft $buildVer" -MinecraftVersion $buildVer -BuildType $buildType
         
         # Restore original environment
         $env:JAVA_HOME = $originalJavaHome
@@ -774,7 +851,7 @@ function Build-SpecificVersion {
                                             # Create GitHub release-ready name: viscord-{version}-{platform}-{mcversion}.jar
                                             $baseName = $jar.BaseName
                                             $extension = $jar.Extension
-                                            $newName = "viscord-$buildVer-$platform-2.4.10$extension"
+                                            $newName = "viscord-$buildVer-$platform-$script:ModVersion$extension"
                                             $newPath = Join-Path $releasesDir $newName
                                             
                                             Copy-Item $jar.FullName $newPath -Force
@@ -876,6 +953,9 @@ function Build-CustomFolder {
         return Build-CustomFolder
     }
     
+    # Ask for build type
+    $buildType = Show-BuildTypePrompt
+    
     Clear-Host
     Write-CenterLine "=" -ForegroundColor Cyan
     Write-CenterText "BUILDING TO CUSTOM FOLDER: $customFolder" -ForegroundColor Yellow
@@ -909,8 +989,8 @@ function Build-CustomFolder {
                 $env:PATH = $optimalJava.FullPath + "\bin;" + $env:PATH
             }
             
-            # Build with progress tracking
-            $buildResult = Invoke-GradleBuildWithProgress -ProjectName "Minecraft $version" -MinecraftVersion $version
+            # Build with progress tracking and selected build type
+            $buildResult = Invoke-GradleBuildWithProgress -ProjectName "Minecraft $version" -MinecraftVersion $version -BuildType $buildType
             
             # Restore original environment
             $env:JAVA_HOME = $originalJavaHome
