@@ -5,6 +5,25 @@ All notable changes to Viscord will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [2.4.12] - 2026-03-25
+
+### 🌟 Added
+- **Modern Python CLI Build Menu** - Completely rewritten build menu using Rich library for beautiful terminal UI
+  - **Visual Progress Bars**: Real-time Gradle build progress with animated spinners and progress indicators
+  - **Interactive Menus**: Clean, centered menu tables with keyboard navigation
+  - **Build Status Tracking**: Success/failure reporting with detailed error output
+  - **Java Auto-Detection**: Automatic discovery of installed Java versions across Eclipse Adoptium, Program Files, JAVA_HOME, and PATH
+  - **Smart Java Selection**: Auto-selects Java 21+ for all Minecraft versions (required by modern Architectury Loom)
+  - **Multi-Platform Build**: Support for Fabric, Forge, and NeoForge platform detection
+  - **Build Type Selection**: Choose between Clean Build (recommended) and Quick Build (faster)
+  - **Flexible Output**: Copy JARs to Releases folder, versioned folders, or custom destination
+  - **Rich Error Display**: Last 30 lines of build output shown on failure for debugging
+  - **UTF-8 Support**: Full Unicode support for modern terminal emulators
+  - **Launcher Script**: `build_menu_launcher.bat` for easy one-click startup
+
+### Changed
+- Replaced PowerShell `build_menu.ps1` with Python `build_menu.py` for cross-platform compatibility and superior UI
+
 ## [2.4.11] - 2026-03-25
 
 ### 🐛 Fixed (All Versions Compilation + Tridirectional Chat)
