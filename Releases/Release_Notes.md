@@ -1,4 +1,4 @@
-# Viscord Release Notes (v2.4.4 - v2.4.7)
+# Viscord Release Notes (v2.4.4 - v2.4.8)
 
 Detailed summary of key changes and fixes.
 
@@ -13,12 +13,18 @@ Detailed summary of key changes and fixes.
 *   **New Utility Commands**: `/viscord fluxer invite` and the `/fluxer` alias now provide easy clickable links to install and set up your bot.
 
 ### 🐛 Critical Bug Fixes
+*   **Java 21 Compatibility (v2.4.8)**: Corrected `FluxerBotClient` compilation errors and refined the `build_menu.ps1` script to ensure Java 21 is automatically used for Gradle operations across all versions (even legacy ones).
 *   **Gateway Connectivity (v2.4.7)**: Resolved an issue causing infinite reconnection loops. Improved authentication handshake logic ensuring the bot is fully ready before completing status updates.
 *   **Advancement Spam (v2.4.6)**: Fixed an issue where achievements would broadcast "progress" instead of "completion." Added the `isDone()` check to ensure only fully completed achievements trigger a bridge event.
 
 ---
 
 ## 📝 Change Details
+
+### v2.4.8
+- **Compilation Fixes**: 
+  - Removed invalid 5-argument `onDisconnected` override causing build failures.
+  - Refined Java 21 detection logic for older Minecraft versions.
 
 ### v2.4.7
 - **Fluxer Bot Reliability**: 
@@ -42,4 +48,3 @@ Detailed summary of key changes and fixes.
 - **Event Handler Refactor**: Initial backend preparation for migration to native Forge/NeoForge event listeners.
 
 ---
-
