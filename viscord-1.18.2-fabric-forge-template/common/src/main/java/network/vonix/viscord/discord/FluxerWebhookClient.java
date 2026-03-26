@@ -128,7 +128,7 @@ public class FluxerWebhookClient {
         return slackAttachment;
     }
 
-    private void sendJson(JsonObject json) {
+    protected void sendJson(JsonObject json) {
         String apiUrl = String.format("%s/%s/%s/slack", FLUXER_WEBHOOK_API_BASE, webhookId, webhookToken);
         
         Viscord.executeAsync(() -> {

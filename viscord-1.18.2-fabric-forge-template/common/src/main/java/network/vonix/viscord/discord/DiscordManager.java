@@ -238,7 +238,7 @@ public class DiscordManager {
         if (ViscordConfigToml.Tridirectional.ENABLED.get() && 
             ViscordConfigToml.Tridirectional.FLUXER_TO_DISCORD.get()) {
             // Pass the formatted content to bridgeFluxerToDiscord for proper echo detection
-            bridgeFluxerToDiscord(username, formatted);
+            bridgeFluxerToDiscord(username, formatted, avatarUrl);
         }
     }
     
@@ -441,13 +441,24 @@ public class DiscordManager {
         }
         
         try {
-            // Format message for Fluxer with source identification
-            // Discord messages don't need formatting conversion as they're plain text
-            String fluxerMessage = formatMessageForPlatform(content, "Discord", authorName);
-            
-            // Send to Fluxer via Bot API (not webhook)
-            String channelId = ViscordConfigToml.Fluxer.CHANNEL_ID.get();
-            fluxerBotClient.sendMessage(channelId, fluxerMessage);
+            // Extract sender's avatar URL from the Discord message author
+            String avatarUrl = "";
+            try {
+                avatarUrl = message.getAuthor().getAvatar().getUrl().toString();
+            } catch (Exception avatarEx) {
+                // Fall back to empty string if avatar URL is unavailable
+            }
+
+            // Use webhook if configured (preserves sender identity), otherwise fall back to bot API
+            String fluxerWebhookUrl = ViscordConfigToml.Fluxer.WEBHOOK_URL.get();
+            if (fluxerWebhookUrl != null && !fluxerWebhookUrl.isEmpty()) {
+                fluxerWebhookClient.sendMessage(authorName, avatarUrl, content);
+            } else {
+                // Fall back to bot API with formatted message
+                String fluxerMessage = formatMessageForPlatform(content, "Discord", authorName);
+                String channelId = ViscordConfigToml.Fluxer.CHANNEL_ID.get();
+                fluxerBotClient.sendMessage(channelId, fluxerMessage);
+            }
             Viscord.LOGGER.debug("[Tridirectional] Bridged Discord message to Fluxer: {}", authorName);
         } catch (Exception e) {
             Viscord.LOGGER.error("[Tridirectional] Failed to bridge Discord message to Fluxer", e);
@@ -457,7 +468,7 @@ public class DiscordManager {
     /**
      * Bridges Fluxer messages to Discord for tridirectional chat.
      */
-    private void bridgeFluxerToDiscord(String username, String message) {
+    private void bridgeFluxerToDiscord(String username, String message, String avatarUrl) {
         if (!isDiscordConfigured()) {
             return;
         }
@@ -487,7 +498,7 @@ public class DiscordManager {
                 // Temporarily update webhook URL and send message
                 String originalUrl = originalDiscordWebhookUrl;
                 webhookClient.updateUrl(discordWebhookUrl);
-                webhookClient.sendMessage("[Fluxer]" + username, "", convertedMessage);
+                webhookClient.sendMessage("[Fluxer]" + username, avatarUrl != null ? avatarUrl : "", convertedMessage);
                 webhookClient.updateUrl(originalUrl); // Restore original URL
                 Viscord.LOGGER.debug("[Tridirectional] Bridged Fluxer message to Discord: {}", username);
             }
