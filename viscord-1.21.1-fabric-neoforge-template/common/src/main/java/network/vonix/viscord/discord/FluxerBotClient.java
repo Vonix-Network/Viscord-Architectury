@@ -58,9 +58,20 @@ public class FluxerBotClient {
     }
 
     private Runnable onReadyCallback;
+    private final java.util.Set<String> allowedChannelIds = new java.util.concurrent.CopyOnWriteArraySet<>();
 
     public void setOnReadyCallback(Runnable callback) {
         this.onReadyCallback = callback;
+    }
+
+    /** Only messages from these channel IDs will be forwarded to the message handler. */
+    public void setAllowedChannelIds(java.util.Collection<String> channelIds) {
+        this.allowedChannelIds.clear();
+        if (channelIds != null) {
+            channelIds.stream()
+                .filter(id -> id != null && !id.isEmpty())
+                .forEach(allowedChannelIds::add);
+        }
     }
     
     public FluxerBotClient() {
@@ -400,6 +411,16 @@ public class FluxerBotClient {
             if (content.isEmpty()) return;
             if (author.has("bot") && author.get("bot").getAsBoolean()) return;
             if (data.has("webhook_id") && !data.get("webhook_id").isJsonNull()) return;
+
+            // Filter by allowed channel IDs — only process messages from configured channels
+            if (!allowedChannelIds.isEmpty()) {
+                String msgChannelId = data.has("channel_id") && !data.get("channel_id").isJsonNull()
+                    ? data.get("channel_id").getAsString() : "";
+                if (!allowedChannelIds.contains(msgChannelId)) {
+                    Viscord.LOGGER.debug("[Fluxer Bot] Ignoring message from non-configured channel: {}", msgChannelId);
+                    return;
+                }
+            }
             
             if (ViscordConfigToml.General.DEBUG.get()) {
                 Viscord.LOGGER.debug("[Fluxer Bot] Received message from {}: {}", username, content);

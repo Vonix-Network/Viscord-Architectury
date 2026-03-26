@@ -168,7 +168,11 @@ public class DiscordManager {
             Viscord.LOGGER.error("[Fluxer] Failed to load player preferences", e);
         }
         
-        // Connect Fluxer Bot via WebSocket Gateway
+        // Connect Fluxer Bot via WebSocket Gateway — only listen to configured channels
+        fluxerBotClient.setAllowedChannelIds(java.util.Arrays.asList(
+            channelId,
+            ViscordConfigToml.Fluxer.EVENT_CHANNEL_ID.get()
+        ));
         fluxerBotClient.setMessageHandler(this::onFluxerMessage);
         fluxerBotClient.setOnReadyCallback(() -> {
             // Fires immediately on READY/RESUMED — bot is authenticated, safe to send status

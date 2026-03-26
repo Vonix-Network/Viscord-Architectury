@@ -7,6 +7,9 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Fixed
+- Fluxer bot was forwarding messages from all channels to Discord/Minecraft — `FluxerBotClient.handleMessageCreate` had no channel ID filter. Now only messages from the configured `fluxer.channel_id` and `fluxer.event_channel_id` are processed.
+
 ## [4.0.0] - 2026-03-26
 
 ### Fixed
