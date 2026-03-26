@@ -31,12 +31,10 @@ public class ViscordConfigToml {
         public static final ConfigValue<String> BOT_TOKEN = new ConfigValue<>("discord.bot_token", "YOUR_BOT_TOKEN_HERE");
         public static final ConfigValue<String> CHANNEL_ID = new ConfigValue<>("discord.channel_id", "YOUR_CHANNEL_ID_HERE");
         public static final ConfigValue<String> WEBHOOK_URL = new ConfigValue<>("discord.webhook_url", "");
-        public static final ConfigValue<String> WEBHOOK_ID = new ConfigValue<>("discord.webhook_id", "");
         public static final ConfigValue<String> INVITE_URL = new ConfigValue<>("discord.invite_url", "");
 
         public static class Events {
             public static final ConfigValue<String> CHANNEL_ID = new ConfigValue<>("discord.events.channel_id", "");
-            public static final ConfigValue<String> WEBHOOK_URL = new ConfigValue<>("discord.events.webhook_url", "");
         }
     }
 
@@ -93,12 +91,6 @@ public class ViscordConfigToml {
     public static class AccountLinking {
         public static final ConfigValue<Boolean> ENABLED = new ConfigValue<>("account_linking.enabled", true);
         public static final ConfigValue<Integer> CODE_EXPIRY = new ConfigValue<>("account_linking.code_expiry", 300);
-    }
-
-    // ==================== ADVANCED SECTION ====================
-    public static class Advanced {
-        public static final ConfigValue<Integer> QUEUE_SIZE = new ConfigValue<>("advanced.queue_size", 100);
-        public static final ConfigValue<Integer> RATE_LIMIT = new ConfigValue<>("advanced.rate_limit", 1000);
     }
 
     // ==================== CONFIG VALUE HELPER CLASS ====================

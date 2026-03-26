@@ -10,16 +10,20 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 ## [4.0.0] - 2026-03-26
 
 ### Fixed
-- **CRITICAL**: Fluxer bot API messages were silently failing with HTTP 404 — missing `/v1/` in REST API base URL (`https://api.fluxer.app/channels/` → `https://api.fluxer.app/v1/channels/`). This means all bot API sends (events, startup/shutdown, fallback messages) were broken since the beginning.
-- **CRITICAL**: Fluxer gateway OP 7 (RECONNECT) was not handled — server-initiated reconnect requests were silently ignored, causing eventual session termination
-- Fluxer webhook was using the Slack-compatible endpoint (`/slack`) with `text`/`icon_url` fields instead of the native endpoint with `content`/`avatar_url` — switched to native for correctness and reliability
-- Webhook echo messages from Fluxer gateway were not reliably filtered — added `webhook_id` presence check in `handleMessageCreate` (webhook messages have `webhook_id` set; bot flag alone is insufficient)
-- Javacord `MessageAuthor.getAvatar()` returns `Optional<Icon>` — unsafe `.getUrl().toString()` call replaced with `.map(icon -> icon.getUrl().toString()).orElse("")` to prevent `NoSuchElementException`
-- Fluxer gateway OP 12 (GATEWAY_ERROR, Fluxer-specific) was not handled — now schedules reconnect
-- All remaining fixes from 3.0.6 fix pass applied across all 4 MC version templates
-
-### Changed
-- Fluxer webhook payload format: `text` field renamed to `content`, `icon_url` renamed to `avatar_url` to match Fluxer's native webhook API (Discord-compatible format)
+- **CRITICAL**: Fluxer bot API messages silently failing with HTTP 404 — missing `/v1/` in REST API base URL (`https://api.fluxer.app/channels/` → `https://api.fluxer.app/v1/channels/`). All bot API sends (events, startup/shutdown, fallback messages) were broken.
+- **CRITICAL**: Fluxer gateway OP 7 (RECONNECT) not handled — server-initiated reconnect requests were silently ignored, causing eventual session termination
+- Fluxer webhook switched from Slack-compatible endpoint (`/slack`, `text`/`icon_url`) to native endpoint (`content`/`avatar_url`) for correctness and reliability
+- Webhook echo messages not reliably filtered — added `webhook_id` presence check in `handleMessageCreate` (webhook author type is distinct from bot type)
+- Javacord `MessageAuthor.getAvatar()` returns `Optional<Icon>` — unsafe `.getUrl().toString()` replaced with `.map(icon -> icon.getUrl().toString()).orElse("")`
+- Fluxer gateway OP 12 (GATEWAY_ERROR, Fluxer-specific) not handled — now schedules reconnect
+- Fluxer gateway Hello handler missing null checks on `d` and `heartbeat_interval` fields in 1.18.2, 1.19.2, 1.20.1
+- Heartbeat interval validation — invalid/zero intervals now fall back to 45000ms instead of crashing
+- Scheduler thread leak on disconnect — `oldToken == null` condition was always false; fixed to `this.token == null` in 1.18.2, 1.19.2, 1.20.1
+- BotClient `sendEmbed` silently returned null when channel not found — now logs a warning with the channel ID
+- `FluxerWebhookClient` URL pattern now accepts both `/v1/` and non-`/v1/` URL formats; warning now shows the actual URL received
+- `sendMinecraftMessage` called `fluxerWebhookClient.updateUrl()` on every message — now only updates when URL has changed
+- Duplicate `!list` command check in `processDiscordMessageForMinecraft` — added clarifying comment in all templates
+- Removed dead config keys: `Discord.WEBHOOK_ID`, `Discord.Events.WEBHOOK_URL`, `Advanced.QUEUE_SIZE`, `Advanced.RATE_LIMIT` — none were read anywhere in the codebase
 
 ## [3.0.6] - 2026-03-26
 

@@ -1052,8 +1052,10 @@ public class DiscordManager {
         if (isFluxer()) {
             String fluxerWebhookUrl = ViscordConfigToml.Fluxer.WEBHOOK_URL.get();
             if (fluxerWebhookUrl != null && !fluxerWebhookUrl.isEmpty()) {
-                // Use webhook for custom username/avatar
-                fluxerWebhookClient.updateUrl(fluxerWebhookUrl);
+                // URL is set at init time via onReadyCallback; only update if it changed
+                if (!fluxerWebhookUrl.equals(fluxerWebhookClient.getUrl())) {
+                    fluxerWebhookClient.updateUrl(fluxerWebhookUrl);
+                }
                 fluxerWebhookClient.sendMessage(formattedUsername, avatarUrl, formattedMessage);
             } else {
                 // Fall back to Bot API (shows bot name, not player name)

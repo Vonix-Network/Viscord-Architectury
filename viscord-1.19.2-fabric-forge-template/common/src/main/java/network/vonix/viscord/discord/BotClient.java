@@ -99,7 +99,12 @@ public class BotClient {
         
         Viscord.LOGGER.info("[Discord] Attempting to send embed to channel ID: {}", channelId);
 
-        return api.getTextChannelById(channelId).map(channel -> {
+        java.util.Optional<org.javacord.api.entity.channel.TextChannel> channelOpt = api.getTextChannelById(channelId);
+        if (!channelOpt.isPresent()) {
+            Viscord.LOGGER.warn("[Discord] Cannot send embed - channel {} not found (bot may lack access)", channelId);
+            return CompletableFuture.completedFuture(null);
+        }
+        return channelOpt.map(channel -> {
             org.javacord.api.entity.message.embed.EmbedBuilder embed = new org.javacord.api.entity.message.embed.EmbedBuilder();
 
             if (embedJson.has("title"))

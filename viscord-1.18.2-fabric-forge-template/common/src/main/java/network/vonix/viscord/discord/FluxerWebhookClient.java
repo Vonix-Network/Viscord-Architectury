@@ -18,7 +18,9 @@ import java.util.regex.Pattern;
 public class FluxerWebhookClient {
 
     private static final String FLUXER_WEBHOOK_API_BASE = "https://api.fluxer.app/v1/webhooks";
-    private static final Pattern WEBHOOK_URL_PATTERN = Pattern.compile("https://api\\.fluxer\\.app/v1/webhooks/(\\d+)/([a-zA-Z0-9_-]+)");
+    // Accept both /v1/ and non-/v1/ URL formats for user convenience
+    private static final Pattern WEBHOOK_URL_PATTERN = Pattern.compile(
+        "https://api\\.fluxer\\.app(?:/v1)?/webhooks/(\\d+)/([a-zA-Z0-9_-]+)");
     
     private final OkHttpClient httpClient;
     private String webhookUrl;
@@ -59,7 +61,7 @@ public class FluxerWebhookClient {
             this.webhookId = matcher.group(1);
             this.webhookToken = matcher.group(2);
         } else {
-            Viscord.LOGGER.warn("[Fluxer Webhook] Invalid webhook URL format. Expected: https://api.fluxer.app/v1/webhooks/{id}/{token}");
+            Viscord.LOGGER.warn("[Fluxer Webhook] Invalid webhook URL format. Received: '{}'. Expected: https://api.fluxer.app/v1/webhooks/{{id}}/{{token}}", url);
             this.webhookId = null;
             this.webhookToken = null;
         }

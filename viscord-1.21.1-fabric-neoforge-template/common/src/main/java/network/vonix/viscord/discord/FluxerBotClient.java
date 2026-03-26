@@ -285,6 +285,10 @@ public class FluxerBotClient {
                     JsonObject d = json.getAsJsonObject("d");
                     if (!d.has("heartbeat_interval")) break;
                     int heartbeatInterval = d.get("heartbeat_interval").getAsInt();
+                    if (heartbeatInterval <= 0) {
+                        Viscord.LOGGER.warn("[Fluxer Bot] Invalid heartbeat interval: {}ms, using 45000ms", heartbeatInterval);
+                        heartbeatInterval = 45000;
+                    }
                     Viscord.LOGGER.debug("[Fluxer Bot] Received Hello. Heartbeat interval: {}ms", heartbeatInterval);
                     
                     startHeartbeating(heartbeatInterval);

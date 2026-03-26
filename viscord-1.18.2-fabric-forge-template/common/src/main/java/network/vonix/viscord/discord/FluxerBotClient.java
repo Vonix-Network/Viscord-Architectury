@@ -277,8 +277,14 @@ public class FluxerBotClient {
 
             switch (op) {
                 case 10: // Hello
+                    if (!json.has("d") || json.get("d").isJsonNull()) break;
                     JsonObject d = json.getAsJsonObject("d");
+                    if (!d.has("heartbeat_interval")) break;
                     int heartbeatInterval = d.get("heartbeat_interval").getAsInt();
+                    if (heartbeatInterval <= 0) {
+                        Viscord.LOGGER.warn("[Fluxer Bot] Invalid heartbeat interval: {}ms, using 45000ms", heartbeatInterval);
+                        heartbeatInterval = 45000;
+                    }
                     Viscord.LOGGER.debug("[Fluxer Bot] Received Hello. Heartbeat interval: {}ms", heartbeatInterval);
                     
                     startHeartbeating(heartbeatInterval);
@@ -540,8 +546,8 @@ public class FluxerBotClient {
             connectFuture = null;
         }
         
-        // Shutdown scheduler on explicit disconnect
-        if (oldToken == null && !scheduler.isShutdown()) {
+        // Shutdown scheduler only on permanent disconnect (token cleared = no reconnect intended)
+        if (this.token == null && !scheduler.isShutdown()) {
             scheduler.shutdownNow();
         }
     }
