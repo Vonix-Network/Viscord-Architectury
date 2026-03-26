@@ -206,6 +206,12 @@ public class DiscordManager {
         // Echo suppression via bridge cache
         if (bridge != null && bridge.checkAndSuppressEcho(username, message)) return;
 
+        // Handle !list command from Fluxer
+        if (message.trim().equalsIgnoreCase("!list")) {
+            handleFluxerListCommand();
+            return;
+        }
+
         if (ViscordConfigToml.Filters.FILTER_BY_PREFIX.get()) {
             String prefix = ViscordConfigToml.Server.PREFIX.get();
             if (prefix != null && !prefix.isEmpty() && username.startsWith(prefix)) return;
@@ -687,6 +693,29 @@ public class DiscordManager {
             event.getChannel().sendMessage(embed);
         } catch (Exception e) {
             Viscord.LOGGER.error("[Discord] Error handling !list command", e);
+        }
+    }
+
+    /** Handles !list command received from Fluxer — sends player list back to Fluxer event channel. */
+    private void handleFluxerListCommand() {
+        if (server == null) return;
+        try {
+            java.util.List<net.minecraft.server.level.ServerPlayer> players = server.getPlayerList().getPlayers();
+            int online = players.size();
+            int max = server.getPlayerList().getMaxPlayers();
+            StringBuilder sb = new StringBuilder();
+            sb.append("\uD83D\uDCCB **").append(ViscordConfigToml.Server.NAME.get()).append("** — Players ")
+              .append(online).append("/").append(max).append("\n");
+            if (online == 0) {
+                sb.append("No players are currently online.");
+            } else {
+                for (net.minecraft.server.level.ServerPlayer p : players) {
+                    sb.append("• ").append(p.getName().getContents()).append("\n");
+                }
+            }
+            fluxerPlatform.sendEventMessage(sb.toString().trim());
+        } catch (Exception e) {
+            Viscord.LOGGER.error("[Fluxer] Error handling !list command", e);
         }
     }
 

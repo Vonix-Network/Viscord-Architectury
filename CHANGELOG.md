@@ -8,7 +8,9 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 ## [Unreleased]
 
 ### Fixed
-- Advancement notifications firing on partial progress — `PlayerAdvancementsMixin` now checks `getOrStartProgress().isDone()` before sending, so multi-criterion advancements (e.g. "Diamonds!") only notify when ALL criteria are complete, not on each individual criterion grant. Applied to all 8 mixin files across all 4 templates (Fabric + Forge/NeoForge).
+- `!list` command not responding from Fluxer — `onFluxerMessage` had no `!list` handler; now sends formatted player list back to the Fluxer event channel
+- Join/leave events not reaching Fluxer — added error logging to `FluxerPlatform.sendEventMessage` to surface failures; `botClient.sendMessage` future now has a completion handler that logs failures
+- Advancement notifications firing on partial progress — `PlayerAdvancementsMixin` now checks `getOrStartProgress().isDone()` before sending
 
 ### Fixed
 - Fluxer standalone mode: `sendStartupEmbed` was double-sending the startup message (once via `FluxerPlatform.initialize()` thenRun, once via `DiscordManager.sendStartupEmbed`) — fixed routing logic so each mode sends exactly once

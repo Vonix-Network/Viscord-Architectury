@@ -29,6 +29,8 @@ public class FluxerPlatform {
     private MinecraftServer server;
     private MessageListener messageListener;
     private boolean initialized = false;
+    // Separate event webhook client so event embeds go to the event channel URL if configured
+    private final FluxerWebhookClient eventWebhookClient = new FluxerWebhookClient();
 
     public void setServer(MinecraftServer server) {
         this.server = server;
@@ -158,9 +160,19 @@ public class FluxerPlatform {
      */
     public void sendEventMessage(String message) {
         String channelId = getEventChannelId();
-        if (channelId != null && !channelId.isEmpty()) {
-            botClient.sendMessage(channelId, message);
+        if (channelId == null || channelId.isEmpty()) {
+            Viscord.LOGGER.warn("[Fluxer] Cannot send event message — no event channel configured");
+            return;
         }
+        botClient.sendMessage(channelId, message).whenComplete((success, err) -> {
+            if (err != null) {
+                Viscord.LOGGER.error("[Fluxer] Failed to send event message: {}", err.getMessage());
+            } else if (!success) {
+                Viscord.LOGGER.warn("[Fluxer] Event message send returned false for channel {}", channelId);
+            } else if (ViscordConfigToml.General.DEBUG.get()) {
+                Viscord.LOGGER.debug("[Fluxer] Event message sent to channel {}", channelId);
+            }
+        });
     }
 
     /**
