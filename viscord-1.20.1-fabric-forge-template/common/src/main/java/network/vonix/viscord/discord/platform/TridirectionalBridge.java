@@ -53,9 +53,8 @@ public class TridirectionalBridge {
         try {
             String avatarUrl = "";
             try {
-                avatarUrl = message.getAuthor().getAvatar()
-                    .map(icon -> icon.getUrl().toString())
-                    .orElse("");
+                org.javacord.api.entity.Icon avatar = message.getAuthor().getAvatar();
+                if (avatar != null) avatarUrl = avatar.getUrl().toString();
             } catch (Exception ignored) {}
 
             if (hasWebhook) {
