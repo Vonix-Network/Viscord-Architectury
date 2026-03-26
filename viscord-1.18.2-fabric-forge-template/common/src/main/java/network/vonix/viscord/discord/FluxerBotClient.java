@@ -279,6 +279,10 @@ public class FluxerBotClient {
         try {
             JsonObject json = JsonParser.parseString(payload).getAsJsonObject();
             
+            if (!json.has("op") || json.get("op").isJsonNull()) {
+                Viscord.LOGGER.debug("[Fluxer Bot] Received payload without op code, ignoring");
+                return;
+            }
             int op = json.get("op").getAsInt();
             
             // Update sequence number if present
@@ -307,6 +311,7 @@ public class FluxerBotClient {
                     break;
                     
                 case 0: // Dispatch
+                    if (!json.has("t") || json.get("t").isJsonNull()) break;
                     String t = json.get("t").getAsString();
                     if ("READY".equals(t)) {
                         JsonObject readyData = json.getAsJsonObject("d");
@@ -325,6 +330,7 @@ public class FluxerBotClient {
                         if (connectFuture != null && !connectFuture.isDone()) {
                             connectFuture.complete(null);
                         }
+                        // Fire ready callback (e.g. for immediate status update)
                         if (onReadyCallback != null) {
                             try { onReadyCallback.run(); } catch (Exception ex) {
                                 Viscord.LOGGER.error("[Fluxer Bot] onReadyCallback error", ex);
@@ -382,8 +388,11 @@ public class FluxerBotClient {
     private void handleMessageCreate(JsonObject data) {
         try {
             // Extract author info
+            if (!data.has("author") || data.get("author").isJsonNull()) return;
             JsonObject author = data.getAsJsonObject("author");
-            String username = author.has("global_name") && !author.get("global_name").isJsonNull() 
+            if (!author.has("username") || author.get("username").isJsonNull()) return;
+            String username = author.has("global_name") && !author.get("global_name").isJsonNull()
+                    && !author.get("global_name").getAsString().isEmpty()
                 ? author.get("global_name").getAsString()
                 : author.get("username").getAsString();
             String avatarUrl = null;

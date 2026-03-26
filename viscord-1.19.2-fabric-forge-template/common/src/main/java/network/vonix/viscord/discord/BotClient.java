@@ -106,7 +106,6 @@ public class BotClient {
         }
         return channelOpt.map(channel -> {
             org.javacord.api.entity.message.embed.EmbedBuilder embed = new org.javacord.api.entity.message.embed.EmbedBuilder();
-
             if (embedJson.has("title"))
                 embed.setTitle(embedJson.get("title").getAsString());
             if (embedJson.has("description"))
