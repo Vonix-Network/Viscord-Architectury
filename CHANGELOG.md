@@ -7,6 +7,11 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Fixed
+- Fluxer standalone mode: `sendStartupEmbed` was double-sending the startup message (once via `FluxerPlatform.initialize()` thenRun, once via `DiscordManager.sendStartupEmbed`) — fixed routing logic so each mode sends exactly once
+- `isRunning()` now correctly checks tridirectional state — returns true if either platform is connected in tridirectional mode
+- Build error: `Javacord Icon.getAvatar()` returns `Icon` directly, not `Optional<Icon>` — `.map()` call replaced with null-safe direct call in `TridirectionalBridge` across all 4 templates
+
 ## [4.1.0] - 2026-03-26
 
 ### Changed

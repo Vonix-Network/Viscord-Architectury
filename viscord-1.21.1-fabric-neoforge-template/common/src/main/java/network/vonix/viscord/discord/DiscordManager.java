@@ -495,15 +495,16 @@ public class DiscordManager {
     // =========================================================================
 
     public void sendStartupEmbed(String serverName) {
-        if (isFluxer()) {
-            fluxerPlatform.sendEventMessage("\uD83D\uDFE2 **" + serverName + "** is now online!");
-        } else {
-            discordPlatform.sendStartupEmbed(serverName);
+        boolean tridirectional = ViscordConfigToml.Tridirectional.ENABLED.get();
+        if (isFluxer() || tridirectional) {
+            // FluxerPlatform.initialize() sends startup in non-tridirectional mode,
+            // so only send here when tridirectional (to avoid double-send)
+            if (tridirectional) {
+                fluxerPlatform.sendEventMessage("\uD83D\uDFE2 **" + serverName + "** is now online!");
+            }
         }
-        if (ViscordConfigToml.Tridirectional.ENABLED.get()) {
-            // In tridirectional mode, send to both
-            if (isFluxer()) discordPlatform.sendStartupEmbed(serverName);
-            else fluxerPlatform.sendEventMessage("\uD83D\uDFE2 **" + serverName + "** is now online!");
+        if (!isFluxer() || tridirectional) {
+            discordPlatform.sendStartupEmbed(serverName);
         }
     }
 
@@ -593,7 +594,15 @@ public class DiscordManager {
 
     public boolean isRunning() {
         if (!running) return false;
-        if (isFluxer()) return true;
+        if (isFluxer()) {
+            // In Fluxer mode, running is true as long as we're initialized
+            // (webhook-only setups don't need bot connected to send)
+            return true;
+        }
+        if (ViscordConfigToml.Tridirectional.ENABLED.get()) {
+            // Tridirectional: either platform being up is sufficient
+            return discordPlatform.isConnected() || fluxerPlatform.isConnected();
+        }
         return discordPlatform.isConnected();
     }
 
