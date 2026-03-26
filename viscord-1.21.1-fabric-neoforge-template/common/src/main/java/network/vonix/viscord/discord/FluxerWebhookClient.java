@@ -71,9 +71,9 @@ public class FluxerWebhookClient {
         JsonObject json = new JsonObject();
         json.addProperty("username", username);
         if (avatarUrl != null && !avatarUrl.isEmpty()) {
-            json.addProperty("icon_url", avatarUrl);
+            json.addProperty("avatar_url", avatarUrl);
         }
-        json.addProperty("text", content);
+        json.addProperty("content", content);
 
         sendJson(json);
     }
@@ -129,7 +129,7 @@ public class FluxerWebhookClient {
     }
 
     private void sendJson(JsonObject json) {
-        String apiUrl = String.format("%s/%s/%s/slack", FLUXER_WEBHOOK_API_BASE, webhookId, webhookToken);
+        String apiUrl = String.format("%s/%s/%s", FLUXER_WEBHOOK_API_BASE, webhookId, webhookToken);
         
         Viscord.executeAsync(() -> {
             RequestBody body = RequestBody.create(json.toString(), MediaType.parse("application/json"));

@@ -7,6 +7,20 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [4.0.0] - 2026-03-26
+
+### Fixed
+- **CRITICAL**: Fluxer bot API messages were silently failing with HTTP 404 — missing `/v1/` in REST API base URL (`https://api.fluxer.app/channels/` → `https://api.fluxer.app/v1/channels/`). This means all bot API sends (events, startup/shutdown, fallback messages) were broken since the beginning.
+- **CRITICAL**: Fluxer gateway OP 7 (RECONNECT) was not handled — server-initiated reconnect requests were silently ignored, causing eventual session termination
+- Fluxer webhook was using the Slack-compatible endpoint (`/slack`) with `text`/`icon_url` fields instead of the native endpoint with `content`/`avatar_url` — switched to native for correctness and reliability
+- Webhook echo messages from Fluxer gateway were not reliably filtered — added `webhook_id` presence check in `handleMessageCreate` (webhook messages have `webhook_id` set; bot flag alone is insufficient)
+- Javacord `MessageAuthor.getAvatar()` returns `Optional<Icon>` — unsafe `.getUrl().toString()` call replaced with `.map(icon -> icon.getUrl().toString()).orElse("")` to prevent `NoSuchElementException`
+- Fluxer gateway OP 12 (GATEWAY_ERROR, Fluxer-specific) was not handled — now schedules reconnect
+- All remaining fixes from 3.0.6 fix pass applied across all 4 MC version templates
+
+### Changed
+- Fluxer webhook payload format: `text` field renamed to `content`, `icon_url` renamed to `avatar_url` to match Fluxer's native webhook API (Discord-compatible format)
+
 ## [3.0.6] - 2026-03-26
 
 ### Fixed
@@ -25,13 +39,13 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 ## [3.0.5] - 2026-03-26
 
 ### Fixed
-- Tridirectional relay now correctly forwards sender avatars and display names in all MC version templates (1.19.2, 1.20.1, 1.21.1 were still using bot API with hardcoded empty avatar)
+- Tridirectional relay now correctly forwards sender avatars and display names in all MC version templates (1.19.2, 1.20.1, 1.21.1 were still using bot API with hardcoded empty avatar)  - still broken
 - Discord→Fluxer bridge in 1.19.2, 1.20.1, and 1.21.1 now uses webhook client to preserve sender identity instead of falling back to bot API
 
 ## [3.0.4] - 2026-03-26
 
 ### Added
-- Tridirectional chat now relays sender profiles across platforms — Discord users' avatars and display names appear in Fluxer, and Fluxer users' avatars and display names appear in Discord, instead of showing the bot identity
+- Tridirectional chat now relays sender profiles across platforms — Discord users' avatars and display names appear in Fluxer, and Fluxer users' avatars and display names appear in Discord, instead of showing the bot identity -- still broken
 
 ## [3.0.3] - 2026-03-26
 

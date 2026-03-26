@@ -456,7 +456,9 @@ public class DiscordManager {
             // Extract sender's avatar URL from the Discord message author
             String avatarUrl = "";
             try {
-                avatarUrl = message.getAuthor().getAvatar().getUrl().toString();
+                avatarUrl = message.getAuthor().getAvatar()
+                    .map(icon -> icon.getUrl().toString())
+                    .orElse("");
             } catch (Exception avatarEx) {
                 // Fall back to empty string if avatar URL is unavailable
             }

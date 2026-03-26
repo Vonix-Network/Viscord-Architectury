@@ -281,7 +281,9 @@ public class FluxerBotClient {
 
             switch (op) {
                 case 10: // Hello
+                    if (!json.has("d") || json.get("d").isJsonNull()) break;
                     JsonObject d = json.getAsJsonObject("d");
+                    if (!d.has("heartbeat_interval")) break;
                     int heartbeatInterval = d.get("heartbeat_interval").getAsInt();
                     Viscord.LOGGER.debug("[Fluxer Bot] Received Hello. Heartbeat interval: {}ms", heartbeatInterval);
                     
@@ -338,11 +340,28 @@ public class FluxerBotClient {
                     sendHeartbeat();
                     break;
                     
+                case 7: // Reconnect — server wants us to reconnect immediately
+                    Viscord.LOGGER.info("[Fluxer Bot] Received RECONNECT request. Reconnecting...");
+                    connected = false;
+                    authenticated = false;
+                    stopHeartbeating();
+                    if (webSocket != null) {
+                        try { webSocket.disconnect(); } catch (Exception ignored) {}
+                        webSocket = null;
+                    }
+                    scheduleReconnect();
+                    break;
+
                 case 9: // Invalid session
                     Viscord.LOGGER.warn("[Fluxer Bot] Invalid session received. Will reconnect.");
                     sessionId = null;
                     connected = false;
                     authenticated = false;
+                    scheduleReconnect();
+                    break;
+
+                case 12: // Gateway error (Fluxer-specific)
+                    Viscord.LOGGER.warn("[Fluxer Bot] Gateway error received. Scheduling reconnect.");
                     scheduleReconnect();
                     break;
             }
@@ -354,8 +373,11 @@ public class FluxerBotClient {
     private void handleMessageCreate(JsonObject data) {
         try {
             // Extract author info
+            if (!data.has("author") || data.get("author").isJsonNull()) return;
             JsonObject author = data.getAsJsonObject("author");
-            String username = author.has("global_name") && !author.get("global_name").isJsonNull() 
+            if (!author.has("username") || author.get("username").isJsonNull()) return;
+            String username = author.has("global_name") && !author.get("global_name").isJsonNull()
+                    && !author.get("global_name").getAsString().isEmpty()
                 ? author.get("global_name").getAsString()
                 : author.get("username").getAsString();
             String avatarUrl = null;
@@ -370,9 +392,10 @@ public class FluxerBotClient {
                 ? data.get("content").getAsString() 
                 : "";
             
-            // Skip empty messages and bot messages
+            // Skip empty messages, bot messages, and webhook-originated messages (echo prevention)
             if (content.isEmpty()) return;
             if (author.has("bot") && author.get("bot").getAsBoolean()) return;
+            if (data.has("webhook_id") && !data.get("webhook_id").isJsonNull()) return;
             
             if (ViscordConfigToml.General.DEBUG.get()) {
                 Viscord.LOGGER.debug("[Fluxer Bot] Received message from {}: {}", username, content);
@@ -528,8 +551,8 @@ public class FluxerBotClient {
             connectFuture = null;
         }
         
-        // Shutdown scheduler on explicit disconnect
-        if (oldToken == null && !scheduler.isShutdown()) {
+        // Shutdown scheduler only on permanent disconnect (token cleared = no reconnect intended)
+        if (this.token == null && !scheduler.isShutdown()) {
             scheduler.shutdownNow();
         }
     }
@@ -554,7 +577,7 @@ public class FluxerBotClient {
         return CompletableFuture.supplyAsync(() -> {
             HttpURLConnection conn = null;
             try {
-                URL url = new URL("https://api.fluxer.app/channels/" + channelId + "/messages");
+                URL url = new URL("https://api.fluxer.app/v1/channels/" + channelId + "/messages");
                 conn = (HttpURLConnection) url.openConnection();
                 conn.setRequestMethod("POST");
                 conn.setRequestProperty("Authorization", "Bot " + token);
