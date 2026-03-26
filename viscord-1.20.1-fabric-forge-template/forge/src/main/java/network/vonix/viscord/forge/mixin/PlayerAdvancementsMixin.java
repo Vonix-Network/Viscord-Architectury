@@ -13,7 +13,8 @@ import org.spongepowered.asm.mixin.injection.Inject;
 import org.spongepowered.asm.mixin.injection.callback.CallbackInfoReturnable;
 
 /**
- * Mixin to intercept advancement awards and send them to Discord.
+ * Mixin to intercept advancement awards and send them to Discord/Fluxer.
+ * Only fires when the advancement is FULLY completed (all criteria done).
  */
 @Mixin(PlayerAdvancements.class)
 public abstract class PlayerAdvancementsMixin {
@@ -21,50 +22,35 @@ public abstract class PlayerAdvancementsMixin {
     @Shadow
     private ServerPlayer player;
 
-    /**
-     * Intercept advancement award to send to Discord.
-     * Targets the award method which is called when a player earns an advancement.
-     */
+    @Shadow
+    public abstract net.minecraft.advancements.AdvancementProgress getOrStartProgress(Advancement advancement);
+
     @Inject(method = "award", at = @At("RETURN"))
     private void viscord$onAdvancementAward(Advancement advancement, String criterionName,
             CallbackInfoReturnable<Boolean> cir) {
-        // Only process if the advancement was actually awarded (returned true)
-        if (!cir.getReturnValue()) {
-            return;
-        }
+        if (!cir.getReturnValue()) return;
+        if (!DiscordManager.getInstance().isRunning()) return;
+        if (!ViscordConfigToml.Messages.Events.ADVANCEMENT.get()) return;
 
-        // Check if Discord integration is running
-        if (!DiscordManager.getInstance().isRunning()) {
-            return;
-        }
-
-        // Check if advancement notifications are enabled
-        if (!ViscordConfigToml.Messages.Events.ADVANCEMENT.get()) {
-            return;
-        }
-
-        // Get advancement display info
         DisplayInfo display = advancement.getDisplay();
-        if (display == null) {
-            return; // Hidden advancement (no display)
-        }
+        if (display == null) return;
+        if (!display.shouldAnnounceChat()) return;
 
-        // Only send if advancement should announce to chat
-        if (!display.shouldAnnounceChat()) {
+        // Only notify when ALL criteria are satisfied — not on partial progress
+        try {
+            net.minecraft.advancements.AdvancementProgress progress = getOrStartProgress(advancement);
+            if (!progress.isDone()) return;
+        } catch (Exception e) {
             return;
         }
 
         try {
-            String username = player.getName().getString();
-            String advancementTitle = display.getTitle().getString();
-            String advancementDescription = display.getDescription().getString();
-
             DiscordManager.getInstance().sendAdvancementEmbed(
-                    username,
-                    advancementTitle,
-                    advancementDescription);
+                    player.getName().getString(),
+                    display.getTitle().getString(),
+                    display.getDescription().getString());
         } catch (Exception e) {
-            // Silently fail - don't break advancement system
+            // Silently fail — don't break advancement system
         }
     }
 }

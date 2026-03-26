@@ -86,50 +86,16 @@ public class FluxerWebhookClient {
         JsonObject json = new JsonObject();
         json.addProperty("username", username);
         if (avatarUrl != null && !avatarUrl.isEmpty()) {
-            json.addProperty("icon_url", avatarUrl);
+            json.addProperty("avatar_url", avatarUrl);
         }
-        
-        // Convert Discord-style embed to Slack attachment format
-        com.google.gson.JsonArray attachments = new com.google.gson.JsonArray();
-        attachments.add(convertEmbedToSlackAttachment(embed));
-        json.add("attachments", attachments);
+        // Native Fluxer/Discord webhook format: embeds array
+        com.google.gson.JsonArray embeds = new com.google.gson.JsonArray();
+        embeds.add(embed);
+        json.add("embeds", embeds);
 
         sendJson(json);
     }
     
-    /**
-     * Converts Discord-style embed to Slack attachment format.
-     * Slack attachments have similar but slightly different field names.
-     */
-    private JsonObject convertEmbedToSlackAttachment(JsonObject discordEmbed) {
-        JsonObject slackAttachment = new JsonObject();
-        
-        if (discordEmbed.has("title")) {
-            slackAttachment.addProperty("title", discordEmbed.get("title").getAsString());
-        }
-        if (discordEmbed.has("description")) {
-            slackAttachment.addProperty("text", discordEmbed.get("description").getAsString());
-        }
-        if (discordEmbed.has("color")) {
-            // Discord color is integer, Slack uses hex string
-            int color = discordEmbed.get("color").getAsInt();
-            String hexColor = String.format("#%06X", color);
-            slackAttachment.addProperty("color", hexColor);
-        }
-        if (discordEmbed.has("footer")) {
-            JsonObject footer = discordEmbed.getAsJsonObject("footer");
-            if (footer.has("text")) {
-                slackAttachment.addProperty("footer", footer.get("text").getAsString());
-            }
-        }
-        if (discordEmbed.has("fields")) {
-            com.google.gson.JsonArray fields = discordEmbed.getAsJsonArray("fields");
-            slackAttachment.add("fields", fields);
-        }
-        
-        return slackAttachment;
-    }
-
     protected void sendJson(JsonObject json) {
         String apiUrl = String.format("%s/%s/%s", FLUXER_WEBHOOK_API_BASE, webhookId, webhookToken);
         

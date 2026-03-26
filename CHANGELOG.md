@@ -8,6 +8,9 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 ## [Unreleased]
 
 ### Fixed
+- Advancement notifications firing on partial progress — `PlayerAdvancementsMixin` now checks `getOrStartProgress().isDone()` before sending, so multi-criterion advancements (e.g. "Diamonds!") only notify when ALL criteria are complete, not on each individual criterion grant. Applied to all 8 mixin files across all 4 templates (Fabric + Forge/NeoForge).
+
+### Fixed
 - Fluxer standalone mode: `sendStartupEmbed` was double-sending the startup message (once via `FluxerPlatform.initialize()` thenRun, once via `DiscordManager.sendStartupEmbed`) — fixed routing logic so each mode sends exactly once
 - `isRunning()` now correctly checks tridirectional state — returns true if either platform is connected in tridirectional mode
 - Build error: `Javacord Icon.getAvatar()` returns `Icon` directly, not `Optional<Icon>` — `.map()` call replaced with null-safe direct call in `TridirectionalBridge` across all 4 templates

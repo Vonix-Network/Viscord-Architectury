@@ -29,6 +29,8 @@ public class FluxerPlatform {
     private MinecraftServer server;
     private MessageListener messageListener;
     private boolean initialized = false;
+    // Separate event webhook client so event embeds go to the event channel URL if configured
+    private final FluxerWebhookClient eventWebhookClient = new FluxerWebhookClient();
 
     public void setServer(MinecraftServer server) {
         this.server = server;
