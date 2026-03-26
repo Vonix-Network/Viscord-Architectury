@@ -7,11 +7,20 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Changed
+- **Refactor (4.1.0 prep)**: Split `DiscordManager` (1560 lines) into focused platform classes:
+  - `platform/FluxerPlatform.java` — all Fluxer gateway/webhook/status logic
+  - `platform/DiscordPlatform.java` — all Discord bot/webhook/embed logic  
+  - `platform/TridirectionalBridge.java` — cross-platform relay with echo suppression
+  - `DiscordManager.java` — thin coordinator (~350 lines): Minecraft processing, player prefs, account linking, public API
+  - Zero behavior change — same config, same public API, `DiscordEventHandler` unchanged
+  - Applied across all 4 MC version templates
+
 ### Fixed
 - Fluxer bot was forwarding messages from all channels to Discord/Minecraft — `FluxerBotClient.handleMessageCreate` had no channel ID filter. Now only messages from the configured `fluxer.channel_id` and `fluxer.event_channel_id` are processed.
 - `BotClient.sendEmbed` in 1.21.1 was calling `embed.setTitle()` unconditionally — NPE if embed has no title field. Restored the `if (embedJson.has("title"))` guard.
-- `FluxerBotClient` in 1.18.2/1.19.2/1.20.1 was missing null checks for `op`, `t`, `author`, `username`, and `global_name` fields that were only applied to 1.21.1 — all templates now fully in sync.
-- `sendJson` in `WebhookClient` and `FluxerWebhookClient` was `private` in 1.21.1 but `protected` in other templates (needed for tests) — aligned to `protected` across all 4.
+- `FluxerBotClient` in 1.18.2/1.19.2/1.20.1 was missing null checks for `op`, `t`, `author`, `username`, and `global_name` fields — all templates now fully in sync.
+- `sendJson` in `WebhookClient` and `FluxerWebhookClient` was `private` in 1.21.1 but `protected` in other templates — aligned to `protected` across all 4.
 
 ## [4.0.0] - 2026-03-26
 
