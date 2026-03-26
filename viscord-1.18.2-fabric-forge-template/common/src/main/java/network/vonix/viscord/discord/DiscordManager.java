@@ -16,6 +16,7 @@ import network.vonix.viscord.discord.platform.DiscordPlatform;
 import network.vonix.viscord.discord.platform.FluxerPlatform;
 import network.vonix.viscord.discord.platform.TridirectionalBridge;
 import network.vonix.viscord.utils.DiscordFormatter;
+import network.vonix.viscord.discord.MessageConverter;
 import org.javacord.api.entity.message.Message;
 import org.javacord.api.entity.message.embed.Embed;
 
