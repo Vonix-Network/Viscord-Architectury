@@ -66,7 +66,7 @@ public class WebhookClient {
         sendJson(json);
     }
 
-    private void sendJson(JsonObject json) {
+    protected void sendJson(JsonObject json) {
         Viscord.executeAsync(() -> {
             RequestBody body = RequestBody.create(json.toString(), MediaType.parse("application/json"));
             Request request = new Request.Builder()

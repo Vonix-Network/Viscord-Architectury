@@ -5,7 +5,12 @@ All notable changes to Viscord will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
-## [3.0.3] - 2026-03-25
+## [0.2.0] - 2026-03-26
+
+### Added
+- Tridirectional chat now relays sender profiles across platforms — Discord users' avatars and display names appear in Fluxer, and Fluxer users' avatars and display names appear in Discord, instead of showing the bot identity
+
+## [0.1.0] - 2026-03-25
 
 ### 🐛 Fixed (Fluxer Bot Player Count Status)
 - **Fluxer Bot Status Now Shows Actual Player Count** - Fixed Fluxer bot displaying "0/0" instead of actual online/max player count
