@@ -56,6 +56,12 @@ public class FluxerBotClient {
     public interface MessageHandler {
         void onMessage(String username, String message, String avatarUrl);
     }
+
+    private Runnable onReadyCallback;
+
+    public void setOnReadyCallback(Runnable callback) {
+        this.onReadyCallback = callback;
+    }
     
     public FluxerBotClient() {
     }
@@ -262,6 +268,10 @@ public class FluxerBotClient {
         try {
             JsonObject json = JsonParser.parseString(payload).getAsJsonObject();
             
+            if (!json.has("op") || json.get("op").isJsonNull()) {
+                Viscord.LOGGER.debug("[Fluxer Bot] Received payload without op code, ignoring");
+                return;
+            }
             int op = json.get("op").getAsInt();
             
             // Update sequence number if present
@@ -284,6 +294,7 @@ public class FluxerBotClient {
                     break;
                     
                 case 0: // Dispatch
+                    if (!json.has("t") || json.get("t").isJsonNull()) break;
                     String t = json.get("t").getAsString();
                     if ("READY".equals(t)) {
                         JsonObject readyData = json.getAsJsonObject("d");
@@ -302,11 +313,22 @@ public class FluxerBotClient {
                         if (connectFuture != null && !connectFuture.isDone()) {
                             connectFuture.complete(null);
                         }
+                        // Fire ready callback (e.g. for immediate status update)
+                        if (onReadyCallback != null) {
+                            try { onReadyCallback.run(); } catch (Exception ex) {
+                                Viscord.LOGGER.error("[Fluxer Bot] onReadyCallback error", ex);
+                            }
+                        }
                     } else if ("RESUMED".equals(t)) {
                         Viscord.LOGGER.info("[Fluxer Bot] Session resumed successfully.");
                         connected = true;
                         authenticated = true;
                         reconnectAttempts = 0;
+                        if (onReadyCallback != null) {
+                            try { onReadyCallback.run(); } catch (Exception ex) {
+                                Viscord.LOGGER.error("[Fluxer Bot] onReadyCallback error on resume", ex);
+                            }
+                        }
                     } else if ("MESSAGE_CREATE".equals(t)) {
                         handleMessageCreate(json.getAsJsonObject("d"));
                     }

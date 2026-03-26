@@ -7,12 +7,33 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [3.0.6] - 2026-03-26
+
+### Fixed
+- Discord→Fluxer tridirectional bridge silently skipped when only a Fluxer webhook URL was configured (no bot token) — guard now allows webhook-only setups
+- Discord→Fluxer webhook dropped messages due to async init race — `fluxerWebhookClient.updateUrl()` now called inline before each send
+- Fluxer gateway echoed webhook-sent messages back through `onFluxerMessage`, causing a loop that consumed Discord messages in Fluxer — fixed with a 5-second fingerprint cache (`recentDiscordBridges`)
+- Join/leave/death/advancement events not sent to Fluxer — `sendEventEmbedInternal` was using the Discord webhook client with a Discord URL; now sends plain-text to the Fluxer event channel via bot API
+- Fluxer bot status never set — status update now fires directly in the READY/RESUMED gateway handler via `onReadyCallback`, eliminating the async race between connection and status push; also fires on reconnect/resume
+- `playerPreferences` and `linkedAccountsManager` double-initialized in tridirectional mode — guarded with null checks in `initializeDiscord`
+- Stale `originalDiscordWebhookUrl` field caused `bridgeFluxerToDiscord` to restore a cached URL that could be outdated — removed field, now reads config directly
+- Advancement debounce cache had a check-then-act race condition — replaced with atomic `ConcurrentHashMap.merge()`
+- Duplicate null check on `messageHandler` in `BotClient.onConnected` — removed inner redundant check
+- Triple `isEmpty()` check in `WebhookClient.sendMessage` — reduced to single check
+- Missing null/op-code guard in `FluxerBotClient.handleMessage` — added null check on `op` and `t` fields before processing
+
+## [3.0.5] - 2026-03-26
+
+### Fixed
+- Tridirectional relay now correctly forwards sender avatars and display names in all MC version templates (1.19.2, 1.20.1, 1.21.1 were still using bot API with hardcoded empty avatar)
+- Discord→Fluxer bridge in 1.19.2, 1.20.1, and 1.21.1 now uses webhook client to preserve sender identity instead of falling back to bot API
+
 ## [3.0.4] - 2026-03-26
 
 ### Added
 - Tridirectional chat now relays sender profiles across platforms — Discord users' avatars and display names appear in Fluxer, and Fluxer users' avatars and display names appear in Discord, instead of showing the bot identity
 
-## [0.2.0] - 2026-03-26
+## [3.0.3] - 2026-03-26
 
 ### 🐛 Fixed (Fluxer Bot Player Count Status)
 - **Fluxer Bot Status Now Shows Actual Player Count** - Fixed Fluxer bot displaying "0/0" instead of actual online/max player count

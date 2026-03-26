@@ -67,13 +67,11 @@ public class BotClient {
         // Register Listeners
         api.addMessageCreateListener(event -> {
             if (messageHandler != null) {
-                if (messageHandler != null) {
-                    // Ignore self
-                    if (event.getMessageAuthor().isYourself())
-                        return;
+                // Ignore self
+                if (event.getMessageAuthor().isYourself())
+                    return;
 
-                    messageHandler.accept(event);
-                }
+                messageHandler.accept(event);
             }
         });
     }

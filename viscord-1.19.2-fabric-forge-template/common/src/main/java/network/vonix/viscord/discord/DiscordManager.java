@@ -61,7 +61,6 @@ public class DiscordManager {
 
     private boolean running = false;
     private String eventChannelId;
-    private String originalDiscordWebhookUrl;
 
     private DiscordManager() {
         this.botClient = new BotClient();
@@ -171,23 +170,26 @@ public class DiscordManager {
         
         // Connect Fluxer Bot via WebSocket Gateway
         fluxerBotClient.setMessageHandler(this::onFluxerMessage);
-        fluxerBotClient.connect(apiKey).thenRun(() -> {
-            Viscord.LOGGER.info("[Fluxer] Bot connected successfully.");
-            
-            // Configure webhook URL if set
+        fluxerBotClient.setOnReadyCallback(() -> {
             String webhookUrl = ViscordConfigToml.Fluxer.WEBHOOK_URL.get();
             if (webhookUrl != null && !webhookUrl.isEmpty()) {
                 fluxerWebhookClient.updateUrl(webhookUrl);
-                Viscord.LOGGER.info("[Fluxer] Webhook configured for custom usernames/avatars");
             }
-            
-            if (ViscordConfigToml.BotStatus.ENABLED.get()) {
-                updateBotStatus();
+            if (ViscordConfigToml.BotStatus.ENABLED.get() && server != null) {
+                int online = server.getPlayerList().getPlayerCount();
+                int max = server.getPlayerList().getMaxPlayers();
+                String fmt = ViscordConfigToml.BotStatus.FORMAT.get();
+                String status = fmt.replace("{online}", String.valueOf(online))
+                                   .replace("{max}", String.valueOf(max));
+                fluxerBotClient.updateStatus(status);
+                Viscord.LOGGER.info("[Fluxer] Bot status set to: {}", status);
             }
+        });
+        fluxerBotClient.connect(apiKey).thenRun(() -> {
+            Viscord.LOGGER.info("[Fluxer] Bot connected successfully.");
             if (!ViscordConfigToml.Tridirectional.ENABLED.get()) {
-                // Send startup notification via bot API
                 String evtChannel = getFluxerEventChannelId();
-                fluxerBotClient.sendMessage(evtChannel, 
+                fluxerBotClient.sendMessage(evtChannel,
                     "\uD83D\uDFE2 **" + ViscordConfigToml.Server.NAME.get() + "** is now online!");
             }
         }).exceptionally(ex -> {
@@ -206,7 +208,15 @@ public class DiscordManager {
     
     private void onFluxerMessage(String username, String message, String avatarUrl) {
         if (server == null) return;
-        
+
+        // Suppress echo: skip messages we just sent via Discord→Fluxer webhook bridge
+        String echoKey = username + ":" + message;
+        Long bridgedAt = recentDiscordBridges.remove(echoKey);
+        if (bridgedAt != null && (System.currentTimeMillis() - bridgedAt) < 5000) {
+            Viscord.LOGGER.debug("[Tridirectional] Suppressing Fluxer echo for: {}", username);
+            return;
+        }
+
         // Apply similar filtering as Discord messages
         if (ViscordConfigToml.Filters.FILTER_BY_PREFIX.get()) {
             String serverPrefix = ViscordConfigToml.Server.PREFIX.get();
@@ -237,7 +247,7 @@ public class DiscordManager {
         if (ViscordConfigToml.Tridirectional.ENABLED.get() && 
             ViscordConfigToml.Tridirectional.FLUXER_TO_DISCORD.get()) {
             // Pass the formatted content to bridgeFluxerToDiscord for proper echo detection
-            bridgeFluxerToDiscord(username, formatted);
+            bridgeFluxerToDiscord(username, formatted, avatarUrl);
         }
     }
     
@@ -247,8 +257,6 @@ public class DiscordManager {
         String botToken = ViscordConfigToml.Discord.BOT_TOKEN.get();
         String channelId = ViscordConfigToml.Discord.CHANNEL_ID.get();
 
-        this.originalDiscordWebhookUrl = webhookUrl;
-        
         // Only update webhook URL if we're not exclusively using Fluxer for webhooks
         if (!isFluxer() || ViscordConfigToml.Tridirectional.ENABLED.get()) {
             this.webhookClient.updateUrl(webhookUrl);
@@ -271,8 +279,10 @@ public class DiscordManager {
             configDir.toFile().mkdirs();
         }
         try {
-            this.playerPreferences = new PlayerPreferences(configDir);
-            if (ViscordConfigToml.AccountLinking.ENABLED.get()) {
+            if (this.playerPreferences == null) {
+                this.playerPreferences = new PlayerPreferences(configDir);
+            }
+            if (ViscordConfigToml.AccountLinking.ENABLED.get() && this.linkedAccountsManager == null) {
                 this.linkedAccountsManager = new LinkedAccountsManager(configDir);
             }
         } catch (IOException e) {
@@ -435,18 +445,34 @@ public class DiscordManager {
      * Bridges Discord messages to Fluxer for tridirectional chat.
      */
     private void bridgeDiscordToFluxer(String authorName, String content, Message message) {
-        if (!isFluxerConfigured()) {
+        String fluxerWebhookUrl = ViscordConfigToml.Fluxer.WEBHOOK_URL.get();
+        boolean hasWebhook = fluxerWebhookUrl != null && !fluxerWebhookUrl.isEmpty();
+        if (!hasWebhook && !isFluxerConfigured()) {
             return;
         }
         
         try {
-            // Format message for Fluxer with source identification
-            // Discord messages don't need formatting conversion as they're plain text
-            String fluxerMessage = formatMessageForPlatform(content, "Discord", authorName);
-            
-            // Send to Fluxer via Bot API (not webhook)
-            String channelId = ViscordConfigToml.Fluxer.CHANNEL_ID.get();
-            fluxerBotClient.sendMessage(channelId, fluxerMessage);
+            // Extract sender's avatar URL from the Discord message author
+            String avatarUrl = "";
+            try {
+                avatarUrl = message.getAuthor().getAvatar().getUrl().toString();
+            } catch (Exception avatarEx) {
+                // Fall back to empty string if avatar URL is unavailable
+            }
+
+            // Use webhook if configured (preserves sender identity), otherwise fall back to bot API
+            if (hasWebhook) {
+                fluxerWebhookClient.updateUrl(fluxerWebhookUrl);
+                // Record fingerprint to suppress echo when this message bounces back via gateway
+                String echoKey = authorName + ":" + content;
+                recentDiscordBridges.put(echoKey, System.currentTimeMillis());
+                if (recentDiscordBridges.size() > 100) recentDiscordBridges.clear();
+                fluxerWebhookClient.sendMessage(authorName, avatarUrl, content);
+            } else {
+                String fluxerMessage = formatMessageForPlatform(content, "Discord", authorName);
+                String channelId = ViscordConfigToml.Fluxer.CHANNEL_ID.get();
+                fluxerBotClient.sendMessage(channelId, fluxerMessage);
+            }
             Viscord.LOGGER.debug("[Tridirectional] Bridged Discord message to Fluxer: {}", authorName);
         } catch (Exception e) {
             Viscord.LOGGER.error("[Tridirectional] Failed to bridge Discord message to Fluxer", e);
@@ -456,7 +482,7 @@ public class DiscordManager {
     /**
      * Bridges Fluxer messages to Discord for tridirectional chat.
      */
-    private void bridgeFluxerToDiscord(String username, String message) {
+    private void bridgeFluxerToDiscord(String username, String message, String avatarUrl) {
         if (!isDiscordConfigured()) {
             return;
         }
@@ -483,11 +509,8 @@ public class DiscordManager {
             // Send to Discord via webhook with [Fluxer] prefix in username
             String discordWebhookUrl = ViscordConfigToml.Discord.WEBHOOK_URL.get();
             if (discordWebhookUrl != null && !discordWebhookUrl.isEmpty()) {
-                // Temporarily update webhook URL and send message
-                String originalUrl = originalDiscordWebhookUrl;
                 webhookClient.updateUrl(discordWebhookUrl);
-                webhookClient.sendMessage("[Fluxer]" + username, "", convertedMessage);
-                webhookClient.updateUrl(originalUrl); // Restore original URL
+                webhookClient.sendMessage("[Fluxer]" + username, avatarUrl != null ? avatarUrl : "", convertedMessage);
                 Viscord.LOGGER.debug("[Tridirectional] Bridged Fluxer message to Discord: {}", username);
             }
         } catch (Exception e) {
@@ -1083,16 +1106,18 @@ public class DiscordManager {
         embedBuilder.accept(embed);
 
         if (isFluxer()) {
-            String webhookUrl = getEventWebhookUrl();
-            if (webhookUrl != null && !webhookUrl.isEmpty()) {
-                String originalUrl = webhookClient.getUrl();
-                webhookClient.updateUrl(webhookUrl);
-                webhookClient.sendEmbed(ViscordConfigToml.Server.NAME.get(), null, embed);
-                if (originalUrl != null) {
-                    webhookClient.updateUrl(originalUrl);
+            // Send to Fluxer event channel via bot API (plain text, Fluxer doesn't support embeds)
+            String evtChannelId = getFluxerEventChannelId();
+            if (evtChannelId != null && !evtChannelId.isEmpty()) {
+                String title = embed.has("title") ? embed.get("title").getAsString() : "";
+                String description = embed.has("description") ? embed.get("description").getAsString() : "";
+                String fluxerMsg = title.isEmpty() ? description
+                        : (description.isEmpty() ? "**" + title + "**" : "**" + title + "** — " + description);
+                if (!fluxerMsg.isEmpty()) {
+                    fluxerBotClient.sendMessage(evtChannelId, fluxerMsg);
                 }
             }
-            
+
             // Stop here if not tridirectional
             if (!ViscordConfigToml.Tridirectional.ENABLED.get()) {
                 return CompletableFuture.completedFuture(null);
@@ -1234,20 +1259,20 @@ public class DiscordManager {
     // Cache for advancement debounce (username:title -> timestamp)
     private final java.util.Map<String, Long> recentAdvancements = new java.util.concurrent.ConcurrentHashMap<>();
 
+    // Cache for Discord→Fluxer echo suppression (username:content -> timestamp)
+    private final java.util.Map<String, Long> recentDiscordBridges = new java.util.concurrent.ConcurrentHashMap<>();
+
     public void sendAdvancementEmbed(String username, String title, String desc) {
         if (!ViscordConfigToml.Messages.Events.ADVANCEMENT.get())
             return;
 
         long now = System.currentTimeMillis();
         String key = username + ":" + title;
-        if (recentAdvancements.containsKey(key)) {
-            if (now - recentAdvancements.get(key) < 5000) { // 5 second debounce
-                return;
-            }
+        Long prev = recentAdvancements.merge(key, now, (existing, newVal) ->
+            (now - existing < 5000) ? existing : newVal);
+        if (!prev.equals(now)) {
+            return; // Debounced
         }
-        recentAdvancements.put(key, now);
-        
-        // Ensure cache doesn't grow indefinitely
         if (recentAdvancements.size() > 100) {
             recentAdvancements.clear();
             recentAdvancements.put(key, now);

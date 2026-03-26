@@ -56,6 +56,12 @@ public class FluxerBotClient {
     public interface MessageHandler {
         void onMessage(String username, String message, String avatarUrl);
     }
+
+    private Runnable onReadyCallback;
+
+    public void setOnReadyCallback(Runnable callback) {
+        this.onReadyCallback = callback;
+    }
     
     public FluxerBotClient() {
     }
@@ -302,11 +308,21 @@ public class FluxerBotClient {
                         if (connectFuture != null && !connectFuture.isDone()) {
                             connectFuture.complete(null);
                         }
+                        if (onReadyCallback != null) {
+                            try { onReadyCallback.run(); } catch (Exception ex) {
+                                Viscord.LOGGER.error("[Fluxer Bot] onReadyCallback error", ex);
+                            }
+                        }
                     } else if ("RESUMED".equals(t)) {
                         Viscord.LOGGER.info("[Fluxer Bot] Session resumed successfully.");
                         connected = true;
                         authenticated = true;
                         reconnectAttempts = 0;
+                        if (onReadyCallback != null) {
+                            try { onReadyCallback.run(); } catch (Exception ex) {
+                                Viscord.LOGGER.error("[Fluxer Bot] onReadyCallback error on resume", ex);
+                            }
+                        }
                     } else if ("MESSAGE_CREATE".equals(t)) {
                         handleMessageCreate(json.getAsJsonObject("d"));
                     }
