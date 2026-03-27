@@ -456,14 +456,11 @@ public class FluxerBotClient {
         JsonObject presence = new JsonObject();
         presence.addProperty("status", "online");
         presence.addProperty("afk", false);
-        JsonArray identifyActivities = new JsonArray();
         if (pendingStatus != null && !pendingStatus.isEmpty()) {
-            JsonObject act = new JsonObject();
-            act.addProperty("name", pendingStatus);
-            act.addProperty("type", 0); // 0 = Playing; type 4 (Custom Status) is silently ignored for bots
-            identifyActivities.add(act);
+            JsonObject customStatus = new JsonObject();
+            customStatus.addProperty("text", pendingStatus);
+            presence.add("custom_status", customStatus);
         }
-        presence.add("activities", identifyActivities);
         presence.add("since", com.google.gson.JsonNull.INSTANCE);
         d.add("presence", presence);
         
@@ -537,14 +534,9 @@ public class FluxerBotClient {
             
             JsonObject d = new JsonObject();
             d.add("since", com.google.gson.JsonNull.INSTANCE);
-            
-            JsonArray activities = new JsonArray();
-            JsonObject activity = new JsonObject();
-            activity.addProperty("name", status);
-            activity.addProperty("type", 0); // 0 = Playing; type 4 (Custom Status) is silently ignored for bots
-            activities.add(activity);
-            
-            d.add("activities", activities);
+            JsonObject customStatus = new JsonObject();
+            customStatus.addProperty("text", status);
+            d.add("custom_status", customStatus);
             d.addProperty("status", "online");
             d.addProperty("afk", false);
             
