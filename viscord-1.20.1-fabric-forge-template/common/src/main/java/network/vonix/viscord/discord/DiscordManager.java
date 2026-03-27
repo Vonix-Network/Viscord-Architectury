@@ -635,7 +635,7 @@ public class DiscordManager {
     public boolean isRunning() {
         if (!running) return false;
         if (isFluxer()) return true;
-        if (ViscordConfigToml.Tridirectional.ENABLED.get()) {
+        if (isBoth() || ViscordConfigToml.Tridirectional.ENABLED.get()) {
             return discordPlatform.isConnected() || fluxerPlatform.isConnected();
         }
         return discordPlatform.isConnected();
@@ -643,6 +643,18 @@ public class DiscordManager {
 
     private boolean isFluxer() {
         return "fluxer".equalsIgnoreCase(ViscordConfigToml.General.PLATFORM.get());
+    }
+
+    private boolean isBoth() {
+        return "both".equalsIgnoreCase(ViscordConfigToml.General.PLATFORM.get());
+    }
+
+    private boolean usesFluxer() {
+        return isFluxer() || isBoth() || ViscordConfigToml.Tridirectional.ENABLED.get();
+    }
+
+    private boolean usesDiscord() {
+        return !isFluxer() || ViscordConfigToml.Tridirectional.ENABLED.get();
     }
 
     // =========================================================================
