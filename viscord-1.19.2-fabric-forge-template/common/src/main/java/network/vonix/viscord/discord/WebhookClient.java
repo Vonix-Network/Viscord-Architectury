@@ -46,7 +46,7 @@ public class WebhookClient {
 
         JsonObject json = new JsonObject();
         json.addProperty("username", username);
-        json.addProperty("avatar_url", avatarUrl);
+        if (avatarUrl != null && !avatarUrl.isEmpty()) json.addProperty("avatar_url", avatarUrl);
         json.addProperty("content", content);
 
         sendJson(json);

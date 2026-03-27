@@ -53,6 +53,9 @@ public class FluxerBotClient {
     // Track the connect future to complete it only when READY is received
     private volatile CompletableFuture<Void> connectFuture;
 
+    // Status to embed in the identify payload and re-send after READY
+    private volatile String pendingStatus = null;
+
     public interface MessageHandler {
         void onMessage(String username, String message, String avatarUrl);
     }
@@ -399,7 +402,7 @@ public class FluxerBotClient {
             if (author.has("avatar") && !author.get("avatar").isJsonNull()) {
                 String avatarHash = author.get("avatar").getAsString();
                 String userId = author.get("id").getAsString();
-                avatarUrl = "https://cdn.fluxer.app/avatars/" + userId + "/" + avatarHash + ".png";
+                avatarUrl = "https://fluxerusercontent.com/avatars/" + userId + "/" + avatarHash + ".webp?size=240";
             }
             
             // Extract message content
@@ -453,7 +456,15 @@ public class FluxerBotClient {
         JsonObject presence = new JsonObject();
         presence.addProperty("status", "online");
         presence.addProperty("afk", false);
-        presence.add("activities", new JsonArray());
+        JsonArray identifyActivities = new JsonArray();
+        if (pendingStatus != null && !pendingStatus.isEmpty()) {
+            JsonObject act = new JsonObject();
+            act.addProperty("name", "Custom Status");
+            act.addProperty("type", 4);
+            act.addProperty("state", pendingStatus);
+            identifyActivities.add(act);
+        }
+        presence.add("activities", identifyActivities);
         presence.add("since", com.google.gson.JsonNull.INSTANCE);
         d.add("presence", presence);
         
@@ -512,6 +523,7 @@ public class FluxerBotClient {
     }
 
     public void updateStatus(String status) {
+        this.pendingStatus = status; // persist for reconnects
         if (!authenticated || webSocket == null || !webSocket.isOpen()) {
             Viscord.LOGGER.warn("[Fluxer Bot] Cannot update status - not connected (authenticated={}, wsOpen={})", 
                 authenticated, webSocket != null && webSocket.isOpen());
@@ -529,8 +541,9 @@ public class FluxerBotClient {
             
             JsonArray activities = new JsonArray();
             JsonObject activity = new JsonObject();
-            activity.addProperty("name", status);
-            activity.addProperty("type", 0); // 0 = Playing
+            activity.addProperty("name", "Custom Status");
+            activity.addProperty("type", 4); // 4 = Custom Status
+            activity.addProperty("state", status);
             activities.add(activity);
             
             d.add("activities", activities);
@@ -543,6 +556,24 @@ public class FluxerBotClient {
             Viscord.LOGGER.debug("[Fluxer Bot] Updated status to: {}", status);
         } catch (Exception e) {
             Viscord.LOGGER.error("[Fluxer Bot] Failed to update status", e);
+        }
+    }
+
+    public void setOffline() {
+        if (!authenticated || webSocket == null || !webSocket.isOpen()) return;
+        try {
+            JsonObject presence = new JsonObject();
+            presence.addProperty("op", 3);
+            JsonObject d = new JsonObject();
+            d.add("since", com.google.gson.JsonNull.INSTANCE);
+            d.add("activities", new JsonArray());
+            d.addProperty("status", "invisible");
+            d.addProperty("afk", false);
+            presence.add("d", d);
+            webSocket.sendText(presence.toString());
+            Viscord.LOGGER.info("[Fluxer Bot] Sent offline presence before disconnect.");
+        } catch (Exception e) {
+            Viscord.LOGGER.warn("[Fluxer Bot] Could not send offline presence: {}", e.getMessage());
         }
     }
 
@@ -594,6 +625,58 @@ public class FluxerBotClient {
      * @param content The message content
      * @return CompletableFuture that completes when the message is sent
      */
+    /**
+     * Send a rich embed to a Fluxer channel via bot API.
+     * Fluxer's API is Discord-compatible and supports the embeds array payload.
+     */
+    public CompletableFuture<Boolean> sendEmbed(String channelId, JsonObject embedJson) {
+        if (token == null || token.isEmpty()) {
+            return CompletableFuture.completedFuture(false);
+        }
+
+        return CompletableFuture.supplyAsync(() -> {
+            HttpURLConnection conn = null;
+            try {
+                URL url = new URL("https://api.fluxer.app/v1/channels/" + channelId + "/messages");
+                conn = (HttpURLConnection) url.openConnection();
+                conn.setRequestMethod("POST");
+                conn.setRequestProperty("Authorization", "Bot " + token);
+                conn.setRequestProperty("Content-Type", "application/json");
+                conn.setDoOutput(true);
+
+                com.google.gson.JsonArray embeds = new com.google.gson.JsonArray();
+                embeds.add(embedJson);
+                JsonObject payload = new JsonObject();
+                payload.add("embeds", embeds);
+
+                byte[] body = payload.toString().getBytes(StandardCharsets.UTF_8);
+                conn.setFixedLengthStreamingMode(body.length);
+
+                try (OutputStream os = conn.getOutputStream()) {
+                    os.write(body);
+                }
+
+                int responseCode = conn.getResponseCode();
+                if (responseCode >= 200 && responseCode < 300) {
+                    if (ViscordConfigToml.General.DEBUG.get()) {
+                        Viscord.LOGGER.debug("[Fluxer Bot] Embed sent successfully to channel {}", channelId);
+                    }
+                    return true;
+                } else {
+                    Viscord.LOGGER.warn("[Fluxer Bot] Failed to send embed. Response code: {}", responseCode);
+                    return false;
+                }
+            } catch (Exception e) {
+                Viscord.LOGGER.error("[Fluxer Bot] Error sending embed", e);
+                return false;
+            } finally {
+                if (conn != null) {
+                    conn.disconnect();
+                }
+            }
+        });
+    }
+
     public CompletableFuture<Boolean> sendMessage(String channelId, String content) {
         if (token == null || token.isEmpty()) {
             return CompletableFuture.completedFuture(false);

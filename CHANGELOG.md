@@ -7,15 +7,39 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [4.1.2] - 2026-03-26
+
+### Added
+- `platform = "both"` mode — initializes both Discord and Fluxer simultaneously; all events and Minecraft chat go to both platforms with no cross-platform message bridging (use tridirectional for that) (all templates)
+- Rich embed support for Fluxer event notifications — `FluxerBotClient.sendEmbed()` now posts `{"embeds": [...]}` to the Fluxer bot API (Discord-compatible format), replacing the previous plain-text fallback (all templates)
+
+### Fixed
+- Fluxer events not firing in tridirectional/both modes — routing conditions replaced with `usesFluxer()`/`usesDiscord()` helpers that correctly cover all platform combinations (all templates)
+- Fluxer startup embed not sending in `both`/tridirectional mode — moved startup into `FluxerPlatform.initialize()` `thenRun` so it fires after bot READY for all modes (all templates)
+- Fluxer startup embed going to main channel instead of events channel on `/viscord reload` — added 500ms settle delay in `thenRun` to ensure config is fully loaded before channel ID is read (all templates)
+- `shutdown()` double-sending Discord offline embed — `DiscordManager.shutdown()` now calls `discordPlatform.shutdown()` directly instead of `sendShutdownEmbed` separately (all templates)
+- `shutdown()` race condition in both/tridirectional mode — Fluxer offline embed now waits 1.5s before Discord disconnect begins (all templates)
+- All older templates (1.18.2, 1.19.2, 1.20.1) synced to 1.21.1 feature parity: `platform = "both"`, rich Fluxer embeds, `usesFluxer()`/`usesDiscord()` routing, `resetInstance()`, fixed shutdown/startup logic
+
+## [4.1.1] - 2026-03-26
+
 ### Fixed
 - `!list` command not responding from Fluxer — `onFluxerMessage` had no `!list` handler; now sends formatted player list back to the Fluxer event channel
 - Join/leave events not reaching Fluxer — added error logging to `FluxerPlatform.sendEventMessage` to surface failures; `botClient.sendMessage` future now has a completion handler that logs failures
 - Advancement notifications firing on partial progress — `PlayerAdvancementsMixin` now checks `getOrStartProgress().isDone()` before sending
-
-### Fixed
-- Fluxer standalone mode: `sendStartupEmbed` was double-sending the startup message (once via `FluxerPlatform.initialize()` thenRun, once via `DiscordManager.sendStartupEmbed`) — fixed routing logic so each mode sends exactly once
+- Fluxer standalone mode: `sendStartupEmbed` was double-sending the startup message — fixed routing logic so each mode sends exactly once
 - `isRunning()` now correctly checks tridirectional state — returns true if either platform is connected in tridirectional mode
 - Build error: `Javacord Icon.getAvatar()` returns `Icon` directly, not `Optional<Icon>` — `.map()` call replaced with null-safe direct call in `TridirectionalBridge` across all 4 templates
+- Fluxer bot status (Online: players/max) not updating — `scheduleStatusUpdate` now fires on every player join/leave regardless of whether event messages are enabled, across all 4 MC version templates
+- Fluxer user profile pictures not appearing in Discord webhooks — `WebhookClient.sendMessage` was unconditionally setting `avatar_url` to null/empty; now only included when non-empty, across all 4 MC version templates
+- Fluxer avatar CDN URL was incorrect (`cdn.fluxer.app`) — corrected to `fluxerusercontent.com` with `.webp` format, across all 4 MC version templates
+- Fluxer bot custom status not displaying — activity type was `0` (Playing) instead of `4` (Custom Status); payload now uses `type: 4` with `state` field, across all 4 MC version templates
+- Fluxer bot custom status not set on connect — status now embedded in the identify payload's presence block so it's active immediately on gateway connect, not just after a post-READY op 3 update (1.21.1)
+- Fluxer bot appearing online after server shutdown — now sends `invisible` presence before closing the WebSocket (1.21.1)
+- `/viscord reload` not working after first reload — `DiscordManager` singleton was reused after shutdown, leaving dead scheduler/WebSocket state; `resetInstance()` now called after shutdown so a fresh instance with clean platform objects is created on re-init (1.21.1)
+- Double bot status update on player join/leave — `DiscordEventHandler` was calling `scheduleStatusUpdate(1000)` redundantly alongside the existing call inside `sendJoinEmbed`/`sendLeaveEmbed`; removed the duplicate (1.21.1)
+- Fluxer not sending detailed embeds for in-game events — `DiscordManager` was calling `sendEventMessage()` with hardcoded plain-text strings for all events (join, leave, death, advancement, server online/offline) instead of `sendEventEmbed()` with `EmbedFactory`-built embeds (1.21.1)
+- Fluxer server online/offline events not appearing in events channel — `FluxerPlatform.initialize()` was sending startup via `sendBotMessage` with hardcoded plain text instead of `sendEventEmbed`; shutdown was also disconnecting the bot before the message could send (1.21.1)
 
 ## [4.1.0] - 2026-03-26
 

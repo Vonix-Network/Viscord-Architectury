@@ -73,6 +73,11 @@ public class DiscordManager {
         return instance;
     }
 
+    /** Resets the singleton so the next getInstance() returns a fresh instance. Call before reload. */
+    public static void resetInstance() {
+        instance = null;
+    }
+
     // =========================================================================
     // Lifecycle
     // =========================================================================
@@ -97,11 +102,19 @@ public class DiscordManager {
 
         String platform = ViscordConfigToml.General.PLATFORM.get();
         boolean useFluxer = "fluxer".equalsIgnoreCase(platform);
+        boolean useBoth = "both".equalsIgnoreCase(platform);
         boolean tridirectional = ViscordConfigToml.Tridirectional.ENABLED.get();
 
         if (tridirectional) {
             Viscord.LOGGER.info("[Viscord] Initializing Tridirectional Chat (Discord & Fluxer)");
             bridge = new TridirectionalBridge(discordPlatform, fluxerPlatform);
+            fluxerPlatform.setMessageListener(this::onFluxerMessage);
+            boolean fluxerOk = fluxerPlatform.initialize();
+            if (!fluxerOk) { this.running = false; return; }
+            discordPlatform.setMessageListener(this::onDiscordMessage);
+            discordPlatform.initialize(false);
+        } else if (useBoth) {
+            Viscord.LOGGER.info("[Viscord] Initializing with Both platforms (Discord & Fluxer, no chat bridging)");
             fluxerPlatform.setMessageListener(this::onFluxerMessage);
             boolean fluxerOk = fluxerPlatform.initialize();
             if (!fluxerOk) { this.running = false; return; }
@@ -135,26 +148,29 @@ public class DiscordManager {
     public void shutdown() {
         if (!running) return;
         Viscord.LOGGER.info("[Viscord] Shutting down...");
+        running = false;
         try {
-            CompletableFuture<?> shutdownMsg = null;
-            if (isFluxer()) {
-                fluxerPlatform.sendEventMessage(
-                    "\uD83D\uDD34 **" + ViscordConfigToml.Server.NAME.get() + "** is now offline.");
-            } else {
-                shutdownMsg = discordPlatform.sendShutdownEmbed(ViscordConfigToml.Server.NAME.get());
+            String serverName = ViscordConfigToml.Server.NAME.get();
+            if (usesFluxer()) {
+                JsonObject embed = new JsonObject();
+                EmbedFactory.createServerStatusEmbed("Server Offline", "Server is shutting down", 0xF04747, serverName, "Viscord").accept(embed);
+                fluxerPlatform.sendEventEmbed(embed);
+                try { Thread.sleep(1500); } catch (InterruptedException ignored) {}
             }
-            if (shutdownMsg != null) {
-                shutdownMsg.orTimeout(3, TimeUnit.SECONDS)
-                    .whenComplete((m, e) -> continueShutdown());
-                Thread.sleep(100);
-            } else {
-                continueShutdown();
+            if (usesDiscord()) {
+                CompletableFuture<?> shutdownFuture = discordPlatform.shutdown();
+                if (shutdownFuture != null) {
+                    shutdownFuture.orTimeout(3, TimeUnit.SECONDS)
+                        .whenComplete((m, e) -> fluxerPlatform.shutdown());
+                    Thread.sleep(100);
+                    return;
+                }
             }
+            fluxerPlatform.shutdown();
         } catch (Exception e) {
             Viscord.LOGGER.warn("[Viscord] Shutdown message failed: {}", e.getMessage());
             continueShutdown();
         }
-        running = false;
     }
 
     private void continueShutdown() {
@@ -486,9 +502,10 @@ public class DiscordManager {
             .replace("{prefix}", prefix).replace("{username}", username);
         String avatarUrl = getAvatarUrl(username);
         String formattedMessage = DiscordFormatter.convertToDiscordFormatting(message);
-        if (isFluxer()) {
+        if (usesFluxer()) {
             fluxerPlatform.sendChatMessage(formattedUsername, avatarUrl, formattedMessage);
-        } else {
+        }
+        if (usesDiscord()) {
             discordPlatform.sendChatMessage(formattedUsername, avatarUrl, formattedMessage);
         }
     }
@@ -502,43 +519,51 @@ public class DiscordManager {
     // =========================================================================
 
     public void sendStartupEmbed(String serverName) {
-        boolean tridirectional = ViscordConfigToml.Tridirectional.ENABLED.get();
-        if (isFluxer() || tridirectional) {
-            if (tridirectional) {
-                fluxerPlatform.sendEventMessage("\uD83D\uDFE2 **" + serverName + "** is now online!");
-            }
-        }
-        if (!isFluxer() || tridirectional) {
+        // Fluxer startup is handled inside FluxerPlatform.initialize() thenRun (fires after bot connects).
+        // Discord startup is handled inside DiscordPlatform.initialize() thenRunAsync.
+        if (usesDiscord()) {
             discordPlatform.sendStartupEmbed(serverName);
         }
     }
 
     public CompletableFuture<org.javacord.api.entity.message.Message> sendShutdownEmbed(String serverName) {
-        if (isFluxer()) {
-            fluxerPlatform.sendEventMessage("\uD83D\uDD34 **" + serverName + "** is now offline.");
-            return CompletableFuture.completedFuture(null);
+        if (usesFluxer()) {
+            JsonObject embed = new JsonObject();
+            EmbedFactory.createServerStatusEmbed("Server Offline", "Server is shutting down", 0xF04747, serverName, "Viscord").accept(embed);
+            fluxerPlatform.sendEventEmbed(embed);
         }
-        return discordPlatform.sendShutdownEmbed(serverName);
+        if (usesDiscord()) {
+            return discordPlatform.sendShutdownEmbed(serverName);
+        }
+        return CompletableFuture.completedFuture(null);
     }
 
     public void sendJoinEmbed(String username, String uuid) {
-        if (!ViscordConfigToml.Messages.Events.JOIN.get() || !isRunning()) return;
+        if (!isRunning()) return;
+        scheduleStatusUpdate(500);
+        if (!ViscordConfigToml.Messages.Events.JOIN.get()) return;
         String avatarUrl = getAvatarUrl(username);
-        if (isFluxer() || ViscordConfigToml.Tridirectional.ENABLED.get()) {
-            fluxerPlatform.sendEventMessage("➡ **" + username + "** joined the game");
+        if (usesFluxer()) {
+            JsonObject embed = new JsonObject();
+            EmbedFactory.createPlayerEventEmbed("Player Joined", username + " joined the game", 0x5865F2, username, ViscordConfigToml.Server.NAME.get(), "Join", avatarUrl).accept(embed);
+            fluxerPlatform.sendEventEmbed(embed);
         }
-        if (!isFluxer() || ViscordConfigToml.Tridirectional.ENABLED.get()) {
+        if (usesDiscord()) {
             discordPlatform.sendJoinEmbed(username, avatarUrl);
         }
     }
 
     public void sendLeaveEmbed(String username, String uuid) {
-        if (!ViscordConfigToml.Messages.Events.LEAVE.get() || !isRunning()) return;
+        if (!isRunning()) return;
+        scheduleStatusUpdate(500);
+        if (!ViscordConfigToml.Messages.Events.LEAVE.get()) return;
         String avatarUrl = getAvatarUrl(username);
-        if (isFluxer() || ViscordConfigToml.Tridirectional.ENABLED.get()) {
-            fluxerPlatform.sendEventMessage("⬅ **" + username + "** left the game");
+        if (usesFluxer()) {
+            JsonObject embed = new JsonObject();
+            EmbedFactory.createPlayerEventEmbed("Player Left", username + " left the game", 0x99AAB5, username, ViscordConfigToml.Server.NAME.get(), "Leave", avatarUrl).accept(embed);
+            fluxerPlatform.sendEventEmbed(embed);
         }
-        if (!isFluxer() || ViscordConfigToml.Tridirectional.ENABLED.get()) {
+        if (usesDiscord()) {
             discordPlatform.sendLeaveEmbed(username, avatarUrl);
         }
     }
@@ -548,9 +573,14 @@ public class DiscordManager {
 
     public void sendDeathEmbed(String message) {
         if (!ViscordConfigToml.Messages.Events.DEATH.get() || !isRunning()) return;
-        if (isFluxer() || ViscordConfigToml.Tridirectional.ENABLED.get())
-            fluxerPlatform.sendEventMessage("\u2620 " + message);
-        if (!isFluxer() || ViscordConfigToml.Tridirectional.ENABLED.get())
+        if (usesFluxer()) {
+            JsonObject embed = new JsonObject();
+            embed.addProperty("title", "Player Died");
+            embed.addProperty("description", message);
+            embed.addProperty("color", 0xF04747);
+            fluxerPlatform.sendEventEmbed(embed);
+        }
+        if (usesDiscord())
             discordPlatform.sendDeathEmbed(message);
     }
 
@@ -561,14 +591,17 @@ public class DiscordManager {
         Long prev = recentAdvancements.merge(key, now, (existing, nv) -> (now - existing < 5000) ? existing : nv);
         if (!prev.equals(now)) return;
         if (recentAdvancements.size() > 100) { recentAdvancements.clear(); recentAdvancements.put(key, now); }
-        if (isFluxer() || ViscordConfigToml.Tridirectional.ENABLED.get())
-            fluxerPlatform.sendEventMessage("\uD83C\uDFC6 **" + username + "** has made the advancement **" + title + "**");
-        if (!isFluxer() || ViscordConfigToml.Tridirectional.ENABLED.get())
+        if (usesFluxer()) {
+            JsonObject embed = new JsonObject();
+            EmbedFactory.createAdvancementEmbed("\uD83C\uDFC6", 0xFAA61A, username, title, desc).accept(embed);
+            fluxerPlatform.sendEventEmbed(embed);
+        }
+        if (usesDiscord())
             discordPlatform.sendAdvancementEmbed(username, title, desc);
     }
 
     public void sendServerStatusMessage(String title, String description, int color) {
-        if (!isFluxer()) discordPlatform.sendServerStatusMessage(title, description, color);
+        if (usesDiscord()) discordPlatform.sendServerStatusMessage(title, description, color);
     }
 
     // =========================================================================

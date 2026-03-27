@@ -1,6 +1,7 @@
 package network.vonix.viscord.discord.platform;
 
 import com.google.gson.JsonObject;
+import network.vonix.viscord.discord.EmbedFactory;
 import net.minecraft.server.MinecraftServer;
 import network.vonix.viscord.Viscord;
 import network.vonix.viscord.config.toml.ViscordConfigToml;
@@ -83,12 +84,16 @@ public class FluxerPlatform {
 
         botClient.connect(apiKey).thenRun(() -> {
             Viscord.LOGGER.info("[Fluxer] Bot connected successfully.");
-            // Send startup notification (only in non-tridirectional mode — tridirectional
-            // startup is handled by DiscordManager to avoid duplicate messages)
-            if (!ViscordConfigToml.Tridirectional.ENABLED.get()) {
-                sendBotMessage(getEventChannelId(),
-                    "\uD83D\uDFE2 **" + ViscordConfigToml.Server.NAME.get() + "** is now online!");
-            }
+            // Send startup embed after bot is connected, for all modes.
+            // DiscordPlatform handles its own startup embed independently.
+            try { Thread.sleep(500); } catch (InterruptedException ignored) {}
+            String eventCh = getEventChannelId();
+            Viscord.LOGGER.info("[Fluxer] Sending startup embed to event channel: {}", eventCh);
+            JsonObject embed = new JsonObject();
+            EmbedFactory.createServerStatusEmbed(
+                "Server Online", "Server is now online", 0x43B581,
+                ViscordConfigToml.Server.NAME.get(), "Viscord").accept(embed);
+            sendEventEmbed(embed);
         }).exceptionally(ex -> {
             Viscord.LOGGER.error("[Fluxer] Failed to connect bot: {}", ex.getMessage());
             return null;
@@ -185,17 +190,24 @@ public class FluxerPlatform {
     }
 
     /**
-     * Build and send a plain-text event notification from an embed JSON.
-     * Fluxer doesn't support rich embeds, so we format as bold text.
+     * Send a rich embed event notification to the Fluxer event channel via bot API.
+     * Fluxer's API supports Discord-compatible embeds array payload.
      */
     public void sendEventEmbed(JsonObject embed) {
-        String title = embed.has("title") ? embed.get("title").getAsString() : "";
-        String description = embed.has("description") ? embed.get("description").getAsString() : "";
-        String msg = title.isEmpty() ? description
-            : (description.isEmpty() ? "**" + title + "**" : "**" + title + "** \u2014 " + description);
-        if (!msg.isEmpty()) {
-            sendEventMessage(msg);
+        String channelId = getEventChannelId();
+        if (channelId == null || channelId.isEmpty()) {
+            Viscord.LOGGER.warn("[Fluxer] Cannot send event embed — no event channel configured");
+            return;
         }
+        botClient.sendEmbed(channelId, embed).whenComplete((success, err) -> {
+            if (err != null) {
+                Viscord.LOGGER.error("[Fluxer] Failed to send event embed: {}", err.getMessage());
+            } else if (!success) {
+                Viscord.LOGGER.warn("[Fluxer] Event embed send returned false for channel {}", channelId);
+            } else if (ViscordConfigToml.General.DEBUG.get()) {
+                Viscord.LOGGER.debug("[Fluxer] Event embed sent to channel {}", channelId);
+            }
+        });
     }
 
     // =========================================================================

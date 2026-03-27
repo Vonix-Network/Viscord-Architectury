@@ -349,7 +349,8 @@ public class TomlConfigManager {
         config.setComment("general.enabled", "Master toggle for all Viscord features");
         config.setComment("general.platform", "Chat platform to use:\n" +
                 "  discord - Full Discord bot integration (webhooks + bot API)\n" +
-                "  fluxer  - Fluxer bot integration (bot API + Gateway, no port forwarding needed)");
+                "  fluxer  - Fluxer bot integration (bot API + Gateway, no port forwarding needed)\n" +
+                "  both    - Both Discord and Fluxer simultaneously (events and chat go to both, no cross-platform bridging)");
         config.setComment("general.debug", "Enable verbose debug logging for troubleshooting");
 
         // [general.tridirectional] comments

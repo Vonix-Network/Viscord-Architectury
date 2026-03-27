@@ -2,6 +2,14 @@ architectury {
     common rootProject.enabled_platforms.split(',')
 }
 
+sourceSets {
+    test {
+        java {
+            srcDir 'src/test/java'
+        }
+    }
+}
+
 dependencies {
     // We depend on Fabric Loader here to use the Fabric @Environment annotations,
     // which get remapped to the correct annotations on each platform.
@@ -45,4 +53,22 @@ dependencies {
     // TOML Configuration (night-config)
     implementation 'com.electronwill.night-config:toml:3.6.7'
     implementation 'com.electronwill.night-config:core:3.6.7'
+
+    // Test dependencies
+    testImplementation 'org.junit.jupiter:junit-jupiter:5.10.0'
+    testImplementation 'org.mockito:mockito-core:5.8.0'
+    testImplementation 'net.jqwik:jqwik:1.8.2'
+}
+
+test {
+    useJUnitPlatform()
+    testClassesDirs = sourceSets.test.output.classesDirs
+    classpath = sourceSets.test.runtimeClasspath
+}
+
+task printTestSrcDirs {
+    doLast {
+        println "Test src dirs: " + sourceSets.test.java.srcDirs
+        println "Test class dirs: " + sourceSets.test.output.classesDirs.files
+    }
 }

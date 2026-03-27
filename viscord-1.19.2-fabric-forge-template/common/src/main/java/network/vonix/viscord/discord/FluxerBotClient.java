@@ -399,7 +399,7 @@ public class FluxerBotClient {
             if (author.has("avatar") && !author.get("avatar").isJsonNull()) {
                 String avatarHash = author.get("avatar").getAsString();
                 String userId = author.get("id").getAsString();
-                avatarUrl = "https://cdn.fluxer.app/avatars/" + userId + "/" + avatarHash + ".png";
+                avatarUrl = "https://fluxerusercontent.com/avatars/" + userId + "/" + avatarHash + ".webp?size=240";
             }
             
             // Extract message content
@@ -529,8 +529,9 @@ public class FluxerBotClient {
             
             JsonArray activities = new JsonArray();
             JsonObject activity = new JsonObject();
-            activity.addProperty("name", status);
-            activity.addProperty("type", 0); // 0 = Playing
+            activity.addProperty("name", "Custom Status");
+            activity.addProperty("type", 4); // 4 = Custom Status
+            activity.addProperty("state", status);
             activities.add(activity);
             
             d.add("activities", activities);
@@ -594,6 +595,44 @@ public class FluxerBotClient {
      * @param content The message content
      * @return CompletableFuture that completes when the message is sent
      */
+    public CompletableFuture<Boolean> sendEmbed(String channelId, com.google.gson.JsonObject embedJson) {
+        if (token == null || token.isEmpty()) {
+            return CompletableFuture.completedFuture(false);
+        }
+        return CompletableFuture.supplyAsync(() -> {
+            java.net.HttpURLConnection conn = null;
+            try {
+                java.net.URL url = new java.net.URL("https://api.fluxer.app/v1/channels/" + channelId + "/messages");
+                conn = (java.net.HttpURLConnection) url.openConnection();
+                conn.setRequestMethod("POST");
+                conn.setRequestProperty("Authorization", "Bot " + token);
+                conn.setRequestProperty("Content-Type", "application/json");
+                conn.setDoOutput(true);
+                com.google.gson.JsonArray embeds = new com.google.gson.JsonArray();
+                embeds.add(embedJson);
+                com.google.gson.JsonObject payload = new com.google.gson.JsonObject();
+                payload.add("embeds", embeds);
+                byte[] body = payload.toString().getBytes(java.nio.charset.StandardCharsets.UTF_8);
+                conn.setFixedLengthStreamingMode(body.length);
+                try (java.io.OutputStream os = conn.getOutputStream()) { os.write(body); }
+                int responseCode = conn.getResponseCode();
+                if (responseCode >= 200 && responseCode < 300) {
+                    if (ViscordConfigToml.General.DEBUG.get())
+                        Viscord.LOGGER.debug("[Fluxer Bot] Embed sent successfully to channel {}", channelId);
+                    return true;
+                } else {
+                    Viscord.LOGGER.warn("[Fluxer Bot] Failed to send embed. Response code: {}", responseCode);
+                    return false;
+                }
+            } catch (Exception e) {
+                Viscord.LOGGER.error("[Fluxer Bot] Error sending embed", e);
+                return false;
+            } finally {
+                if (conn != null) conn.disconnect();
+            }
+        });
+    }
+
     public CompletableFuture<Boolean> sendMessage(String channelId, String content) {
         if (token == null || token.isEmpty()) {
             return CompletableFuture.completedFuture(false);
