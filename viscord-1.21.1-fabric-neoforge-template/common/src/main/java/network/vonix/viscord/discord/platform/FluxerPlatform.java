@@ -77,9 +77,13 @@ public class FluxerPlatform {
                 webhookClient.updateUrl(webhookUrl);
                 eventWebhookClient.updateUrl(webhookUrl);
             }
-            // Set initial bot status
+            // Delay status push slightly — sending OP 3 immediately on the READY
+            // receive thread races with the gateway's own session setup on some servers.
             if (ViscordConfigToml.BotStatus.ENABLED.get() && server != null) {
-                pushStatus();
+                Viscord.ASYNC_EXECUTOR.submit(() -> {
+                    try { Thread.sleep(1500); } catch (InterruptedException ignored) {}
+                    pushStatus();
+                });
             }
         });
 

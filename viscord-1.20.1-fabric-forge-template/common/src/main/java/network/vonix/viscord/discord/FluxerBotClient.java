@@ -53,6 +53,9 @@ public class FluxerBotClient {
     // Track the connect future to complete it only when READY is received
     private volatile CompletableFuture<Void> connectFuture;
 
+    // Status to embed in the identify payload and re-send after READY
+    private volatile String pendingStatus = null;
+
     public interface MessageHandler {
         void onMessage(String username, String message, String avatarUrl);
     }
@@ -436,7 +439,7 @@ public class FluxerBotClient {
     }
 
     private void sendIdentify() {
-        Viscord.LOGGER.debug("[Fluxer Bot] Sending Identify payload...");
+        Viscord.LOGGER.info("[Fluxer Bot] Sending Identify payload (pendingStatus={})...", pendingStatus);
         
         JsonObject identify = new JsonObject();
         identify.addProperty("op", 2);
@@ -453,7 +456,14 @@ public class FluxerBotClient {
         JsonObject presence = new JsonObject();
         presence.addProperty("status", "online");
         presence.addProperty("afk", false);
-        presence.add("activities", new JsonArray());
+        JsonArray identifyActivities = new JsonArray();
+        if (pendingStatus != null && !pendingStatus.isEmpty()) {
+            JsonObject act = new JsonObject();
+            act.addProperty("name", pendingStatus);
+            act.addProperty("type", 0); // 0 = Playing; type 4 (Custom Status) is silently ignored for bots
+            identifyActivities.add(act);
+        }
+        presence.add("activities", identifyActivities);
         presence.add("since", com.google.gson.JsonNull.INSTANCE);
         d.add("presence", presence);
         
@@ -512,6 +522,7 @@ public class FluxerBotClient {
     }
 
     public void updateStatus(String status) {
+        this.pendingStatus = status; // persist for reconnects and identify embedding
         if (!authenticated || webSocket == null || !webSocket.isOpen()) {
             Viscord.LOGGER.warn("[Fluxer Bot] Cannot update status - not connected (authenticated={}, wsOpen={})", 
                 authenticated, webSocket != null && webSocket.isOpen());
@@ -529,9 +540,8 @@ public class FluxerBotClient {
             
             JsonArray activities = new JsonArray();
             JsonObject activity = new JsonObject();
-            activity.addProperty("name", "Custom Status");
-            activity.addProperty("type", 4); // 4 = Custom Status
-            activity.addProperty("state", status);
+            activity.addProperty("name", status);
+            activity.addProperty("type", 0); // 0 = Playing; type 4 (Custom Status) is silently ignored for bots
             activities.add(activity);
             
             d.add("activities", activities);

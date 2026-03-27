@@ -1,4 +1,6 @@
-# Changelog
+﻿
+- Fluxer bot status not embedded in identify payload on older templates - added pendingStatus field, pre-populate block in FluxerPlatform.initialize, and activity embedding in sendIdentify to match 1.21.1 behaviour (1.18.2, 1.19.2, 1.20.1)
+- Fluxer bot status post-READY OP 3 now sent after 1.5s delay on async thread to avoid racing with gateway session setup (all templates)# Changelog
 
 All notable changes to Viscord will be documented in this file.
 
@@ -11,6 +13,9 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - 1.18.2 build failure — `FluxerWebhookClient.sendMessage` was using Discord-native format (`avatar_url`/`content`) instead of Slack-compatible format (`icon_url`/`text`); reverted to match spec and passing tests
 - 1.18.2 test failures — updated `WebhookClientPayloadTest`, `WebhookProfilePBTTest`, `WebhookProfileRelayTest` to match current implementation behaviour
 - 1.19.2 and 1.20.1 build failure — `gradle-wrapper.jar` was missing from both templates; copied from 1.18.2
+- Fluxer bot status not displaying - activity type 4 (Custom Status) is silently ignored for bots by both Discord and Fluxer gateways; switched to type 0 (Playing) with status string as name field, which renders correctly in the client (all templates)
+- Fluxer bot status not embedded in identify payload on older templates - added pendingStatus field, pre-populate block in FluxerPlatform.initialize, and activity embedding in sendIdentify to match 1.21.1 behaviour (1.18.2, 1.19.2, 1.20.1)
+- Fluxer bot status post-READY OP 3 now sent after 1.5s delay on async thread to avoid racing with gateway session setup (all templates)
 
 ### Changed
 - Event embed footers now use descriptive labels (`Viscord · Player Join`, `Viscord · Player Leave`, `Viscord · Player Death`, `Viscord · Advancement`, `Viscord · Server Online`, `Viscord · Server Offline`) instead of generic `Viscord` text, matching the style shown in Discord (all templates)

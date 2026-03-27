@@ -439,7 +439,7 @@ public class FluxerBotClient {
     }
 
     private void sendIdentify() {
-        Viscord.LOGGER.debug("[Fluxer Bot] Sending Identify payload...");
+        Viscord.LOGGER.info("[Fluxer Bot] Sending Identify payload (pendingStatus={})...", pendingStatus);
         
         JsonObject identify = new JsonObject();
         identify.addProperty("op", 2);
@@ -459,9 +459,8 @@ public class FluxerBotClient {
         JsonArray identifyActivities = new JsonArray();
         if (pendingStatus != null && !pendingStatus.isEmpty()) {
             JsonObject act = new JsonObject();
-            act.addProperty("name", "Custom Status");
-            act.addProperty("type", 4);
-            act.addProperty("state", pendingStatus);
+            act.addProperty("name", pendingStatus);
+            act.addProperty("type", 0); // 0 = Playing; type 4 (Custom Status) is silently ignored for bots
             identifyActivities.add(act);
         }
         presence.add("activities", identifyActivities);
@@ -541,9 +540,8 @@ public class FluxerBotClient {
             
             JsonArray activities = new JsonArray();
             JsonObject activity = new JsonObject();
-            activity.addProperty("name", "Custom Status");
-            activity.addProperty("type", 4); // 4 = Custom Status
-            activity.addProperty("state", status);
+            activity.addProperty("name", status);
+            activity.addProperty("type", 0); // 0 = Playing; type 4 (Custom Status) is silently ignored for bots
             activities.add(activity);
             
             d.add("activities", activities);

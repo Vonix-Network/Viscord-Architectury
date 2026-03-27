@@ -76,11 +76,25 @@ public class FluxerPlatform {
             if (webhookUrl != null && !webhookUrl.isEmpty()) {
                 webhookClient.updateUrl(webhookUrl);
             }
-            // Set initial bot status
+            // Delay status push slightly — sending OP 3 immediately on the READY
+            // receive thread races with the gateway's own session setup on some servers.
             if (ViscordConfigToml.BotStatus.ENABLED.get() && server != null) {
-                pushStatus();
+                Viscord.ASYNC_EXECUTOR.submit(() -> {
+                    try { Thread.sleep(1500); } catch (InterruptedException ignored) {}
+                    pushStatus();
+                });
             }
         });
+
+        // Pre-populate status so it's embedded in the identify payload
+        if (ViscordConfigToml.BotStatus.ENABLED.get() && server != null) {
+            int online = server.getPlayerList().getPlayerCount();
+            int max = server.getPlayerList().getMaxPlayers();
+            String fmt = ViscordConfigToml.BotStatus.FORMAT.get();
+            String initialStatus = fmt.replace("{online}", String.valueOf(online))
+                                      .replace("{max}", String.valueOf(max));
+            botClient.updateStatus(initialStatus);
+        }
 
         botClient.connect(apiKey).thenRun(() -> {
             Viscord.LOGGER.info("[Fluxer] Bot connected successfully.");
