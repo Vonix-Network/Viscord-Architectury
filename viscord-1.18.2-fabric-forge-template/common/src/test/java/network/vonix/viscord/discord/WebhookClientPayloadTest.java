@@ -11,8 +11,6 @@ import static org.junit.jupiter.api.Assertions.*;
  */
 class WebhookClientPayloadTest {
 
-    // ── Test subclass for WebhookClient ──────────────────────────────────────
-
     static class CapturingWebhookClient extends WebhookClient {
         JsonObject captured;
 
@@ -25,8 +23,6 @@ class WebhookClientPayloadTest {
             this.captured = json;
         }
     }
-
-    // ── Test subclass for FluxerWebhookClient ─────────────────────────────────
 
     static class CapturingFluxerWebhookClient extends FluxerWebhookClient {
         JsonObject captured;
@@ -41,15 +37,15 @@ class WebhookClientPayloadTest {
         }
     }
 
-    // ── WebhookClient payload tests (Property 4) ─────────────────────────────
+    // ── WebhookClient (Discord) ───────────────────────────────────────────────
 
     @Test
     void webhookClient_avatarUrl_alwaysPresent_whenNonEmpty() {
         CapturingWebhookClient client = new CapturingWebhookClient();
         client.sendMessage("Alice", "https://example.com/avatar.png", "Hello");
 
-        assertNotNull(client.captured, "sendJson should have been called");
-        assertTrue(client.captured.has("avatar_url"), "avatar_url must be present when avatarUrl is non-empty");
+        assertNotNull(client.captured);
+        assertTrue(client.captured.has("avatar_url"));
         assertEquals("https://example.com/avatar.png", client.captured.get("avatar_url").getAsString());
         assertEquals("Alice", client.captured.get("username").getAsString());
         assertEquals("Hello", client.captured.get("content").getAsString());
@@ -60,21 +56,21 @@ class WebhookClientPayloadTest {
         CapturingWebhookClient client = new CapturingWebhookClient();
         client.sendMessage("Bob", "", "Hi there");
 
-        assertNotNull(client.captured, "sendJson should have been called");
-        // WebhookClient always sets avatar_url (even empty string)
-        assertTrue(client.captured.has("avatar_url"), "avatar_url must always be present in WebhookClient payload");
+        assertNotNull(client.captured);
+        // WebhookClient omits avatar_url when empty — correct behaviour
+        assertFalse(client.captured.has("avatar_url"), "avatar_url must be absent when avatarUrl is empty");
         assertEquals("Bob", client.captured.get("username").getAsString());
         assertEquals("Hi there", client.captured.get("content").getAsString());
     }
 
-    // ── FluxerWebhookClient payload tests (Property 3) ───────────────────────
+    // ── FluxerWebhookClient (Slack-compatible) ────────────────────────────────
 
     @Test
     void fluxerWebhookClient_iconUrl_presentWhenAvatarUrlNonEmpty() {
         CapturingFluxerWebhookClient client = new CapturingFluxerWebhookClient();
         client.sendMessage("Charlie", "https://example.com/icon.png", "Hey");
 
-        assertNotNull(client.captured, "sendJson should have been called");
+        assertNotNull(client.captured);
         assertTrue(client.captured.has("icon_url"), "icon_url must be present when avatarUrl is non-empty");
         assertEquals("https://example.com/icon.png", client.captured.get("icon_url").getAsString());
         assertTrue(client.captured.has("username"));
@@ -86,7 +82,7 @@ class WebhookClientPayloadTest {
         CapturingFluxerWebhookClient client = new CapturingFluxerWebhookClient();
         client.sendMessage("Dave", "", "Yo");
 
-        assertNotNull(client.captured, "sendJson should have been called");
+        assertNotNull(client.captured);
         assertFalse(client.captured.has("icon_url"), "icon_url must be absent when avatarUrl is empty");
         assertTrue(client.captured.has("username"));
         assertTrue(client.captured.has("text"));

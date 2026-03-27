@@ -7,6 +7,11 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Fixed
+- 1.18.2 build failure — `FluxerWebhookClient.sendMessage` was using Discord-native format (`avatar_url`/`content`) instead of Slack-compatible format (`icon_url`/`text`); reverted to match spec and passing tests
+- 1.18.2 test failures — updated `WebhookClientPayloadTest`, `WebhookProfilePBTTest`, `WebhookProfileRelayTest` to match current implementation behaviour
+- 1.19.2 and 1.20.1 build failure — `gradle-wrapper.jar` was missing from both templates; copied from 1.18.2
+
 ### Changed
 - Event embed footers now use descriptive labels (`Viscord · Player Join`, `Viscord · Player Leave`, `Viscord · Player Death`, `Viscord · Advancement`, `Viscord · Server Online`, `Viscord · Server Offline`) instead of generic `Viscord` text, matching the style shown in Discord (all templates)
 

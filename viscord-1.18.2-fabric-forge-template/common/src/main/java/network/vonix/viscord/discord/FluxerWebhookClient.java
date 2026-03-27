@@ -73,9 +73,9 @@ public class FluxerWebhookClient {
         JsonObject json = new JsonObject();
         json.addProperty("username", username);
         if (avatarUrl != null && !avatarUrl.isEmpty()) {
-            json.addProperty("avatar_url", avatarUrl);
+            json.addProperty("icon_url", avatarUrl);
         }
-        json.addProperty("content", content);
+        json.addProperty("text", content);
 
         sendJson(json);
     }

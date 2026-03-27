@@ -6,14 +6,9 @@ import org.junit.jupiter.api.Test;
 import static org.junit.jupiter.api.Assertions.*;
 
 /**
- * Unit tests for tasks 4.1, 4.2, 4.3:
- * - 4.1: FluxerWebhookClient.sendMessage with non-empty/empty avatarUrl
- * - 4.2: WebhookClient.sendMessage with non-empty avatarUrl
- * - 4.3: FluxerWebhookClient returns early when webhookId/webhookToken is null
+ * Unit tests for webhook payload relay correctness.
  */
 class WebhookProfileRelayTest {
-
-    // ── Capturing test subclasses ─────────────────────────────────────────────
 
     static class CapturingWebhookClient extends WebhookClient {
         JsonObject captured;
@@ -45,7 +40,7 @@ class WebhookProfileRelayTest {
         }
     }
 
-    // ── Task 4.1: FluxerWebhookClient icon_url presence ──────────────────────
+    // ── FluxerWebhookClient: icon_url presence (Slack format) ─────────────────
 
     @Test
     void task4_1_fluxer_iconUrl_presentWhenAvatarNonEmpty() {
@@ -73,7 +68,7 @@ class WebhookProfileRelayTest {
                 "icon_url must be absent when avatarUrl is empty");
     }
 
-    // ── Task 4.2: WebhookClient avatar_url presence ───────────────────────────
+    // ── WebhookClient: avatar_url presence ────────────────────────────────────
 
     @Test
     void task4_2_webhook_avatarUrl_presentWhenNonEmpty() {
@@ -91,11 +86,10 @@ class WebhookProfileRelayTest {
         assertEquals("Hello Discord", client.captured.get("content").getAsString());
     }
 
-    // ── Task 4.3: FluxerWebhookClient returns early when not configured ───────
+    // ── Early return when not configured ──────────────────────────────────────
 
     @Test
     void task4_3_fluxer_noSend_whenWebhookIdNull() {
-        // No URL → webhookId and webhookToken remain null
         CapturingFluxerWebhookClient client = new CapturingFluxerWebhookClient(null);
 
         client.sendMessage("Dave", "https://example.com/avatar.png", "Should not send");
@@ -107,7 +101,6 @@ class WebhookProfileRelayTest {
 
     @Test
     void task4_3_fluxer_noSend_whenWebhookUrlInvalid() {
-        // Invalid URL → pattern won't match → webhookId/webhookToken null
         CapturingFluxerWebhookClient client =
                 new CapturingFluxerWebhookClient("https://not-fluxer.example.com/webhook");
 
@@ -119,7 +112,6 @@ class WebhookProfileRelayTest {
 
     @Test
     void task4_3_webhook_noSend_whenUrlNull() {
-        // WebhookClient with null URL → sendMessage returns early
         CapturingWebhookClient client = new CapturingWebhookClient(null);
 
         client.sendMessage("Frank", "", "Should not send");
