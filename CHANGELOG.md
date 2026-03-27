@@ -778,3 +778,4 @@ New in 2.0, you can use Fluxer instead of Discord:
 ---
 
 **For more detailed information about each release, please check the GitHub releases page.**
+
