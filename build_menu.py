@@ -328,8 +328,6 @@ class ViscordBuildMenu:
             
             try:
                 args = ["clean", "build"] if build_type == BuildType.CLEAN else ["build"]
-                
-                # Use cmd.exe /c to run gradlew.bat properly on Windows
                 cmd = ["cmd.exe", "/c", "gradlew.bat"] + args
                 
                 with open(output_file, "w") as out_f, open(error_file, "w") as err_f:
@@ -341,21 +339,21 @@ class ViscordBuildMenu:
                     )
                 
                 start_time = datetime.now()
-                timeout = 300  # 5 minutes
+                timeout = 600  # 10 minutes — first-time remap can take a while
                 current_progress = 0
+                timed_out = False
                 
                 while process.poll() is None:
                     elapsed = (datetime.now() - start_time).total_seconds()
                     
                     if elapsed > timeout:
                         process.terminate()
+                        timed_out = True
                         break
                     
-                    # Time-based progress
                     time_progress = min(int(elapsed * 2), 85)
                     current_progress = max(current_progress, time_progress)
                     
-                    # Try to read output for better status
                     try:
                         with open(output_file, "r", errors="ignore") as f:
                             lines = f.readlines()
@@ -367,7 +365,6 @@ class ViscordBuildMenu:
                                         task_name = task_match.group(1)
                                         progress.update(task, description=f"[cyan]{status_text} - {task_name}...")
                                 
-                                # Check for specific phases
                                 if re.search(r"clean|Clean", last_lines):
                                     current_progress = max(current_progress, 15)
                                 elif re.search(r"compiling|Compiling", last_lines, re.IGNORECASE):
@@ -385,7 +382,6 @@ class ViscordBuildMenu:
                 
                 exit_code = process.returncode
                 
-                # Read output
                 try:
                     with open(output_file, "r", errors="ignore") as f:
                         output_lines = f.read().splitlines()
@@ -398,8 +394,16 @@ class ViscordBuildMenu:
                 except Exception:
                     error_lines = []
                 
-                progress.update(task, completed=100, description=f"[green]{status_text} Complete![/green]")
+                if timed_out:
+                    progress.update(task, completed=100, description=f"[red]{status_text} - TIMED OUT[/red]")
+                    return BuildResult(
+                        success=False,
+                        output=output_lines,
+                        error=[f"BUILD TIMED OUT after {timeout}s — Gradle may be downloading dependencies or stuck. Try again."] + error_lines,
+                        exit_code=-1
+                    )
                 
+                progress.update(task, completed=100, description=f"[green]{status_text} Complete![/green]")
                 success = exit_code == 0 or any("BUILD SUCCESSFUL" in line for line in output_lines)
                 
                 return BuildResult(
@@ -417,7 +421,6 @@ class ViscordBuildMenu:
                     exit_code=1
                 )
             finally:
-                # Clean up temp files
                 try:
                     os.unlink(output_file)
                     os.unlink(error_file)
@@ -516,20 +519,103 @@ class ViscordBuildMenu:
         return result
     
     def _display_build_error(self, result: BuildResult):
-        """Display build error details"""
-        console.print(f"[red]Exit code: {result.exit_code}[/red]")
-        
-        if result.output:
-            console.print("[dark_red]Build output (last 30 lines):[/dark_red]")
-            for line in result.output[-30:]:
-                if line.strip():
-                    console.print(f"[red]  {line}[/red]")
-        
-        if result.error:
-            console.print("[dark_red]Build errors:[/dark_red]")
-            for line in result.error[-10:]:
-                if line.strip():
-                    console.print(f"[red]  {line}[/red]")
+        """Display build error details with categorised diagnosis"""
+        all_lines = result.output + result.error
+        all_text = "\n".join(all_lines)
+
+        # ── Categorise the failure ────────────────────────────────────────────
+        if result.exit_code == -1 or any("TIMED OUT" in l for l in result.error):
+            category = "TIMEOUT"
+            category_color = "yellow"
+            hint = (
+                "The build exceeded the 5-minute limit.\n"
+                "  This usually means Gradle is downloading dependencies for the first time.\n"
+                "  [bold]Try running the build again[/bold] — subsequent builds will be much faster."
+            )
+        elif any("GradleWrapperMain" in l or "ClassNotFoundException" in l for l in all_lines):
+            category = "GRADLE WRAPPER MISSING"
+            category_color = "red"
+            hint = (
+                "gradle-wrapper.jar is missing from gradle/wrapper/.\n"
+                "  Run: [bold]gradle wrapper[/bold] inside the template directory,\n"
+                "  or copy gradle-wrapper.jar from another working template."
+            )
+        elif any("error: cannot find symbol" in l or "symbol:" in l for l in all_lines):
+            category = "COMPILATION ERROR"
+            category_color = "red"
+            hint = "Java compilation failed. See the symbol/location lines below for the exact cause."
+        elif any("compileJava FAILED" in l for l in all_lines):
+            category = "COMPILE FAILED"
+            category_color = "red"
+            hint = "Java source failed to compile. Check the error lines below."
+        elif any("test" in l.lower() and "FAILED" in l for l in all_lines):
+            category = "TEST FAILURE"
+            category_color = "yellow"
+            hint = "Build compiled but one or more tests failed. See test report for details."
+        elif any("Could not resolve" in l or "Could not download" in l for l in all_lines):
+            category = "DEPENDENCY ERROR"
+            category_color = "yellow"
+            hint = "Gradle could not download a dependency. Check your internet connection and try again."
+        elif any("remapping sources" in l for l in all_lines) and result.exit_code is None:
+            category = "TIMEOUT DURING REMAP"
+            category_color = "yellow"
+            hint = (
+                "Build timed out while remapping Minecraft sources (first-time setup).\n"
+                "  This is normal on the first run. [bold]Try again[/bold] — it will resume from where it left off."
+            )
+        elif result.exit_code is None:
+            category = "PROCESS KILLED / TIMEOUT"
+            category_color = "yellow"
+            hint = "The build process was terminated (likely a timeout). Try running again."
+        else:
+            category = f"BUILD FAILED (exit {result.exit_code})"
+            category_color = "red"
+            hint = "An unexpected build error occurred. See output below."
+
+        # ── Header ────────────────────────────────────────────────────────────
+        console.print(Panel(
+            f"[bold {category_color}]{category}[/bold {category_color}]\n[white]{hint}[/white]",
+            box=box.ROUNDED,
+            border_style=category_color,
+            title="[bold]Build Failure Details[/bold]"
+        ))
+        console.print()
+
+        # ── Extract meaningful lines only ─────────────────────────────────────
+        error_keywords = [
+            "error:", "ERROR", "FAILED", "Exception", "symbol:", "location:",
+            "cannot find symbol", "package does not exist", "BUILD FAILED",
+            "What went wrong", "Execution failed", "AssertionFailedError",
+            "TIMED OUT", "ClassNotFoundException", "Could not resolve",
+            "Could not download", "compileJava", "test FAILED"
+        ]
+
+        meaningful = [
+            l for l in all_lines
+            if l.strip() and any(kw in l for kw in error_keywords)
+        ]
+
+        # Deduplicate while preserving order
+        seen = set()
+        deduped = []
+        for l in meaningful:
+            key = l.strip()
+            if key not in seen:
+                seen.add(key)
+                deduped.append(l)
+
+        if deduped:
+            console.print("[bold red]Key error lines:[/bold red]")
+            for line in deduped[:20]:
+                console.print(f"  [red]{line.strip()}[/red]")
+        else:
+            # Fallback: last 15 non-empty lines
+            console.print("[dim]Last build output:[/dim]")
+            non_empty = [l for l in all_lines if l.strip()]
+            for line in non_empty[-15:]:
+                console.print(f"  [dim]{line.strip()}[/dim]")
+
+        console.print()
     
     def build_all_releases(self):
         """Build all versions to Releases folder"""
