@@ -1,6 +1,4 @@
-﻿
-- Fluxer bot status not embedded in identify payload on older templates - added pendingStatus field, pre-populate block in FluxerPlatform.initialize, and activity embedding in sendIdentify to match 1.21.1 behaviour (1.18.2, 1.19.2, 1.20.1)
-- Fluxer bot status post-READY OP 3 now sent after 1.5s delay on async thread to avoid racing with gateway session setup (all templates)# Changelog
+﻿# Changelog
 
 All notable changes to Viscord will be documented in this file.
 
@@ -10,120 +8,117 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 ## [Unreleased]
 
 ### Fixed
-- 1.18.2 build failure — `FluxerWebhookClient.sendMessage` was using Discord-native format (`avatar_url`/`content`) instead of Slack-compatible format (`icon_url`/`text`); reverted to match spec and passing tests
-- 1.18.2 test failures — updated `WebhookClientPayloadTest`, `WebhookProfilePBTTest`, `WebhookProfileRelayTest` to match current implementation behaviour
-- 1.19.2 and 1.20.1 build failure — `gradle-wrapper.jar` was missing from both templates; copied from 1.18.2
-- Fluxer bot status not displaying - activity type 4 (Custom Status) is silently ignored for bots by both Discord and Fluxer gateways; switched to type 0 (Playing) with status string as name field, which renders correctly in the client (all templates)
-- Fluxer bot status not embedded in identify payload on older templates - added pendingStatus field, pre-populate block in FluxerPlatform.initialize, and activity embedding in sendIdentify to match 1.21.1 behaviour (1.18.2, 1.19.2, 1.20.1)
-- Fluxer bot status post-READY OP 3 now sent after 1.5s delay on async thread to avoid racing with gateway session setup (all templates)
+- 1.18.2 build failure ΓÇö `FluxerWebhookClient.sendMessage` was using Discord-native format (`avatar_url`/`content`) instead of Slack-compatible format (`icon_url`/`text`); reverted to match spec and passing tests
+- 1.18.2 test failures ΓÇö updated `WebhookClientPayloadTest`, `WebhookProfilePBTTest`, `WebhookProfileRelayTest` to match current implementation behaviour
+- 1.19.2 and 1.20.1 build failure ΓÇö `gradle-wrapper.jar` was missing from both templates; copied from 1.18.2
 
 ### Changed
-- Event embed footers now use descriptive labels (`Viscord · Player Join`, `Viscord · Player Leave`, `Viscord · Player Death`, `Viscord · Advancement`, `Viscord · Server Online`, `Viscord · Server Offline`) instead of generic `Viscord` text, matching the style shown in Discord (all templates)
+- Event embed footers now use descriptive labels (`Viscord ┬╖ Player Join`, `Viscord ┬╖ Player Leave`, `Viscord ┬╖ Player Death`, `Viscord ┬╖ Advancement`, `Viscord ┬╖ Server Online`, `Viscord ┬╖ Server Offline`) instead of generic `Viscord` text, matching the style shown in Discord (all templates)
 
 ## [4.1.2] - 2026-03-26
 
 ### Added
-- `platform = "both"` mode — initializes both Discord and Fluxer simultaneously; all events and Minecraft chat go to both platforms with no cross-platform message bridging (use tridirectional for that) (all templates)
-- Rich embed support for Fluxer event notifications — `FluxerBotClient.sendEmbed()` now posts `{"embeds": [...]}` to the Fluxer bot API (Discord-compatible format), replacing the previous plain-text fallback (all templates)
+- `platform = "both"` mode ΓÇö initializes both Discord and Fluxer simultaneously; all events and Minecraft chat go to both platforms with no cross-platform message bridging (use tridirectional for that) (all templates)
+- Rich embed support for Fluxer event notifications ΓÇö `FluxerBotClient.sendEmbed()` now posts `{"embeds": [...]}` to the Fluxer bot API (Discord-compatible format), replacing the previous plain-text fallback (all templates)
 
 ### Fixed
-- Fluxer events not firing in tridirectional/both modes — routing conditions replaced with `usesFluxer()`/`usesDiscord()` helpers that correctly cover all platform combinations (all templates)
-- Fluxer startup embed not sending in `both`/tridirectional mode — moved startup into `FluxerPlatform.initialize()` `thenRun` so it fires after bot READY for all modes (all templates)
-- Fluxer startup embed going to main channel instead of events channel on `/viscord reload` — added 500ms settle delay in `thenRun` to ensure config is fully loaded before channel ID is read (all templates)
-- `shutdown()` double-sending Discord offline embed — `DiscordManager.shutdown()` now calls `discordPlatform.shutdown()` directly instead of `sendShutdownEmbed` separately (all templates)
-- `shutdown()` race condition in both/tridirectional mode — Fluxer offline embed now waits 1.5s before Discord disconnect begins (all templates)
+- Fluxer events not firing in tridirectional/both modes ΓÇö routing conditions replaced with `usesFluxer()`/`usesDiscord()` helpers that correctly cover all platform combinations (all templates)
+- Fluxer startup embed not sending in `both`/tridirectional mode ΓÇö moved startup into `FluxerPlatform.initialize()` `thenRun` so it fires after bot READY for all modes (all templates)
+- Fluxer startup embed going to main channel instead of events channel on `/viscord reload` ΓÇö added 500ms settle delay in `thenRun` to ensure config is fully loaded before channel ID is read (all templates)
+- `shutdown()` double-sending Discord offline embed ΓÇö `DiscordManager.shutdown()` now calls `discordPlatform.shutdown()` directly instead of `sendShutdownEmbed` separately (all templates)
+- `shutdown()` race condition in both/tridirectional mode ΓÇö Fluxer offline embed now waits 1.5s before Discord disconnect begins (all templates)
 - All older templates (1.18.2, 1.19.2, 1.20.1) synced to 1.21.1 feature parity: `platform = "both"`, rich Fluxer embeds, `usesFluxer()`/`usesDiscord()` routing, `resetInstance()`, fixed shutdown/startup logic
 
 ## [4.1.1] - 2026-03-26
 
 ### Fixed
-- `!list` command not responding from Fluxer — `onFluxerMessage` had no `!list` handler; now sends formatted player list back to the Fluxer event channel
-- Join/leave events not reaching Fluxer — added error logging to `FluxerPlatform.sendEventMessage` to surface failures; `botClient.sendMessage` future now has a completion handler that logs failures
-- Advancement notifications firing on partial progress — `PlayerAdvancementsMixin` now checks `getOrStartProgress().isDone()` before sending
-- Fluxer standalone mode: `sendStartupEmbed` was double-sending the startup message — fixed routing logic so each mode sends exactly once
-- `isRunning()` now correctly checks tridirectional state — returns true if either platform is connected in tridirectional mode
-- Build error: `Javacord Icon.getAvatar()` returns `Icon` directly, not `Optional<Icon>` — `.map()` call replaced with null-safe direct call in `TridirectionalBridge` across all 4 templates
-- Fluxer bot status (Online: players/max) not updating — `scheduleStatusUpdate` now fires on every player join/leave regardless of whether event messages are enabled, across all 4 MC version templates
-- Fluxer user profile pictures not appearing in Discord webhooks — `WebhookClient.sendMessage` was unconditionally setting `avatar_url` to null/empty; now only included when non-empty, across all 4 MC version templates
-- Fluxer avatar CDN URL was incorrect (`cdn.fluxer.app`) — corrected to `fluxerusercontent.com` with `.webp` format, across all 4 MC version templates
-- Fluxer bot custom status not displaying — activity type was `0` (Playing) instead of `4` (Custom Status); payload now uses `type: 4` with `state` field, across all 4 MC version templates
-- Fluxer bot custom status not set on connect — status now embedded in the identify payload's presence block so it's active immediately on gateway connect, not just after a post-READY op 3 update (1.21.1)
-- Fluxer bot appearing online after server shutdown — now sends `invisible` presence before closing the WebSocket (1.21.1)
-- `/viscord reload` not working after first reload — `DiscordManager` singleton was reused after shutdown, leaving dead scheduler/WebSocket state; `resetInstance()` now called after shutdown so a fresh instance with clean platform objects is created on re-init (1.21.1)
-- Double bot status update on player join/leave — `DiscordEventHandler` was calling `scheduleStatusUpdate(1000)` redundantly alongside the existing call inside `sendJoinEmbed`/`sendLeaveEmbed`; removed the duplicate (1.21.1)
-- Fluxer not sending detailed embeds for in-game events — `DiscordManager` was calling `sendEventMessage()` with hardcoded plain-text strings for all events (join, leave, death, advancement, server online/offline) instead of `sendEventEmbed()` with `EmbedFactory`-built embeds (1.21.1)
-- Fluxer server online/offline events not appearing in events channel — `FluxerPlatform.initialize()` was sending startup via `sendBotMessage` with hardcoded plain text instead of `sendEventEmbed`; shutdown was also disconnecting the bot before the message could send (1.21.1)
+- `!list` command not responding from Fluxer ΓÇö `onFluxerMessage` had no `!list` handler; now sends formatted player list back to the Fluxer event channel
+- Join/leave events not reaching Fluxer ΓÇö added error logging to `FluxerPlatform.sendEventMessage` to surface failures; `botClient.sendMessage` future now has a completion handler that logs failures
+- Advancement notifications firing on partial progress ΓÇö `PlayerAdvancementsMixin` now checks `getOrStartProgress().isDone()` before sending
+- Fluxer standalone mode: `sendStartupEmbed` was double-sending the startup message ΓÇö fixed routing logic so each mode sends exactly once
+- `isRunning()` now correctly checks tridirectional state ΓÇö returns true if either platform is connected in tridirectional mode
+- Build error: `Javacord Icon.getAvatar()` returns `Icon` directly, not `Optional<Icon>` ΓÇö `.map()` call replaced with null-safe direct call in `TridirectionalBridge` across all 4 templates
+- Fluxer bot status (Online: players/max) not updating ΓÇö `scheduleStatusUpdate` now fires on every player join/leave regardless of whether event messages are enabled, across all 4 MC version templates
+- Fluxer user profile pictures not appearing in Discord webhooks ΓÇö `WebhookClient.sendMessage` was unconditionally setting `avatar_url` to null/empty; now only included when non-empty, across all 4 MC version templates
+- Fluxer avatar CDN URL was incorrect (`cdn.fluxer.app`) ΓÇö corrected to `fluxerusercontent.com` with `.webp` format, across all 4 MC version templates
+- Fluxer bot custom status not displaying ΓÇö activity type was `0` (Playing) instead of `4` (Custom Status); payload now uses `type: 4` with `state` field, across all 4 MC version templates
+- Fluxer bot custom status not set on connect ΓÇö status now embedded in the identify payload's presence block so it's active immediately on gateway connect, not just after a post-READY op 3 update (1.21.1)
+- Fluxer bot appearing online after server shutdown ΓÇö now sends `invisible` presence before closing the WebSocket (1.21.1)
+- `/viscord reload` not working after first reload ΓÇö `DiscordManager` singleton was reused after shutdown, leaving dead scheduler/WebSocket state; `resetInstance()` now called after shutdown so a fresh instance with clean platform objects is created on re-init (1.21.1)
+- Double bot status update on player join/leave ΓÇö `DiscordEventHandler` was calling `scheduleStatusUpdate(1000)` redundantly alongside the existing call inside `sendJoinEmbed`/`sendLeaveEmbed`; removed the duplicate (1.21.1)
+- Fluxer not sending detailed embeds for in-game events ΓÇö `DiscordManager` was calling `sendEventMessage()` with hardcoded plain-text strings for all events (join, leave, death, advancement, server online/offline) instead of `sendEventEmbed()` with `EmbedFactory`-built embeds (1.21.1)
+- Fluxer server online/offline events not appearing in events channel ΓÇö `FluxerPlatform.initialize()` was sending startup via `sendBotMessage` with hardcoded plain text instead of `sendEventEmbed`; shutdown was also disconnecting the bot before the message could send (1.21.1)
 
 ## [4.1.0] - 2026-03-26
 
 ### Changed
 - **Refactor**: Split `DiscordManager` (1560 lines) into focused platform classes:
-  - `platform/FluxerPlatform.java` — all Fluxer gateway/webhook/status logic
-  - `platform/DiscordPlatform.java` — all Discord bot/webhook/embed logic
-  - `platform/TridirectionalBridge.java` — cross-platform relay with echo suppression
-  - `DiscordManager.java` — thin coordinator (~350 lines): Minecraft processing, player prefs, account linking, public API
-  - Zero behavior change — same config, same public API, `DiscordEventHandler` unchanged
+  - `platform/FluxerPlatform.java` ΓÇö all Fluxer gateway/webhook/status logic
+  - `platform/DiscordPlatform.java` ΓÇö all Discord bot/webhook/embed logic
+  - `platform/TridirectionalBridge.java` ΓÇö cross-platform relay with echo suppression
+  - `DiscordManager.java` ΓÇö thin coordinator (~350 lines): Minecraft processing, player prefs, account linking, public API
+  - Zero behavior change ΓÇö same config, same public API, `DiscordEventHandler` unchanged
   - Applied across all 4 MC version templates
 
 ### Removed
-- `FluxerReceiver.java` — dead code, deprecated since v2.4.10 (HTTP webhook receiver replaced by WebSocket gateway)
-- `ServerPrefixConfig.java` — dead code, never referenced in codebase
+- `FluxerReceiver.java` ΓÇö dead code, deprecated since v2.4.10 (HTTP webhook receiver replaced by WebSocket gateway)
+- `ServerPrefixConfig.java` ΓÇö dead code, never referenced in codebase
 - Stale `FluxerPlatform.java` duplicate in root `discord/` package (correct location is `discord/platform/`)
 
 ### Fixed
-- Fluxer bot was forwarding messages from all channels to Discord/Minecraft — `FluxerBotClient.handleMessageCreate` had no channel ID filter. Now only messages from the configured `fluxer.channel_id` and `fluxer.event_channel_id` are processed.
-- `BotClient.sendEmbed` in 1.21.1 was calling `embed.setTitle()` unconditionally — NPE if embed has no title field.
-- `FluxerBotClient` in 1.18.2/1.19.2/1.20.1 was missing null checks for `op`, `t`, `author`, `username`, and `global_name` fields — all templates now fully in sync.
-- `sendJson` in `WebhookClient` and `FluxerWebhookClient` was `private` in 1.21.1 but `protected` in other templates — aligned to `protected` across all 4.
+- Fluxer bot was forwarding messages from all channels to Discord/Minecraft ΓÇö `FluxerBotClient.handleMessageCreate` had no channel ID filter. Now only messages from the configured `fluxer.channel_id` and `fluxer.event_channel_id` are processed.
+- `BotClient.sendEmbed` in 1.21.1 was calling `embed.setTitle()` unconditionally ΓÇö NPE if embed has no title field.
+- `FluxerBotClient` in 1.18.2/1.19.2/1.20.1 was missing null checks for `op`, `t`, `author`, `username`, and `global_name` fields ΓÇö all templates now fully in sync.
+- `sendJson` in `WebhookClient` and `FluxerWebhookClient` was `private` in 1.21.1 but `protected` in other templates ΓÇö aligned to `protected` across all 4.
 - Missing `MessageConverter` import in new `DiscordManager` across all 4 templates.
 
 ## [4.0.0] - 2026-03-26
 
 ### Fixed
-- **CRITICAL**: Fluxer bot API messages silently failing with HTTP 404 — missing `/v1/` in REST API base URL (`https://api.fluxer.app/channels/` → `https://api.fluxer.app/v1/channels/`). All bot API sends (events, startup/shutdown, fallback messages) were broken.
-- **CRITICAL**: Fluxer gateway OP 7 (RECONNECT) not handled — server-initiated reconnect requests were silently ignored, causing eventual session termination
+- **CRITICAL**: Fluxer bot API messages silently failing with HTTP 404 ΓÇö missing `/v1/` in REST API base URL (`https://api.fluxer.app/channels/` ΓåÆ `https://api.fluxer.app/v1/channels/`). All bot API sends (events, startup/shutdown, fallback messages) were broken.
+- **CRITICAL**: Fluxer gateway OP 7 (RECONNECT) not handled ΓÇö server-initiated reconnect requests were silently ignored, causing eventual session termination
 - Fluxer webhook switched from Slack-compatible endpoint (`/slack`, `text`/`icon_url`) to native endpoint (`content`/`avatar_url`) for correctness and reliability
-- Webhook echo messages not reliably filtered — added `webhook_id` presence check in `handleMessageCreate` (webhook author type is distinct from bot type)
-- Javacord `MessageAuthor.getAvatar()` returns `Optional<Icon>` — unsafe `.getUrl().toString()` replaced with `.map(icon -> icon.getUrl().toString()).orElse("")`
-- Fluxer gateway OP 12 (GATEWAY_ERROR, Fluxer-specific) not handled — now schedules reconnect
+- Webhook echo messages not reliably filtered ΓÇö added `webhook_id` presence check in `handleMessageCreate` (webhook author type is distinct from bot type)
+- Javacord `MessageAuthor.getAvatar()` returns `Optional<Icon>` ΓÇö unsafe `.getUrl().toString()` replaced with `.map(icon -> icon.getUrl().toString()).orElse("")`
+- Fluxer gateway OP 12 (GATEWAY_ERROR, Fluxer-specific) not handled ΓÇö now schedules reconnect
 - Fluxer gateway Hello handler missing null checks on `d` and `heartbeat_interval` fields in 1.18.2, 1.19.2, 1.20.1
-- Heartbeat interval validation — invalid/zero intervals now fall back to 45000ms instead of crashing
-- Scheduler thread leak on disconnect — `oldToken == null` condition was always false; fixed to `this.token == null` in 1.18.2, 1.19.2, 1.20.1
-- BotClient `sendEmbed` silently returned null when channel not found — now logs a warning with the channel ID
+- Heartbeat interval validation ΓÇö invalid/zero intervals now fall back to 45000ms instead of crashing
+- Scheduler thread leak on disconnect ΓÇö `oldToken == null` condition was always false; fixed to `this.token == null` in 1.18.2, 1.19.2, 1.20.1
+- BotClient `sendEmbed` silently returned null when channel not found ΓÇö now logs a warning with the channel ID
 - `FluxerWebhookClient` URL pattern now accepts both `/v1/` and non-`/v1/` URL formats; warning now shows the actual URL received
-- `sendMinecraftMessage` called `fluxerWebhookClient.updateUrl()` on every message — now only updates when URL has changed
-- Duplicate `!list` command check in `processDiscordMessageForMinecraft` — added clarifying comment in all templates
-- Removed dead config keys: `Discord.WEBHOOK_ID`, `Discord.Events.WEBHOOK_URL`, `Advanced.QUEUE_SIZE`, `Advanced.RATE_LIMIT` — none were read anywhere in the codebase
+- `sendMinecraftMessage` called `fluxerWebhookClient.updateUrl()` on every message ΓÇö now only updates when URL has changed
+- Duplicate `!list` command check in `processDiscordMessageForMinecraft` ΓÇö added clarifying comment in all templates
+- Removed dead config keys: `Discord.WEBHOOK_ID`, `Discord.Events.WEBHOOK_URL`, `Advanced.QUEUE_SIZE`, `Advanced.RATE_LIMIT` ΓÇö none were read anywhere in the codebase
 
 ## [3.0.6] - 2026-03-26
 
 ### Fixed
-- Discord→Fluxer tridirectional bridge silently skipped when only a Fluxer webhook URL was configured (no bot token) — guard now allows webhook-only setups
-- Discord→Fluxer webhook dropped messages due to async init race — `fluxerWebhookClient.updateUrl()` now called inline before each send
-- Fluxer gateway echoed webhook-sent messages back through `onFluxerMessage`, causing a loop that consumed Discord messages in Fluxer — fixed with a 5-second fingerprint cache (`recentDiscordBridges`)
-- Join/leave/death/advancement events not sent to Fluxer — `sendEventEmbedInternal` was using the Discord webhook client with a Discord URL; now sends plain-text to the Fluxer event channel via bot API
-- Fluxer bot status never set — status update now fires directly in the READY/RESUMED gateway handler via `onReadyCallback`, eliminating the async race between connection and status push; also fires on reconnect/resume
-- `playerPreferences` and `linkedAccountsManager` double-initialized in tridirectional mode — guarded with null checks in `initializeDiscord`
-- Stale `originalDiscordWebhookUrl` field caused `bridgeFluxerToDiscord` to restore a cached URL that could be outdated — removed field, now reads config directly
-- Advancement debounce cache had a check-then-act race condition — replaced with atomic `ConcurrentHashMap.merge()`
-- Duplicate null check on `messageHandler` in `BotClient.onConnected` — removed inner redundant check
-- Triple `isEmpty()` check in `WebhookClient.sendMessage` — reduced to single check
-- Missing null/op-code guard in `FluxerBotClient.handleMessage` — added null check on `op` and `t` fields before processing
+- DiscordΓåÆFluxer tridirectional bridge silently skipped when only a Fluxer webhook URL was configured (no bot token) ΓÇö guard now allows webhook-only setups
+- DiscordΓåÆFluxer webhook dropped messages due to async init race ΓÇö `fluxerWebhookClient.updateUrl()` now called inline before each send
+- Fluxer gateway echoed webhook-sent messages back through `onFluxerMessage`, causing a loop that consumed Discord messages in Fluxer ΓÇö fixed with a 5-second fingerprint cache (`recentDiscordBridges`)
+- Join/leave/death/advancement events not sent to Fluxer ΓÇö `sendEventEmbedInternal` was using the Discord webhook client with a Discord URL; now sends plain-text to the Fluxer event channel via bot API
+- Fluxer bot status never set ΓÇö status update now fires directly in the READY/RESUMED gateway handler via `onReadyCallback`, eliminating the async race between connection and status push; also fires on reconnect/resume
+- `playerPreferences` and `linkedAccountsManager` double-initialized in tridirectional mode ΓÇö guarded with null checks in `initializeDiscord`
+- Stale `originalDiscordWebhookUrl` field caused `bridgeFluxerToDiscord` to restore a cached URL that could be outdated ΓÇö removed field, now reads config directly
+- Advancement debounce cache had a check-then-act race condition ΓÇö replaced with atomic `ConcurrentHashMap.merge()`
+- Duplicate null check on `messageHandler` in `BotClient.onConnected` ΓÇö removed inner redundant check
+- Triple `isEmpty()` check in `WebhookClient.sendMessage` ΓÇö reduced to single check
+- Missing null/op-code guard in `FluxerBotClient.handleMessage` ΓÇö added null check on `op` and `t` fields before processing
 
 ## [3.0.5] - 2026-03-26
 
 ### Fixed
 - Tridirectional relay now correctly forwards sender avatars and display names in all MC version templates (1.19.2, 1.20.1, 1.21.1 were still using bot API with hardcoded empty avatar)  - still broken
-- Discord→Fluxer bridge in 1.19.2, 1.20.1, and 1.21.1 now uses webhook client to preserve sender identity instead of falling back to bot API
+- DiscordΓåÆFluxer bridge in 1.19.2, 1.20.1, and 1.21.1 now uses webhook client to preserve sender identity instead of falling back to bot API
 
 ## [3.0.4] - 2026-03-26
 
 ### Added
-- Tridirectional chat now relays sender profiles across platforms — Discord users' avatars and display names appear in Fluxer, and Fluxer users' avatars and display names appear in Discord, instead of showing the bot identity -- still broken
+- Tridirectional chat now relays sender profiles across platforms ΓÇö Discord users' avatars and display names appear in Fluxer, and Fluxer users' avatars and display names appear in Discord, instead of showing the bot identity -- still broken
 
 ## [3.0.3] - 2026-03-26
 
-### 🐛 Fixed (Fluxer Bot Player Count Status)
+### ≡ƒÉ¢ Fixed (Fluxer Bot Player Count Status)
 - **Fluxer Bot Status Now Shows Actual Player Count** - Fixed Fluxer bot displaying "0/0" instead of actual online/max player count
   - **Root cause**: `FluxerBotClient` was hardcoding player counts to "0" in READY/RESUMED event handlers instead of using real server values
   - **Fix**: Removed hardcoded status updates from `FluxerBotClient.handleMessage()` READY/RESUMED handlers (lines 310-321, 327-332)
@@ -132,7 +127,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
     - Applies the configured format from `ViscordConfigToml.BotStatus.FORMAT.get()`
     - Replaces `{online}` and `{max}` placeholders with real values
     - Updates both Discord and Fluxer bots consistently
-### 🔍 Fixed (Status Update Reliability)
+### ≡ƒöì Fixed (Status Update Reliability)
 - **Enhanced Status Update Logging** - Added detailed INFO-level logging across all versions to trace the status update flow for both Discord and Fluxer bots.
   - **Diagnostic Logs**: Added tracking for `server` instance availability, `BotStatus` configuration state, and WebSocket connection status.
   - **Payload Verification**: Added logging of the exact status string being sent to the Fluxer gateway.
@@ -140,7 +135,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   - **File modified**: `FluxerBotClient.java` in 1.21.1 (READY/RESUMED handlers)
   - **Surgical edit location**: `handleMessage()` method, removed hardcoded status scheduler blocks
 
-### 🐛 Fixed (Config Reload Crash)
+### ≡ƒÉ¢ Fixed (Config Reload Crash)
 - **Fixed Server Restart Crash** - Fixed `UnsupportedOperationException: StampedConfig does not support valueMap()` error on second server start
   - **Root cause**: `ConfigSpec.correct()` calls `valueMap()` which isn't supported by NightConfig's concurrent `StampedConfig` used when autosave is enabled
   - **Fix**: Modified `TomlConfigManager.loadToml()` to:
@@ -154,7 +149,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [3.0.2] - 2026-03-25
 
-### 🐛 Fixed (1.21.1 Compilation Issues)
+### ≡ƒÉ¢ Fixed (1.21.1 Compilation Issues)
 - **Java 21 Build Compatibility** - Fixed build failures for Minecraft 1.21.1 due to Java version requirements
   - **Root cause**: Architectury Loom 1.11 requires Java 21+ but system was using Java 17
   - **Fix**: Updated build system to auto-detect and use Java 21 when available
@@ -167,7 +162,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
     - Required due to API change in 1.21.1 where method now expects `Supplier<Component>`
   - **Advancement API Migration**: Updated advancement mixins for 1.21.1
     - Changed `Advancement` parameter to `AdvancementHolder` in `award()` method
-    - Updated display info access: `advancement.getDisplay()` → `advancementHolder.value().display().orElse(null)`
+    - Updated display info access: `advancement.getDisplay()` ΓåÆ `advancementHolder.value().display().orElse(null)`
     - Applied to both Fabric and NeoForge mixins
   - **TextColor API Fix**: Fixed `TextColor.parseColor()` DataResult handling
     - Updated to handle new `DataResult<TextColor>` return type instead of direct `TextColor`
@@ -175,7 +170,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   - **Config System Update**: Updated NeoForge chat handler to use TOML config
     - Changed from `ViscordConfig.CONFIG` to `ViscordConfigToml.Filters.Chat` references
   - **Files modified**: 
-    - `ViscordForge.java` → `ViscordNeoForge.java` (NeoForge main class)
+    - `ViscordForge.java` ΓåÆ `ViscordNeoForge.java` (NeoForge main class)
     - `NeoForgeChatEventHandler.java` (Component to String conversion)
     - `DiscordEventHandler.java` (29 sendSuccess calls updated)
     - `MessageConverter.java` (TextColor parsing)
@@ -184,7 +179,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [3.0.1] - 2026-03-25
 
-### 🐛 Fixed (Fluxer to Discord Message Formatting)
+### ≡ƒÉ¢ Fixed (Fluxer to Discord Message Formatting)
 - **Fluxer Messages Showing Double Prefix/Username** - Fixed Fluxer messages appearing as "[Fluxer] OGPargon: [Fluxer] OGPargon: Hello o.o" in Discord.
   - **Root cause**: `bridgeFluxerToDiscord()` was using `formatMessageForPlatform()` which added "[Fluxer] username:" prefix to message content, but the webhook username also needed the [Fluxer] prefix, causing duplication
   - **Fix**: Modified `bridgeFluxerToDiscord()` to:
@@ -197,7 +192,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [3.0.0] - 2026-03-25
 
-### 🔄 Changed (Breaking Change - Config System Rewrite)
+### ≡ƒöä Changed (Breaking Change - Config System Rewrite)
 - **Complete Configuration System Overhaul** - Migrated from JSON to TOML configuration format with full restructuring
   - **New config file**: `config/viscord/viscord.toml` (replaces `viscord.json`)
   - **Automatic migration**: Existing JSON configs are automatically migrated to TOML format on first run
@@ -208,7 +203,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   - **New classes**: `TomlConfigManager.java` and `ViscordConfigToml.java`
   - **Updated files**: `Viscord.java`, `DiscordManager.java`, `DiscordEventHandler.java`, and all other files referencing config
 
-### 📝 Documentation
+### ≡ƒô¥ Documentation
 - **Updated Configuration Documentation** - New TOML configuration examples and migration guide
   - Added migration instructions from JSON to TOML
   - Updated config field references throughout documentation
@@ -216,7 +211,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [2.4.15] - 2026-03-25
 
-### 🐛 Fixed (Fluxer Bot Online Status - Tri-Directional Mode)
+### ≡ƒÉ¢ Fixed (Fluxer Bot Online Status - Tri-Directional Mode)
 - **Fluxer Bot Showing Offline Despite Successful Authentication** - Fixed bot appearing offline when using tri-directional mode with `platform: "discord"`.
   - **Root cause**: `DiscordManager.initializeFluxer()` calls `updateBotStatus()` immediately when connection future completes, but `FluxerBotClient.updateStatus()` validates `authenticated` flag which may not be set yet when READY dispatch hasn't been processed
   - **Fix**: Added immediate status update when READY is received (lines 310-313 in FluxerBotClient.java), in addition to the existing 500ms scheduled backup
@@ -226,7 +221,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
     - `handleMessage()` READY case: Added immediate `updateStatus()` call after `authenticated = true`
     - `updateStatus()` method: Changed log level from DEBUG to WARN with detailed state info
 
-### 📝 Documentation
+### ≡ƒô¥ Documentation
 - **Added Tri-Directional Setup Guide** - New documentation section explaining proper configuration for 3-way chat between Discord, Fluxer, and Minecraft
   - Clarified that `platform` setting determines which service receives messages FROM Minecraft
   - Added bot status configuration notes for tri-directional setups
@@ -234,7 +229,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [2.4.14] - 2026-03-25
 
-### 🚀 Improved (Fluxer Bot Online Status)
+### ≡ƒÜÇ Improved (Fluxer Bot Online Status)
 - **Verified Fluxer Bot Online Status** - Confirmed bot properly marks itself online during WebSocket Gateway connection
   - Identify payload includes `presence: {status: "online"}` for immediate online status
   - Uses modern Discord gateway v8+ format (`os`, `browser`, `device` properties)
@@ -242,7 +237,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   - `updateStatus()` method available for custom status text after connection
   - Verified across all Minecraft versions (1.18.2, 1.19.2, 1.20.1, 1.21.1)
 
-### 🐛 Fixed (All Versions)
+### ≡ƒÉ¢ Fixed (All Versions)
 - **Fluxer Gateway 4002 "Invalid identify payload" Error** - Fixed bot connection failures due to deprecated Discord gateway v6 properties format.
   - **Root cause**: The identify payload was using legacy `$os`, `$browser`, `$device` property names (Discord gateway v6 format)
   - **Fix**: Updated to modern `os`, `browser`, `device` property names (Discord gateway v8+ format)
@@ -252,7 +247,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [2.4.12] - 2026-03-25
 
-### 🌟 Added
+### ≡ƒîƒ Added
 - **Modern Python CLI Build Menu** - Completely rewritten build menu using Rich library for beautiful terminal UI
   - **Visual Progress Bars**: Real-time Gradle build progress with animated spinners and progress indicators
   - **Interactive Menus**: Clean, centered menu tables with keyboard navigation
@@ -271,7 +266,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [2.4.11] - 2026-03-25
 
-### 🐛 Fixed (All Versions Compilation + Tridirectional Chat)
+### ≡ƒÉ¢ Fixed (All Versions Compilation + Tridirectional Chat)
 - **Missing `fluxerEventWebhookUrl` config field** - Added the missing field declaration and initialization that was causing `cannot find symbol` compilation errors across all Minecraft versions (1.18.2, 1.19.2, 1.20.1, 1.21.1).
   - Field was referenced in `DiscordManager.java` but not declared in `ViscordConfig.java`
   - Added proper builder configuration for `fluxer.event_webhook_url` setting
@@ -289,17 +284,17 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [2.4.10] - 2026-03-24
 
-### 🚀 Improved (Fluxer Overhaul — Bot API + Channel IDs)
-- **Sending now uses Bot API**: All Minecraft → Fluxer messages (chat, join/leave/death, startup/shutdown) now use the Fluxer Bot REST API with channel IDs. No webhook URLs required.
+### ≡ƒÜÇ Improved (Fluxer Overhaul ΓÇö Bot API + Channel IDs)
+- **Sending now uses Bot API**: All Minecraft ΓåÆ Fluxer messages (chat, join/leave/death, startup/shutdown) now use the Fluxer Bot REST API with channel IDs. No webhook URLs required.
 - **Simplified Config**: Removed `fluxerWebhookUrl`, `fluxerEventWebhookUrl`, `fluxerReceiverPort`, `fluxerReceiverPath`, `fluxerUseBotApi`, `fluxerApplicationId`, `fluxerClientSecret`. Added `fluxerChannelId` and `fluxerEventChannelId` to mirror Discord's pattern.
 - **No more port forwarding**: The old HTTP webhook receiver has been retired. All receiving is done via the WebSocket Gateway (already established in 2.4.9).
 - **Consistent platform pattern**: Fluxer now configured identically to Discord: `bot_token` + `channel_id` + optional `event_channel_id`.
 - **Event formatting for Fluxer**: Events are sent as plain bold-text messages (Fluxer Bot API v1 does not support embeds). Discord keeps its rich embed format unchanged.
-- **Shutdown notification**: Server shutdown now sends a 🔴 offline message to Fluxer via Bot API before disconnecting.
+- **Shutdown notification**: Server shutdown now sends a ≡ƒö┤ offline message to Fluxer via Bot API before disconnecting.
 
 ## [2.4.9] - 2026-03-24
 
-### 🐛 Fixed (Fluxer Gateway Deep-Fix)
+### ≡ƒÉ¢ Fixed (Fluxer Gateway Deep-Fix)
 - **Gateway API Version**: Switched WebSocket connection to API `v=1` (Fluxer's own protocol version). Historically set to `v=10` (Discord), which was the primary cause of bots being persistent offline.
 - **Handshake Properties**: Updated `$browser` and `$device` identify properties to `discord.js` to ensure 100% compatibility with Fluxer's handshake expectations.
 - **Intents**: Added `GUILD_MESSAGES` (bit 9) allowing the bot to receive `MESSAGE_CREATE` events on bridged channels. Total intents now: `(1 << 9) | (1 << 15)`.
@@ -310,21 +305,21 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [2.4.8] - 2026-03-24
 
-### 🐛 Fixed
+### ≡ƒÉ¢ Fixed
 - **Fluxer Bot Compilation** - Resolved `method does not override or implement a method from a supertype` error in `FluxerBotClient`.
   - Removed invalid 5-argument `onDisconnected` override.
 
-### 🚀 Improved
+### ≡ƒÜÇ Improved
 - **Build System** - Updated `build_menu.ps1` with 2.4.9 defaults and refined Java 21 detection.
 
-### 🔧 chore
+### ≡ƒöº chore
 - Bumped mod version to 2.4.9 across all templates.
-- Updated `Release_Notes.md` for v2.4.4–v2.4.9.
+- Updated `Release_Notes.md` for v2.4.4ΓÇôv2.4.9.
 
 
 ## [2.4.7] - 2026-03-24
 
-### 🐛 Fixed
+### ≡ƒÉ¢ Fixed
 - **Fluxer Bot WebSocket Connectivity** - Fixed infinite reconnection loop causing bot oscillation
   - Proper close code handling for 1000 (normal), 1006 (abnormal), 4004 (auth failed)
   - `connected` flag now set only after READY dispatch received, not just TCP connect
@@ -332,12 +327,12 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   - Connect future completes only after bot is fully ready (not just connected)
   - Added session resume support for faster reconnections
   - Max reconnect attempts (10) before giving up to prevent spam
-  - Exponential backoff: 2s → 4s → 8s up to 60s max
+  - Exponential backoff: 2s ΓåÆ 4s ΓåÆ 8s up to 60s max
   - Bot status updates only sent when fully authenticated
 
 ## [2.4.6] - 2026-03-24
 
-### 🐛 Fixed
+### ≡ƒÉ¢ Fixed
 - **Advancement Completion Check** - Fixed achievements being granted on progress updates instead of actual completion
   - Added `isDone()` check via `AdvancementProgress` to verify advancement is fully completed
   - Prevents premature triggering for multi-step achievements like "Cover me in debris" (netherite armor)
@@ -345,7 +340,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [2.4.5] - 2026-03-24
 
-### 🌟 Added - Fluxer Bot Full Support
+### ≡ƒîƒ Added - Fluxer Bot Full Support
 - **WebSocket Message Receiving** - FluxerBotClient now receives chat messages directly from Fluxer Gateway
   - No port forwarding required when using WebSocket mode
   - Handles MESSAGE_CREATE dispatch events
@@ -364,12 +359,12 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   - Clickable link output for easy bot installation
 - **Updated Help Documentation** - `/viscord discord help` now includes fluxer commands
 
-### 🆕 New
+### ≡ƒåò New
 - **`/fluxer` Command Alias** - Players can now type `/fluxer` directly to get a clickable invite link for the Fluxer bot.
 - **`/viscord discord invite` Sub-command** - New dedicated sub-command to display the Discord server invite link.
-- **Discord → Minecraft Markdown Conversion** - Messages from Discord with `**bold**`, `*italic*`, `__underline__`, or `~~strikethrough~~` are now converted to native Minecraft formatting.
+- **Discord ΓåÆ Minecraft Markdown Conversion** - Messages from Discord with `**bold**`, `*italic*`, `__underline__`, or `~~strikethrough~~` are now converted to native Minecraft formatting.
 
-### 🐛 Fixed
+### ≡ƒÉ¢ Fixed
 - **Modpack Advancement Spam (Cobblemon Fix)** - Refactored advancement logic to prevent duplicate notifications on modpacks that trigger progress events multiple times.
   - Added native `isDone()` completion check to ensure only finished advancements are broadcast.
   - Implemented 5-second per-player debounce cache to eliminate notification spam.
@@ -378,7 +373,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - **Duplicate Broadcasts** - Fixed an issue where advancements were being bridged twice when Tridirectional Chat was enabled.
 - **`/viscord fluxer invite` Endpoint** - Updated to use the correct `fluxer.app` domain.
 
-### 🚀 Improved
+### ≡ƒÜÇ Improved
 - **Native Event Handlers** - Migrated chat interception to native `ServerChatEvent` on Forge/NeoForge for superior mod compatibility.
 - **Async Safety** - All Discord/Fluxer initialization and status updates are now fully non-blocking.
 - **Documentation Updated** - Browser-based documentation fully reflects all 2.4.5 features.
@@ -386,18 +381,18 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [2.4.4] - 2026-03-24
 
-### 🚀 Improved
+### ≡ƒÜÇ Improved
 - Initial prep for native event handlers and fluxer updates.
 
 ## [2.4.3] - 2026-03-21
 
-### 🐛 Fixed
+### ≡ƒÉ¢ Fixed
 - Fixed an issue where the Discord bot would duplicate the startup embed when status updates were enabled in Fluxer mode.
 - Fixed Tridirectional Chat routing where event embeds (e.g. Advancements, Death, Server Startup) were only being sent to Fluxer and not being bridged back to Discord. They are now correctly sent to both platforms when Tridirectional Chat is enabled.
 
 ## [2.4.2] - 2026-03-21
 
-### 🐛 Fixed
+### ≡ƒÉ¢ Fixed
 - Fixed an issue where the Discord bot would not turn on when using the Fluxer platform with Tridirectional Chat enabled.
 - Fixed a bug where the Discord bot would not connect to show the server online status ("Playing X/Y") when using the Fluxer platform without Tridirectional Chat. The bot will now connect solely for status updates if a token is provided and status updates are enabled.
 - Fixed server startup, join, and leave embeds not being sent when using the Fluxer platform.
@@ -408,7 +403,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [2.4.1] - 2026-03-21
 
-### 🔗 Account Linking System
+### ≡ƒöù Account Linking System
 - **Full /link Command Implementation** - Complete Discord-Minecraft account linking
   - Discord-side: `/link <code>` command for verification
   - Minecraft-side: `/viscord discord link` for code generation
@@ -422,10 +417,10 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [2.4.0] - 2026-03-21
 
-### ⚠️ Compatibility Notes
+### ΓÜá∩╕Å Compatibility Notes
 - **Minecraft 1.18.2**: Due to major API changes in this version, 1.18.2 builds are based on 2.3.0 codebase. Full 2.4.0 features (reload command, command rebrand) are not available for 1.18.2.
 
-### 🌟 Added
+### ≡ƒîƒ Added
 - **Full Reload Capability** - New `/viscord reload` command for administrators
   - Disconnects and reconnects Discord/Fluxer bot with new config
   - Full async operation to prevent server lag
@@ -440,21 +435,21 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   - Permission level documentation
   - Usage examples
 
-### 🔄 Changed
+### ≡ƒöä Changed
 - **Command Rebrand** - All `/vonix` commands rebranded to `/viscord`
-  - `/vonix discord link` → `/viscord discord link`
-  - `/vonix discord unlink` → `/viscord discord unlink`
-  - `/vonix discord messages` → `/viscord discord messages`
-  - `/vonix discord events` → `/viscord discord events`
-  - `/vonix discord help` → `/viscord discord help`
-  - `/vonix reload` (new) → `/viscord reload`
+  - `/vonix discord link` ΓåÆ `/viscord discord link`
+  - `/vonix discord unlink` ΓåÆ `/viscord discord unlink`
+  - `/vonix discord messages` ΓåÆ `/viscord discord messages`
+  - `/vonix discord events` ΓåÆ `/viscord discord events`
+  - `/vonix discord help` ΓåÆ `/viscord discord help`
+  - `/vonix reload` (new) ΓåÆ `/viscord reload`
   - Backward compatibility alias maintained for `/vonix`
 - **Documentation Updates** - Web docs updated to version 2.4.0
   - Added Commands tab with full reference
   - Version badges updated throughout
   - Footer version corrected
 
-### 🔧 Technical Improvements
+### ≡ƒöº Technical Improvements
 - **Config Directory Reorganization** - All Viscord files now stored in `config/viscord/`
   - Main config: `config/viscord/viscord.json`
   - Player preferences: `config/viscord/player_preferences.json`
@@ -469,45 +464,45 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   - Discord integration layer optimized
   - Command system enhanced
 
-### ⚡ Performance
+### ΓÜí Performance
 - Discord initialization no longer blocks main thread
 - Config reload runs entirely on async executor
 - Message processing maintains async safety
 
 ## [2.2.0] - 2026-03-21
 
-### 🌟 Added
+### ≡ƒîƒ Added
 - **Discord Formatting Support** - Minecraft formatting codes now convert to Discord markdown
-- **Dual Code Support** - Both § codes and & codes are supported for maximum compatibility
-- **Rich Text Formatting** - Bold (§l), Italic (§o), Underline (§n), Strikethrough (§m) support
+- **Dual Code Support** - Both ┬º codes and & codes are supported for maximum compatibility
+- **Rich Text Formatting** - Bold (┬ºl), Italic (┬ºo), Underline (┬ºn), Strikethrough (┬ºm) support
 - **Color Indicators** - Minecraft colors converted to emoji indicators since Discord doesn't support text colors
-- **Magic/Obfuscated** - Converted to sparkle emoji (✨) for visual indication
+- **Magic/Obfuscated** - Converted to sparkle emoji (Γ£¿) for visual indication
 - **Reset Codes** - Properly handled to close formatting tags
 - **Cross-Platform Formatting** - Works in tridirectional chat and all message routing
 
-### 🎨 Formatting Conversions
-- **§l / &l** → **Bold text** (Discord: `**text**`)
-- **§o / &o** → *Italic text* (Discord: `*text*`)
-- **§n / &n** → __Underlined text__ (Discord: `__text__`)
-- **§m / &m** → ~~Strikethrough text~~ (Discord: `~~text~~`)
-- **§k / &k** → ✨Magic text✨ (Discord: sparkle emoji)
-- **§r / &r** → Reset all formatting
-- **Colors (0-9, a-f)** → Color emoji indicators (⚫🟦🟩🟨🟥🟪🟧⚪🔵🟢🔷🔴🟠🟡)
+### ≡ƒÄ¿ Formatting Conversions
+- **┬ºl / &l** ΓåÆ **Bold text** (Discord: `**text**`)
+- **┬ºo / &o** ΓåÆ *Italic text* (Discord: `*text*`)
+- **┬ºn / &n** ΓåÆ __Underlined text__ (Discord: `__text__`)
+- **┬ºm / &m** ΓåÆ ~~Strikethrough text~~ (Discord: `~~text~~`)
+- **┬ºk / &k** ΓåÆ Γ£¿Magic textΓ£¿ (Discord: sparkle emoji)
+- **┬ºr / &r** ΓåÆ Reset all formatting
+- **Colors (0-9, a-f)** ΓåÆ Color emoji indicators (ΓÜ½≡ƒƒª≡ƒƒ⌐≡ƒƒ¿≡ƒƒÑ≡ƒƒ¬≡ƒƒºΓÜ¬≡ƒö╡≡ƒƒó≡ƒö╖≡ƒö┤≡ƒƒá≡ƒƒí)
 
-### 🔧 Technical Implementation
+### ≡ƒöº Technical Implementation
 - **DiscordFormatter Utility** - New utility class for formatting conversion
 - **Smart Tag Management** - Proper opening and closing of Discord markdown tags
 - **Nested Formatting** - Supports multiple formatting codes in same message
 - **Performance Optimized** - Efficient regex-based parsing
 - **Error Resilient** - Graceful handling of malformed formatting codes
 
-### 📝 Usage Examples
-- `§6§lGolden§r text` → 🟡 **Golden** text
-- `§oItalic §nand §lunderlined§r` → *Italic __and **underlined**__*
-- `§kMagic text§r` → ✨Magic text✨
+### ≡ƒô¥ Usage Examples
+- `┬º6┬ºlGolden┬ºr text` ΓåÆ ≡ƒƒí **Golden** text
+- `┬ºoItalic ┬ºnand ┬ºlunderlined┬ºr` ΓåÆ *Italic __and **underlined**__*
+- `┬ºkMagic text┬ºr` ΓåÆ Γ£¿Magic textΓ£¿
 
-### 🌐 Integration
-- **Minecraft → Discord**: Full formatting conversion
+### ≡ƒîÉ Integration
+- **Minecraft ΓåÆ Discord**: Full formatting conversion
 - **Tridirectional Chat**: Formatting preserved across platforms
 - **Event Messages**: System messages also support formatting
 - **Backward Compatible**: Existing messages without formatting work unchanged
@@ -518,13 +513,13 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [2.3.0] - 2026-03-21
 
-### 🌟 Added
+### ≡ƒîƒ Added
 - **Clean Configuration Structure** - Reorganized config sections for better readability
-  - Renamed `server_identity` → `server`
-  - Renamed `message_formats` → `formats`
-  - Renamed `loop_prevention` → `filters`
-  - Renamed `bot_status` → `bot`
-  - Renamed `account_linking` → `linking`
+  - Renamed `server_identity` ΓåÆ `server`
+  - Renamed `message_formats` ΓåÆ `formats`
+  - Renamed `loop_prevention` ΓåÆ `filters`
+  - Renamed `bot_status` ΓåÆ `bot`
+  - Renamed `account_linking` ΓåÆ `linking`
 - **Simplified Config Keys** - Removed redundant prefixes within sections
 - **Improved Defaults** - Better out-of-box experience with sensible defaults
 - **Standardized Naming** - Consistent section naming convention across all config files
@@ -536,8 +531,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [2.1.0] - 2026-03-21
 
-### 🌟 Added
-- **Revolutionary Tridirectional Chat System** - Complete 3-way message synchronization between Discord ↔ Minecraft ↔ Fluxer
+### ≡ƒîƒ Added
+- **Revolutionary Tridirectional Chat System** - Complete 3-way message synchronization between Discord Γåö Minecraft Γåö Fluxer
 - **Platform Source Identification** - Optional tags showing message origin ([Discord], [Fluxer], [Minecraft])
 - **Configurable Message Bridging** - Fine-grained control over which platforms bridge to each other
 - **Real-time Cross-Platform Communication** - Messages flow seamlessly across all connected platforms
@@ -545,27 +540,27 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - **Mobile Accessibility** - Participate in server chat via Fluxer when away from PC
 - **Unified Chat Experience** - Type anywhere, appear everywhere across all platforms
 
-### 🔧 Technical Changes
+### ≡ƒöº Technical Changes
 - **Enhanced DiscordManager** - Added bridging methods for cross-platform message routing
 - **Improved Configuration System** - New tridirectional chat settings with detailed explanations
 - **Message Formatting System** - Platform-aware message formatting with source identification
 - **Configuration Validation** - Checks for proper Discord and Fluxer setup before enabling bridging
 - **Error Handling** - Robust error handling for cross-platform message failures
 
-### 📋 Configuration Options
+### ≡ƒôï Configuration Options
 - `tridirectional.enabled` - Enable/disable 3-way chat synchronization
 - `tridirectional.discord_to_fluxer` - Bridge Discord messages to Fluxer
 - `tridirectional.fluxer_to_discord` - Bridge Fluxer messages to Discord  
 - `tridirectional.show_source` - Show platform source tags in messages
 
-### 🎯 Use Cases Enabled
+### ≡ƒÄ» Use Cases Enabled
 - **Multi-platform communities** - Engage users wherever they are
 - **Server management** - Monitor chat from Discord while away from game
 - **Mobile gaming** - Use Fluxer app when away from computer
 - **Community bridging** - Connect different Discord servers via Fluxer
 - **Stream integration** - Let viewers participate from multiple platforms
 
-### ⚠️ Requirements
+### ΓÜá∩╕Å Requirements
 - Both Discord and Fluxer must be properly configured for tridirectional chat
 - Requires webhooks for both platforms to be functional
 - Recommended for servers with active multi-platform communities
@@ -583,7 +578,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - Professional documentation with README and setup guides
 
 ### Changed
-- Renamed Discord config fields to be more explicit (e.g., `bot_token` → `discord.bot_token`)
+- Renamed Discord config fields to be more explicit (e.g., `bot_token` ΓåÆ `discord.bot_token`)
 - Simplified configuration comments and structure for better user experience
 - Updated config generation to be more user-friendly with quick start guide
 - Improved error handling and logging for platform initialization
@@ -707,10 +702,10 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 | Version | Fabric | Forge | NeoForge | Status |
 |---------|--------|-------|----------|---------|
-| 1.21.1 | ✅ | ❌ | ✅ | Active |
-| 1.20.1 | ✅ | ✅ | ❌ | Active |
-| 1.19.2 | ✅ | ✅ | ❌ | Active |
-| 1.18.2 | ✅ | ✅ | ❌ | Active |
+| 1.21.1 | Γ£à | Γ¥î | Γ£à | Active |
+| 1.20.1 | Γ£à | Γ£à | Γ¥î | Active |
+| 1.19.2 | Γ£à | Γ£à | Γ¥î | Active |
+| 1.18.2 | Γ£à | Γ£à | Γ¥î | Active |
 
 ## Migration Guide
 
