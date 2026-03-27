@@ -65,15 +65,16 @@ public class BotClient {
         Viscord.LOGGER.info("Connected as {}", api.getYourself().getDiscriminatedName());
 
         // Suppress IllegalStateException from unknown Discord component types (e.g. Components v2: type 10, 17)
-        // that Javacord 3.8.0 cannot parse — these are ticket bot messages we don't need to process.
-        api.addUncaughtExceptionListener(event -> {
-            Throwable ex = event.getException();
+        // that Javacord 3.8.0 cannot parse. These arrive on Javacord's internal thread pool.
+        Thread.UncaughtExceptionHandler existing = Thread.getDefaultUncaughtExceptionHandler();
+        Thread.setDefaultUncaughtExceptionHandler((thread, ex) -> {
             if (ex instanceof IllegalStateException && ex.getMessage() != null
                     && ex.getMessage().startsWith("Couldn't parse the component of type")) {
                 Viscord.LOGGER.debug("[Discord] Ignored unknown Discord component type: {}", ex.getMessage());
                 return;
             }
-            Viscord.LOGGER.error("[Discord] Uncaught exception in Javacord", ex);
+            if (existing != null) existing.uncaughtException(thread, ex);
+            else Viscord.LOGGER.error("[Discord] Uncaught exception on thread {}", thread.getName(), ex);
         });
 
         // Register Listeners
