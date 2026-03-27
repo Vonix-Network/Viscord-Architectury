@@ -7,6 +7,9 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Changed
+- Event embed footers now use descriptive labels (`Viscord · Player Join`, `Viscord · Player Leave`, `Viscord · Player Death`, `Viscord · Advancement`, `Viscord · Server Online`, `Viscord · Server Offline`) instead of generic `Viscord` text, matching the style shown in Discord (all templates)
+
 ## [4.1.2] - 2026-03-26
 
 ### Added

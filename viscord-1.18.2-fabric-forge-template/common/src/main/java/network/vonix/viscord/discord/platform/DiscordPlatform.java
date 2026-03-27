@@ -130,24 +130,24 @@ public class DiscordPlatform {
 
     public void sendStartupEmbed(String serverName) {
         sendEventEmbed(EmbedFactory.createServerStatusEmbed(
-            "Server Online", "Server is now online", 0x43B581, serverName, "Viscord"));
+            "Server Online", "Server is now online", 0x43B581, serverName, "Viscord · Server Online"));
     }
 
     public CompletableFuture<org.javacord.api.entity.message.Message> sendShutdownEmbed(String serverName) {
         return sendEventEmbedAsync(EmbedFactory.createServerStatusEmbed(
-            "Server Offline", "Server is shutting down", 0xF04747, serverName, "Viscord"));
+            "Server Offline", "Server is shutting down", 0xF04747, serverName, "Viscord · Server Offline"));
     }
 
     public void sendJoinEmbed(String username, String avatarUrl) {
         sendEventEmbed(EmbedFactory.createPlayerEventEmbed(
             "Player Joined", username + " joined the game", 0x5865F2,
-            username, ViscordConfigToml.Server.NAME.get(), "Join", avatarUrl));
+            username, ViscordConfigToml.Server.NAME.get(), "Viscord · Player Join", avatarUrl));
     }
 
     public void sendLeaveEmbed(String username, String avatarUrl) {
         sendEventEmbed(EmbedFactory.createPlayerEventEmbed(
             "Player Left", username + " left the game", 0x99AAB5,
-            username, ViscordConfigToml.Server.NAME.get(), "Leave", avatarUrl));
+            username, ViscordConfigToml.Server.NAME.get(), "Viscord · Player Leave", avatarUrl));
     }
 
     public void sendDeathEmbed(String message) {
@@ -155,6 +155,9 @@ public class DiscordPlatform {
             embed.addProperty("title", "Player Died");
             embed.addProperty("description", message);
             embed.addProperty("color", 0xF04747);
+            JsonObject footer = new JsonObject();
+            footer.addProperty("text", "Viscord · Player Death");
+            embed.add("footer", footer);
         });
     }
 
@@ -164,7 +167,7 @@ public class DiscordPlatform {
 
     public void sendServerStatusMessage(String title, String description, int color) {
         sendEventEmbed(EmbedFactory.createServerStatusEmbed(
-            title, description, color, ViscordConfigToml.Server.NAME.get(), "Viscord"));
+            title, description, color, ViscordConfigToml.Server.NAME.get(), "Viscord · Server Status"));
     }
 
     private void sendEventEmbed(java.util.function.Consumer<JsonObject> embedBuilder) {

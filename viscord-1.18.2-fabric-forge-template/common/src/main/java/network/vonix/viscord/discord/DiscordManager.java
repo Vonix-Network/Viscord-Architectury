@@ -153,7 +153,7 @@ public class DiscordManager {
             String serverName = ViscordConfigToml.Server.NAME.get();
             if (usesFluxer()) {
                 JsonObject embed = new JsonObject();
-                EmbedFactory.createServerStatusEmbed("Server Offline", "Server is shutting down", 0xF04747, serverName, "Viscord").accept(embed);
+                EmbedFactory.createServerStatusEmbed("Server Offline", "Server is shutting down", 0xF04747, serverName, "Viscord · Server Offline").accept(embed);
                 fluxerPlatform.sendEventEmbed(embed);
                 try { Thread.sleep(1500); } catch (InterruptedException ignored) {}
             }
@@ -529,7 +529,7 @@ public class DiscordManager {
     public CompletableFuture<org.javacord.api.entity.message.Message> sendShutdownEmbed(String serverName) {
         if (usesFluxer()) {
             JsonObject embed = new JsonObject();
-            EmbedFactory.createServerStatusEmbed("Server Offline", "Server is shutting down", 0xF04747, serverName, "Viscord").accept(embed);
+            EmbedFactory.createServerStatusEmbed("Server Offline", "Server is shutting down", 0xF04747, serverName, "Viscord · Server Offline").accept(embed);
             fluxerPlatform.sendEventEmbed(embed);
         }
         if (usesDiscord()) {
@@ -545,7 +545,7 @@ public class DiscordManager {
         String avatarUrl = getAvatarUrl(username);
         if (usesFluxer()) {
             JsonObject embed = new JsonObject();
-            EmbedFactory.createPlayerEventEmbed("Player Joined", username + " joined the game", 0x5865F2, username, ViscordConfigToml.Server.NAME.get(), "Join", avatarUrl).accept(embed);
+            EmbedFactory.createPlayerEventEmbed("Player Joined", username + " joined the game", 0x5865F2, username, ViscordConfigToml.Server.NAME.get(), "Viscord · Player Join", avatarUrl).accept(embed);
             fluxerPlatform.sendEventEmbed(embed);
         }
         if (usesDiscord()) {
@@ -560,7 +560,7 @@ public class DiscordManager {
         String avatarUrl = getAvatarUrl(username);
         if (usesFluxer()) {
             JsonObject embed = new JsonObject();
-            EmbedFactory.createPlayerEventEmbed("Player Left", username + " left the game", 0x99AAB5, username, ViscordConfigToml.Server.NAME.get(), "Leave", avatarUrl).accept(embed);
+            EmbedFactory.createPlayerEventEmbed("Player Left", username + " left the game", 0x99AAB5, username, ViscordConfigToml.Server.NAME.get(), "Viscord · Player Leave", avatarUrl).accept(embed);
             fluxerPlatform.sendEventEmbed(embed);
         }
         if (usesDiscord()) {
@@ -578,6 +578,9 @@ public class DiscordManager {
             embed.addProperty("title", "Player Died");
             embed.addProperty("description", message);
             embed.addProperty("color", 0xF04747);
+            JsonObject footer = new JsonObject();
+            footer.addProperty("text", "Viscord · Player Death");
+            embed.add("footer", footer);
             fluxerPlatform.sendEventEmbed(embed);
         }
         if (usesDiscord())

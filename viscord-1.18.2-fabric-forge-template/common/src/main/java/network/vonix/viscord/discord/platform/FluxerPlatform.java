@@ -92,7 +92,7 @@ public class FluxerPlatform {
             JsonObject embed = new JsonObject();
             EmbedFactory.createServerStatusEmbed(
                 "Server Online", "Server is now online", 0x43B581,
-                ViscordConfigToml.Server.NAME.get(), "Viscord").accept(embed);
+                ViscordConfigToml.Server.NAME.get(), "Viscord · Server Online").accept(embed);
             sendEventEmbed(embed);
         }).exceptionally(ex -> {
             Viscord.LOGGER.error("[Fluxer] Failed to connect bot: {}", ex.getMessage());
