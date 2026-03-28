@@ -7,6 +7,7 @@ Releases/
 node_modules/
 .DS_Store
 *.log
+*.hprof
 
 # Release folders (uploaded separately)
 2.2.0/
