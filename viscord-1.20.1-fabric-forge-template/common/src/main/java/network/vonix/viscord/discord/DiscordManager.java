@@ -90,7 +90,6 @@ public class DiscordManager {
             Viscord.LOGGER.warn("[Viscord] Already initialized, skipping.");
             return;
         }
-
         this.server = server;
         this.running = true;
 
@@ -150,13 +149,17 @@ public class DiscordManager {
         running = false;
         try {
             String serverName = ViscordConfigToml.Server.NAME.get();
+
             if (usesFluxer()) {
                 JsonObject embed = new JsonObject();
                 EmbedFactory.createServerStatusEmbed("Server Offline", "Server is shutting down", 0xF04747, serverName, "Viscord · Server Offline").accept(embed);
                 fluxerPlatform.sendEventEmbed(embed);
+                // Give Fluxer message time to send before disconnecting
                 try { Thread.sleep(1500); } catch (InterruptedException ignored) {}
             }
+
             if (usesDiscord()) {
+                // DiscordPlatform.shutdown() sends the shutdown embed internally and disconnects
                 CompletableFuture<?> shutdownFuture = discordPlatform.shutdown();
                 if (shutdownFuture != null) {
                     shutdownFuture.orTimeout(3, TimeUnit.SECONDS)
@@ -165,6 +168,7 @@ public class DiscordManager {
                     return;
                 }
             }
+
             fluxerPlatform.shutdown();
         } catch (Exception e) {
             Viscord.LOGGER.warn("[Viscord] Shutdown message failed: {}", e.getMessage());
@@ -518,8 +522,11 @@ public class DiscordManager {
     // =========================================================================
 
     public void sendStartupEmbed(String serverName) {
-        // Fluxer startup is handled inside FluxerPlatform.initialize() thenRun (fires after bot connects).
-        // Discord startup is handled inside DiscordPlatform.initialize() thenRunAsync.
+        if (usesFluxer()) {
+            JsonObject embed = new JsonObject();
+            EmbedFactory.createServerStatusEmbed("Server Online", "Server is now online", 0x43B581, serverName, "Viscord · Server Online").accept(embed);
+            fluxerPlatform.sendEventEmbed(embed);
+        }
         if (usesDiscord()) {
             discordPlatform.sendStartupEmbed(serverName);
         }

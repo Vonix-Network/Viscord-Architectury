@@ -457,9 +457,12 @@ public class FluxerBotClient {
         presence.addProperty("status", "online");
         presence.addProperty("afk", false);
         if (pendingStatus != null && !pendingStatus.isEmpty()) {
-            JsonObject customStatus = new JsonObject();
-            customStatus.addProperty("text", pendingStatus);
-            presence.add("custom_status", customStatus);
+            JsonArray activities = new JsonArray();
+            JsonObject activity = new JsonObject();
+            activity.addProperty("name", pendingStatus);
+            activity.addProperty("type", 0);
+            activities.add(activity);
+            presence.add("activities", activities);
         }
         presence.add("since", com.google.gson.JsonNull.INSTANCE);
         d.add("presence", presence);
@@ -519,10 +522,9 @@ public class FluxerBotClient {
     }
 
     public void updateStatus(String status) {
-        this.pendingStatus = status; // persist for reconnects
+        this.pendingStatus = status; // persist for reconnects — will be embedded in identify payload
         if (!authenticated || webSocket == null || !webSocket.isOpen()) {
-            Viscord.LOGGER.warn("[Fluxer Bot] Cannot update status - not connected (authenticated={}, wsOpen={})", 
-                authenticated, webSocket != null && webSocket.isOpen());
+            Viscord.LOGGER.debug("[Fluxer Bot] Status queued as pendingStatus (not yet connected — will send after READY): {}", status);
             return;
         }
 
@@ -534,9 +536,12 @@ public class FluxerBotClient {
             
             JsonObject d = new JsonObject();
             d.add("since", com.google.gson.JsonNull.INSTANCE);
-            JsonObject customStatus = new JsonObject();
-            customStatus.addProperty("text", status);
-            d.add("custom_status", customStatus);
+            JsonArray activities = new JsonArray();
+            JsonObject activity = new JsonObject();
+            activity.addProperty("name", status);
+            activity.addProperty("type", 0);
+            activities.add(activity);
+            d.add("activities", activities);
             d.addProperty("status", "online");
             d.addProperty("afk", false);
             

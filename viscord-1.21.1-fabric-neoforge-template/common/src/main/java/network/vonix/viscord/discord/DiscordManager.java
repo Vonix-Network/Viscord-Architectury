@@ -522,9 +522,11 @@ public class DiscordManager {
     // =========================================================================
 
     public void sendStartupEmbed(String serverName) {
-        // Fluxer startup is handled inside FluxerPlatform.initialize() thenRun (fires after bot connects).
-        // Discord startup is handled inside DiscordPlatform.initialize() thenRunAsync.
-        // This method is kept for external callers but both platforms self-manage startup.
+        if (usesFluxer()) {
+            JsonObject embed = new JsonObject();
+            EmbedFactory.createServerStatusEmbed("Server Online", "Server is now online", 0x43B581, serverName, "Viscord · Server Online").accept(embed);
+            fluxerPlatform.sendEventEmbed(embed);
+        }
         if (usesDiscord()) {
             discordPlatform.sendStartupEmbed(serverName);
         }

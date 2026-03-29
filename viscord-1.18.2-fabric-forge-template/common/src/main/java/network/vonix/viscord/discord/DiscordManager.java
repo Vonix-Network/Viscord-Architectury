@@ -7,7 +7,6 @@ import net.minecraft.network.chat.Component;
 import net.minecraft.network.chat.HoverEvent;
 import net.minecraft.network.chat.MutableComponent;
 import net.minecraft.network.chat.Style;
-import net.minecraft.network.chat.TextComponent;
 import net.minecraft.server.MinecraftServer;
 import net.minecraft.server.level.ServerPlayer;
 import network.vonix.viscord.Viscord;
@@ -91,7 +90,6 @@ public class DiscordManager {
             Viscord.LOGGER.warn("[Viscord] Already initialized, skipping.");
             return;
         }
-
         this.server = server;
         this.running = true;
 
@@ -151,13 +149,17 @@ public class DiscordManager {
         running = false;
         try {
             String serverName = ViscordConfigToml.Server.NAME.get();
+
             if (usesFluxer()) {
                 JsonObject embed = new JsonObject();
                 EmbedFactory.createServerStatusEmbed("Server Offline", "Server is shutting down", 0xF04747, serverName, "Viscord · Server Offline").accept(embed);
                 fluxerPlatform.sendEventEmbed(embed);
+                // Give Fluxer message time to send before disconnecting
                 try { Thread.sleep(1500); } catch (InterruptedException ignored) {}
             }
+
             if (usesDiscord()) {
+                // DiscordPlatform.shutdown() sends the shutdown embed internally and disconnects
                 CompletableFuture<?> shutdownFuture = discordPlatform.shutdown();
                 if (shutdownFuture != null) {
                     shutdownFuture.orTimeout(3, TimeUnit.SECONDS)
@@ -166,6 +168,7 @@ public class DiscordManager {
                     return;
                 }
             }
+
             fluxerPlatform.shutdown();
         } catch (Exception e) {
             Viscord.LOGGER.warn("[Viscord] Shutdown message failed: {}", e.getMessage());
@@ -320,7 +323,7 @@ public class DiscordManager {
             }
         }
 
-        MutableComponent finalComponent = new TextComponent("");
+        MutableComponent finalComponent = Component.empty();
         if (isWebhook) {
             String cleanedContent = content;
             if (content.startsWith(authorName + ": ")) cleanedContent = content.substring(authorName.length() + 2);
@@ -352,11 +355,11 @@ public class DiscordManager {
                 String[] parts = rawFormat.split("\\[Discord\\]", 2);
                 if (parts.length > 0 && !parts[0].isEmpty())
                     finalComponent.append(toMinecraftComponentWithLinks(parts[0]));
-                finalComponent.append(new TextComponent("[Discord]").setStyle(Style.EMPTY
+                finalComponent.append(Component.literal("[Discord]").setStyle(Style.EMPTY
                     .withColor(ChatFormatting.AQUA)
                     .withClickEvent(new ClickEvent(ClickEvent.Action.OPEN_URL, inviteUrl))
                     .withHoverEvent(new HoverEvent(HoverEvent.Action.SHOW_TEXT,
-                        new TextComponent("Click to join our Discord!")))));
+                        Component.literal("Click to join our Discord!")))));
                 if (parts.length > 1 && !parts[1].isEmpty())
                     finalComponent.append(toMinecraftComponentWithLinks(parts[1]));
             } else {
@@ -456,39 +459,39 @@ public class DiscordManager {
     }
 
     private Component toMinecraftComponentWithLinks(String text) {
-        if (text == null || text.isEmpty()) return new TextComponent("");
+        if (text == null || text.isEmpty()) return Component.empty();
         Matcher matcher = DISCORD_MARKDOWN_LINK.matcher(text);
-        MutableComponent result = new TextComponent("");
+        MutableComponent result = Component.empty();
         int lastEnd = 0;
         boolean hasLink = false;
         while (matcher.find()) {
-            if (matcher.start() > lastEnd) result.append(new TextComponent(text.substring(lastEnd, matcher.start())));
-            result.append(new TextComponent(matcher.group(1)).withStyle(style -> style
+            if (matcher.start() > lastEnd) result.append(Component.literal(text.substring(lastEnd, matcher.start())));
+            result.append(Component.literal(matcher.group(1)).withStyle(style -> style
                 .withClickEvent(new ClickEvent(ClickEvent.Action.OPEN_URL, matcher.group(2)))
                 .withUnderlined(true).withColor(ChatFormatting.AQUA)));
             lastEnd = matcher.end();
             hasLink = true;
         }
-        if (lastEnd < text.length()) result.append(new TextComponent(text.substring(lastEnd)));
-        return hasLink ? result : new TextComponent(text);
+        if (lastEnd < text.length()) result.append(Component.literal(text.substring(lastEnd)));
+        return hasLink ? result : Component.literal(text);
     }
 
     private void broadcastSystemMessageRespectingFilters(Component message) {
         if (server == null) return;
         for (ServerPlayer p : server.getPlayerList().getPlayers())
-            if (!hasServerMessagesFiltered(p.getUUID())) p.sendMessage(message, net.minecraft.Util.NIL_UUID);
+            if (!hasServerMessagesFiltered(p.getUUID())) p.sendSystemMessage(message, false);
     }
 
     private void broadcastEventMessageRespectingFilters(Component message) {
         if (server == null) return;
         for (ServerPlayer p : server.getPlayerList().getPlayers())
-            if (!hasEventsFiltered(p.getUUID())) p.sendMessage(message, net.minecraft.Util.NIL_UUID);
+            if (!hasEventsFiltered(p.getUUID())) p.sendSystemMessage(message, false);
     }
 
     private void broadcastServerSystemMessageRespectingFilters(Component message) {
         if (server == null) return;
         for (ServerPlayer p : server.getPlayerList().getPlayers())
-            if (!hasServerSystemMessagesFiltered(p.getUUID())) p.sendMessage(message, net.minecraft.Util.NIL_UUID);
+            if (!hasServerSystemMessagesFiltered(p.getUUID())) p.sendSystemMessage(message, false);
     }
 
     // =========================================================================
@@ -519,8 +522,11 @@ public class DiscordManager {
     // =========================================================================
 
     public void sendStartupEmbed(String serverName) {
-        // Fluxer startup is handled inside FluxerPlatform.initialize() thenRun (fires after bot connects).
-        // Discord startup is handled inside DiscordPlatform.initialize() thenRunAsync.
+        if (usesFluxer()) {
+            JsonObject embed = new JsonObject();
+            EmbedFactory.createServerStatusEmbed("Server Online", "Server is now online", 0x43B581, serverName, "Viscord · Server Online").accept(embed);
+            fluxerPlatform.sendEventEmbed(embed);
+        }
         if (usesDiscord()) {
             discordPlatform.sendStartupEmbed(serverName);
         }
@@ -758,7 +764,7 @@ public class DiscordManager {
                 sb.append("No players are currently online.");
             } else {
                 for (net.minecraft.server.level.ServerPlayer p : players) {
-                    sb.append("• ").append(p.getName().getContents()).append("\n");
+                    sb.append("• ").append(p.getName().getString()).append("\n");
                 }
             }
             fluxerPlatform.sendEventMessage(sb.toString().trim());
