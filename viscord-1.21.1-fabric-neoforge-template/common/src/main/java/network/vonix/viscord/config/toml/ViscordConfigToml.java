@@ -58,7 +58,6 @@ public class ViscordConfigToml {
         public static final ConfigValue<String> DISCORD_TO_MINECRAFT = new ConfigValue<>("messages.discord_to_minecraft", "[Discord] {username}: {message}");
         public static final ConfigValue<String> MINECRAFT_TO_DISCORD = new ConfigValue<>("messages.minecraft_to_discord", "{message}");
         public static final ConfigValue<String> WEBHOOK_USERNAME = new ConfigValue<>("messages.webhook_username", "{prefix} {username}");
-        public static final ConfigValue<String> AVATAR_URL = new ConfigValue<>("messages.avatar_url", "https://minotar.net/armor/bust/{username}/100.png");
 
         public static class Events {
             public static final ConfigValue<Boolean> JOIN = new ConfigValue<>("messages.events.join", true);

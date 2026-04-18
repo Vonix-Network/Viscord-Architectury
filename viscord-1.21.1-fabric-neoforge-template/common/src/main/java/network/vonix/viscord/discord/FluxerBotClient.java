@@ -35,6 +35,8 @@ public class FluxerBotClient {
     private String token;
     private volatile boolean connected = false;
     private volatile boolean authenticated = false;
+    private volatile String selfId = null; // Bot's own user ID from READY — used for self-message filtering
+    private volatile String ownWebhookId = null; // Our own webhook ID — only our echoes are filtered, not other servers'
     private MessageHandler messageHandler;
     
     private final ScheduledExecutorService scheduler = Executors.newSingleThreadScheduledExecutor(r -> {
@@ -65,6 +67,11 @@ public class FluxerBotClient {
 
     public void setOnReadyCallback(Runnable callback) {
         this.onReadyCallback = callback;
+    }
+
+    /** Set our own Fluxer webhook ID so only our echo messages are suppressed, not other servers' webhooks. */
+    public void setOwnWebhookId(String webhookId) {
+        this.ownWebhookId = webhookId;
     }
 
     /** Only messages from these channel IDs will be forwarded to the message handler. */
@@ -164,6 +171,7 @@ public class FluxerBotClient {
         boolean wasAuthenticated = authenticated;
         connected = false;
         authenticated = false;
+        selfId = null;
         
         // Log the disconnect reason with close code
         if (closeCode > 0) {
@@ -320,9 +328,11 @@ public class FluxerBotClient {
                         JsonObject readyData = json.getAsJsonObject("d");
                         sessionId = readyData.get("session_id").getAsString();
                         JsonObject user = readyData.getAsJsonObject("user");
-                        Viscord.LOGGER.info("[Fluxer Bot] Authenticated successfully as {}#{}", 
-                            user.get("username").getAsString(), 
-                            user.get("discriminator").getAsString());
+                        selfId = user.has("id") && !user.get("id").isJsonNull()
+                            ? user.get("id").getAsString() : null;
+                        Viscord.LOGGER.info("[Fluxer Bot] Authenticated successfully as {}#{} (id={})",
+                            user.get("username").getAsString(),
+                            user.get("discriminator").getAsString(), selfId);
                         
                         // Now we're truly connected and ready
                         connected = true;
@@ -410,10 +420,18 @@ public class FluxerBotClient {
                 ? data.get("content").getAsString() 
                 : "";
             
-            // Skip empty messages, bot messages, and webhook-originated messages (echo prevention)
+            // Skip empty messages and bot messages (including self by ID — Fluxer disallows [ ] in names
+            // so prefix-based self-detection is unreliable; ID check is authoritative)
             if (content.isEmpty()) return;
             if (author.has("bot") && author.get("bot").getAsBoolean()) return;
-            if (data.has("webhook_id") && !data.get("webhook_id").isJsonNull()) return;
+            if (selfId != null && author.has("id") && selfId.equals(author.get("id").getAsString())) return;
+            // Filter our own webhook echoes; allow other servers' webhooks through for cross-server chat
+            if (data.has("webhook_id") && !data.get("webhook_id").isJsonNull()) {
+                String wid = data.get("webhook_id").getAsString();
+                // If ownWebhookId is set, only suppress our own echo; other webhooks are cross-server messages
+                // If ownWebhookId is null (no webhook configured), our messages go via bot API (filtered by selfId above)
+                if (ownWebhookId != null && wid.equals(ownWebhookId)) return;
+            }
 
             // Filter by allowed channel IDs — only process messages from configured channels
             if (!allowedChannelIds.isEmpty()) {

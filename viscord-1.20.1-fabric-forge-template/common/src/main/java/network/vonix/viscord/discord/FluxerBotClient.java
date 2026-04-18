@@ -55,6 +55,7 @@ public class FluxerBotClient {
 
     // Status to embed in the identify payload and re-send after READY
     private volatile String pendingStatus = null;
+    private volatile String ownWebhookId = null; // Our own webhook ID — only our echoes are filtered, not other servers'
 
     public interface MessageHandler {
         void onMessage(String username, String message, String avatarUrl);
@@ -65,6 +66,11 @@ public class FluxerBotClient {
 
     public void setOnReadyCallback(Runnable callback) {
         this.onReadyCallback = callback;
+    }
+
+    /** Set our own Fluxer webhook ID so only our echo messages are suppressed, not other servers' webhooks. */
+    public void setOwnWebhookId(String webhookId) {
+        this.ownWebhookId = webhookId;
     }
 
     /** Only messages from these channel IDs will be forwarded to the message handler. */
@@ -413,7 +419,13 @@ public class FluxerBotClient {
             // Skip empty messages, bot messages, and webhook-originated messages (echo prevention)
             if (content.isEmpty()) return;
             if (author.has("bot") && author.get("bot").getAsBoolean()) return;
-            if (data.has("webhook_id") && !data.get("webhook_id").isJsonNull()) return;
+            // Filter our own webhook echoes; allow other servers' webhooks through for cross-server chat
+            if (data.has("webhook_id") && !data.get("webhook_id").isJsonNull()) {
+                String wid = data.get("webhook_id").getAsString();
+                // If ownWebhookId is set, only suppress our own echo; other webhooks are cross-server messages
+                // If ownWebhookId is null (no webhook configured), our messages go via bot API (filtered by selfId above)
+                if (ownWebhookId != null && wid.equals(ownWebhookId)) return;
+            }
 
             // Filter by allowed channel IDs — only process messages from configured channels
             if (!allowedChannelIds.isEmpty()) {

@@ -225,6 +225,9 @@ public class DiscordManager {
         // Echo suppression via bridge cache
         if (bridge != null && bridge.checkAndSuppressEcho(username, message)) return;
 
+        // In "both" mode, cross-server messages are read from Discord only to avoid duplicates
+        if (isBoth() && isOtherServerUsername(username)) return;
+
         // Handle !list command from Fluxer
         if (message.trim().equalsIgnoreCase("!list")) {
             handleFluxerListCommand();
@@ -499,22 +502,33 @@ public class DiscordManager {
     // =========================================================================
 
     public void sendMinecraftMessage(String username, String message) {
-        if (!running) return;
-        String prefix = ViscordConfigToml.Server.PREFIX.get();
-        String formattedUsername = ViscordConfigToml.Messages.WEBHOOK_USERNAME.get()
-            .replace("{prefix}", prefix).replace("{username}", username);
-        String avatarUrl = getAvatarUrl(username);
-        String formattedMessage = DiscordFormatter.convertToDiscordFormatting(message);
-        if (usesFluxer()) {
-            fluxerPlatform.sendChatMessage(formattedUsername, avatarUrl, formattedMessage);
-        }
-        if (usesDiscord()) {
-            discordPlatform.sendChatMessage(formattedUsername, avatarUrl, formattedMessage);
-        }
+        sendChatMessage(username, message, null);
     }
 
     public void sendChatMessage(String username, String message, String uuid) {
-        sendMinecraftMessage(username, message);
+        if (!running) return;
+        String prefix = ViscordConfigToml.Server.PREFIX.get();
+        String cleanUsername = DiscordFormatter.stripFormatting(username);
+        String realUsername = cleanUsername;
+        String resolvedUuid = uuid != null ? uuid.replace("-", "") : null;
+        if (server != null) {
+            ServerPlayer player = null;
+            if (uuid != null && !uuid.isEmpty()) {
+                try { player = server.getPlayerList().getPlayer(java.util.UUID.fromString(uuid)); }
+                catch (IllegalArgumentException ignored) {}
+            }
+            if (player == null) player = server.getPlayerList().getPlayerByName(cleanUsername);
+            if (player != null) {
+                realUsername = player.getName().getString();
+                resolvedUuid = player.getUUID().toString().replace("-", "");
+            }
+        }
+        String formattedUsername = ViscordConfigToml.Messages.WEBHOOK_USERNAME.get()
+            .replace("{prefix}", prefix).replace("{username}", cleanUsername);
+        String avatarUrl = buildAvatarUrl(realUsername, resolvedUuid);
+        String formattedMessage = DiscordFormatter.convertToDiscordFormatting(message);
+        if (usesFluxer()) fluxerPlatform.sendChatMessage(formattedUsername, avatarUrl, formattedMessage);
+        if (usesDiscord()) discordPlatform.sendChatMessage(formattedUsername, avatarUrl, formattedMessage);
     }
 
     // =========================================================================
@@ -548,7 +562,7 @@ public class DiscordManager {
         if (!isRunning()) return;
         scheduleStatusUpdate(500);
         if (!ViscordConfigToml.Messages.Events.JOIN.get()) return;
-        String avatarUrl = getAvatarUrl(username);
+        String avatarUrl = buildAvatarUrl(username, uuid != null ? uuid.replace("-", "") : null);
         if (usesFluxer()) {
             JsonObject embed = new JsonObject();
             EmbedFactory.createPlayerEventEmbed("Player Joined", username + " joined the game", 0x5865F2, username, ViscordConfigToml.Server.NAME.get(), "Viscord · Player Join", avatarUrl).accept(embed);
@@ -563,7 +577,7 @@ public class DiscordManager {
         if (!isRunning()) return;
         scheduleStatusUpdate(500);
         if (!ViscordConfigToml.Messages.Events.LEAVE.get()) return;
-        String avatarUrl = getAvatarUrl(username);
+        String avatarUrl = buildAvatarUrl(username, uuid != null ? uuid.replace("-", "") : null);
         if (usesFluxer()) {
             JsonObject embed = new JsonObject();
             EmbedFactory.createPlayerEventEmbed("Player Left", username + " left the game", 0x99AAB5, username, ViscordConfigToml.Server.NAME.get(), "Viscord · Player Leave", avatarUrl).accept(embed);
@@ -704,13 +718,18 @@ public class DiscordManager {
     // Helpers
     // =========================================================================
 
-    private String getAvatarUrl(String username) {
-        String url = ViscordConfigToml.Messages.AVATAR_URL.get().replace("{username}", username);
-        if (server != null) {
-            ServerPlayer player = server.getPlayerList().getPlayerByName(username);
-            if (player != null) url = url.replace("{uuid}", player.getUUID().toString().replace("-", ""));
-        }
-        return url;
+    private String buildAvatarUrl(String username, String uuidNoDashes) {
+        String identifier = (uuidNoDashes != null && !uuidNoDashes.isEmpty()) ? uuidNoDashes : username;
+        return "https://minotar.net/armor/bust/" + identifier + "/100.png";
+    }
+
+    private boolean isOtherServerUsername(String username) {
+        if (username == null || !username.startsWith("[")) return false;
+        int end = username.indexOf("]");
+        if (end < 1) return false;
+        String foundPrefix = username.substring(0, end + 1);
+        String myPrefix = ViscordConfigToml.Server.PREFIX.get();
+        return myPrefix != null && !foundPrefix.equalsIgnoreCase(myPrefix);
     }
 
     private boolean isPlayerListEmbed(Embed embed) {
@@ -719,8 +738,39 @@ public class DiscordManager {
     }
 
     private void processPlayerListEmbed(Embed embed, MessageCreateEvent event) {
-        // Delegate to fallback — player list embeds from other servers are displayed as text
-        handleEmbedFallback(embed, event);
+        try {
+            String authorName = event.getMessageAuthor().getDisplayName();
+            String serverPrefix = extractServerPrefixFromAuthor(authorName);
+
+            StringBuilder sb = new StringBuilder();
+            sb.append("§a[").append(serverPrefix).append("] §7Players online: ");
+
+            boolean hasPlayers = false;
+            for (org.javacord.api.entity.message.embed.EmbedField field : embed.getFields()) {
+                String fieldName = field.getName();
+                if (fieldName != null && fieldName.toLowerCase().startsWith("players")) {
+                    String value = field.getValue();
+                    if (value != null && !value.isEmpty()) {
+                        String names = value.replace("• ", "").replace("\n", ", ").replaceAll(", $", "").trim();
+                        sb.append("§f").append(names);
+                        hasPlayers = true;
+                    }
+                }
+            }
+
+            if (!hasPlayers) {
+                embed.getDescription().ifPresent(d -> {
+                    if (!d.trim().isEmpty()) sb.append("§7").append(d.trim());
+                });
+                if (sb.toString().endsWith("online: ")) sb.append("§7No players online");
+            }
+
+            Component comp = toMinecraftComponentWithLinks(sb.toString());
+            if (server != null) server.execute(() -> broadcastSystemMessageRespectingFilters(comp));
+        } catch (Exception e) {
+            Viscord.LOGGER.warn("[Discord] Failed to format player list embed: {}", e.getMessage());
+            handleEmbedFallback(embed, event);
+        }
     }
 
     private void handleTextListCommand(MessageCreateEvent event) {

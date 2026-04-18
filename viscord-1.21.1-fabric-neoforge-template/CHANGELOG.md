@@ -7,7 +7,11 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [4.1.4] - 2026-04-04
+
 ### Fixed
+- Cross-server player messages (Discord webhooks from other servers) not showing in game — `IGNORE_BOTS` and `IGNORE_WEBHOOKS` filters were applied in `onDiscordMessage` before `processDiscordMessageForMinecraft` was called, dropping all webhook/bot messages before they could reach the cross-server display path; duplicate early filters removed so loop prevention is handled solely by `FILTER_BY_PREFIX`
+- Fluxer self-message filtering now uses bot user ID from READY payload instead of prefix matching — Fluxer disallows `[` `]` in bot display names making prefix-based detection unreliable; `selfId` is stored on READY and cleared on disconnect, and `handleMessageCreate` skips any message whose `author.id` matches
 - Fluxer bot status not displaying activity text — `updateStatus()` and `sendIdentify()` were sending `custom_status` (a user-account-only field) in the gateway OP 3 payload; bot accounts require the `activities` array. Changed both methods in `FluxerBotClient` to use `activities: [{name: "<status>", type: 0}]` so the "Playing ..." status is visible on the bot profile.
 
 ## [4.1.3] - 2026-03-28

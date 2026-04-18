@@ -231,6 +231,9 @@ public class DiscordManager {
             return;
         }
 
+        // In "both" mode, cross-server messages are handled exclusively by Discord to prevent duplicates
+        if (isBoth() && isOtherServerUsername(username)) return;
+
         if (ViscordConfigToml.Filters.FILTER_BY_PREFIX.get()) {
             String prefix = ViscordConfigToml.Server.PREFIX.get();
             if (prefix != null && !prefix.isEmpty() && username.startsWith(prefix)) return;
@@ -449,6 +452,15 @@ public class DiscordManager {
         }
     }
 
+    private boolean isOtherServerUsername(String username) {
+        if (username == null || !username.startsWith("[")) return false;
+        int end = username.indexOf("]");
+        if (end < 1) return false;
+        String foundPrefix = username.substring(0, end + 1);
+        String myPrefix = ViscordConfigToml.Server.PREFIX.get();
+        return myPrefix != null && !foundPrefix.equalsIgnoreCase(myPrefix);
+    }
+
     private String extractServerPrefixFromAuthor(String authorName) {
         if (authorName == null) return "Cross-Server";
         if (authorName.startsWith("[")) {
@@ -499,22 +511,43 @@ public class DiscordManager {
     // =========================================================================
 
     public void sendMinecraftMessage(String username, String message) {
+        sendChatMessage(username, message, null);
+    }
+
+    public void sendChatMessage(String username, String message, String uuid) {
         if (!running) return;
         String prefix = ViscordConfigToml.Server.PREFIX.get();
+
+        // Strip §/& color codes that nick plugins inject into display names
+        String cleanUsername = DiscordFormatter.stripFormatting(username);
+
+        // Resolve real username and UUID for avatar URL via player lookup
+        String realUsername = cleanUsername;
+        String resolvedUuid = uuid != null ? uuid.replace("-", "") : null;
+        if (server != null) {
+            ServerPlayer player = null;
+            if (uuid != null && !uuid.isEmpty()) {
+                try { player = server.getPlayerList().getPlayer(UUID.fromString(uuid)); }
+                catch (IllegalArgumentException ignored) {}
+            }
+            if (player == null) player = server.getPlayerList().getPlayerByName(cleanUsername);
+            if (player != null) {
+                realUsername = player.getName().getString();
+                resolvedUuid = player.getUUID().toString().replace("-", "");
+            }
+        }
+
         String formattedUsername = ViscordConfigToml.Messages.WEBHOOK_USERNAME.get()
-            .replace("{prefix}", prefix).replace("{username}", username);
-        String avatarUrl = getAvatarUrl(username);
+            .replace("{prefix}", prefix).replace("{username}", cleanUsername);
+        String avatarUrl = buildAvatarUrl(realUsername, resolvedUuid);
         String formattedMessage = DiscordFormatter.convertToDiscordFormatting(message);
+
         if (usesFluxer()) {
             fluxerPlatform.sendChatMessage(formattedUsername, avatarUrl, formattedMessage);
         }
         if (usesDiscord()) {
             discordPlatform.sendChatMessage(formattedUsername, avatarUrl, formattedMessage);
         }
-    }
-
-    public void sendChatMessage(String username, String message, String uuid) {
-        sendMinecraftMessage(username, message);
     }
 
     // =========================================================================
@@ -548,7 +581,7 @@ public class DiscordManager {
         if (!isRunning()) return;
         scheduleStatusUpdate(500);
         if (!ViscordConfigToml.Messages.Events.JOIN.get()) return;
-        String avatarUrl = getAvatarUrl(username);
+        String avatarUrl = buildAvatarUrl(username, uuid != null ? uuid.replace("-", "") : null);
         if (usesFluxer()) {
             JsonObject embed = new JsonObject();
             EmbedFactory.createPlayerEventEmbed("Player Joined", username + " joined the game", 0x5865F2, username, ViscordConfigToml.Server.NAME.get(), "Viscord · Player Join", avatarUrl).accept(embed);
@@ -563,7 +596,7 @@ public class DiscordManager {
         if (!isRunning()) return;
         scheduleStatusUpdate(500);
         if (!ViscordConfigToml.Messages.Events.LEAVE.get()) return;
-        String avatarUrl = getAvatarUrl(username);
+        String avatarUrl = buildAvatarUrl(username, uuid != null ? uuid.replace("-", "") : null);
         if (usesFluxer()) {
             JsonObject embed = new JsonObject();
             EmbedFactory.createPlayerEventEmbed("Player Left", username + " left the game", 0x99AAB5, username, ViscordConfigToml.Server.NAME.get(), "Viscord · Player Leave", avatarUrl).accept(embed);
@@ -704,13 +737,10 @@ public class DiscordManager {
     // Helpers
     // =========================================================================
 
-    private String getAvatarUrl(String username) {
-        String url = ViscordConfigToml.Messages.AVATAR_URL.get().replace("{username}", username);
-        if (server != null) {
-            ServerPlayer player = server.getPlayerList().getPlayerByName(username);
-            if (player != null) url = url.replace("{uuid}", player.getUUID().toString().replace("-", ""));
-        }
-        return url;
+    private String buildAvatarUrl(String username, String uuidNoDashes) {
+        // Prefer UUID for reliable Minotar lookup (unaffected by username changes)
+        String identifier = (uuidNoDashes != null && !uuidNoDashes.isEmpty()) ? uuidNoDashes : username;
+        return "https://minotar.net/armor/bust/" + identifier + "/100.png";
     }
 
     private boolean isPlayerListEmbed(Embed embed) {

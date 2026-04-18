@@ -228,7 +228,6 @@ public class TomlConfigManager {
         spec.define("messages.discord_to_minecraft", "[Discord] {username}: {message}");
         spec.define("messages.minecraft_to_discord", "{message}");
         spec.define("messages.webhook_username", "{prefix} {username}");
-        spec.define("messages.avatar_url", "https://minotar.net/armor/bust/{username}/100.png");
 
         // [messages.events] section
         spec.define("messages.events.join", true);
@@ -302,7 +301,6 @@ public class TomlConfigManager {
         config.set("messages.discord_to_minecraft", "[Discord] {username}: {message}");
         config.set("messages.minecraft_to_discord", "{message}");
         config.set("messages.webhook_username", "{prefix} {username}");
-        config.set("messages.avatar_url", "https://minotar.net/armor/bust/{username}/100.png");
 
         // [messages.events] section
         config.set("messages.events.join", true);
@@ -417,8 +415,6 @@ public class TomlConfigManager {
                 "Placeholder: {message}");
         config.setComment("messages.webhook_username", "Webhook display name format (Discord only)\n" +
                 "Placeholders: {prefix}, {username}");
-        config.setComment("messages.avatar_url", "Player avatar URL template\n" +
-                "Placeholders: {uuid}, {username}");
 
         // [messages.events] comments
         config.setComment("messages.events", "Event Notifications\n" +
@@ -513,7 +509,6 @@ public class TomlConfigManager {
             migrateValue(flatData, "formats.discord_to_minecraft", "messages.discord_to_minecraft");
             migrateValue(flatData, "formats.minecraft_to_discord", "messages.minecraft_to_discord");
             migrateValue(flatData, "formats.webhook_username", "messages.webhook_username");
-            migrateValue(flatData, "formats.avatar_url", "messages.avatar_url");
 
             // Migrate [messages.events] section
             migrateValue(flatData, "events.send_join", "messages.events.join");

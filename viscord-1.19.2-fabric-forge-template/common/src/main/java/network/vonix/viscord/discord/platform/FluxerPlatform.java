@@ -64,6 +64,13 @@ public class FluxerPlatform {
             ViscordConfigToml.Fluxer.EVENT_CHANNEL_ID.get()
         ));
 
+        // Register our own webhook ID so the bot can distinguish our echoes from other servers' messages
+        String fluxerWebhookUrl = ViscordConfigToml.Fluxer.WEBHOOK_URL.get();
+        if (fluxerWebhookUrl != null && !fluxerWebhookUrl.isEmpty()) {
+            String webhookId = extractWebhookId(fluxerWebhookUrl);
+            if (webhookId != null) botClient.setOwnWebhookId(webhookId);
+        }
+
         botClient.setMessageHandler((username, message, avatarUrl) -> {
             if (messageListener != null) {
                 messageListener.onMessage(username, message, avatarUrl);
@@ -266,5 +273,13 @@ public class FluxerPlatform {
     public String getEventChannelId() {
         String evtId = ViscordConfigToml.Fluxer.EVENT_CHANNEL_ID.get();
         return (evtId != null && !evtId.isEmpty()) ? evtId : ViscordConfigToml.Fluxer.CHANNEL_ID.get();
+    }
+
+    private String extractWebhookId(String webhookUrl) {
+        int idx = webhookUrl.indexOf("/webhooks/");
+        if (idx < 0) return null;
+        String after = webhookUrl.substring(idx + "/webhooks/".length());
+        int slash = after.indexOf('/');
+        return slash > 0 ? after.substring(0, slash) : after;
     }
 }
