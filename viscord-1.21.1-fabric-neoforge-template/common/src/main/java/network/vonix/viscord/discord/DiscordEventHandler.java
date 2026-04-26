@@ -100,24 +100,20 @@ public class DiscordEventHandler {
                         .then(Commands.literal("messages")
                                 .executes(context -> {
                                     ServerPlayer player = context.getSource().getPlayerOrException();
-                                    boolean currentlyFiltered = DiscordManager.getInstance()
-                                            .hasServerMessagesFiltered(player.getUUID());
-                                    boolean newFiltered = !currentlyFiltered;
-                                    DiscordManager.getInstance().setServerMessagesFiltered(player.getUUID(), newFiltered);
+                                    boolean nowFiltered = !DiscordManager.getInstance().hasServerMessagesFiltered(player.getUUID());
+                                    DiscordManager.getInstance().setServerMessagesFiltered(player.getUUID(), nowFiltered);
                                     context.getSource().sendSuccess(() -> Component.literal(
-                                            newFiltered ? "§cCross-server messages disabled!" : "§aCross-server messages enabled!"),
+                                            nowFiltered ? "§cCross-server messages disabled!" : "§aCross-server messages enabled!"),
                                             false);
                                     return 1;
                                 }))
                         .then(Commands.literal("events")
                                 .executes(context -> {
                                     ServerPlayer player = context.getSource().getPlayerOrException();
-                                    boolean currentlyFiltered = DiscordManager.getInstance()
-                                            .hasEventsFiltered(player.getUUID());
-                                    boolean newFiltered = !currentlyFiltered;
-                                    DiscordManager.getInstance().setEventsFiltered(player.getUUID(), newFiltered);
+                                    boolean nowFiltered = !DiscordManager.getInstance().hasEventsFiltered(player.getUUID());
+                                    DiscordManager.getInstance().setEventsFiltered(player.getUUID(), nowFiltered);
                                     context.getSource().sendSuccess(() -> Component.literal(
-                                            newFiltered ? "§cEvent messages disabled!" : "§aEvent messages enabled!"),
+                                            nowFiltered ? "§cEvent messages disabled!" : "§aEvent messages enabled!"),
                                             false);
                                     return 1;
                                 }))
@@ -153,8 +149,8 @@ public class DiscordEventHandler {
         // /viscord reload command - admin only
         dispatcher.register(
                 Commands.literal("viscord")
-                        .requires(source -> source.hasPermission(4)) // OP only
                         .then(Commands.literal("reload")
+                                .requires(source -> source.hasPermission(4))
                                 .executes(context -> {
                                     context.getSource().sendSuccess(() -> Component.literal(
                                             "§aReloading Viscord configuration..."), false);
@@ -195,6 +191,7 @@ public class DiscordEventHandler {
                                     return 1;
                                 }))
                         .then(Commands.literal("status")
+                                .requires(source -> source.hasPermission(4))
                                 .executes(context -> {
                                     boolean running = DiscordManager.getInstance().isRunning();
                                     String platform = ViscordConfigToml.General.PLATFORM.get();
@@ -276,24 +273,20 @@ public class DiscordEventHandler {
                                 .then(Commands.literal("messages")
                                         .executes(context -> {
                                             ServerPlayer player = context.getSource().getPlayerOrException();
-                                            boolean currentlyFiltered = DiscordManager.getInstance()
-                                                    .hasServerMessagesFiltered(player.getUUID());
-                                            boolean newFiltered = !currentlyFiltered;
-                                            DiscordManager.getInstance().setServerMessagesFiltered(player.getUUID(), newFiltered);
+                                            boolean nowFiltered = !DiscordManager.getInstance().hasServerMessagesFiltered(player.getUUID());
+                                            DiscordManager.getInstance().setServerMessagesFiltered(player.getUUID(), nowFiltered);
                                             context.getSource().sendSuccess(() -> Component.literal(
-                                                    newFiltered ? "§cCross-server messages disabled!" : "§aCross-server messages enabled!"),
+                                                    nowFiltered ? "§cCross-server messages disabled!" : "§aCross-server messages enabled!"),
                                                     false);
                                             return 1;
                                         }))
                                 .then(Commands.literal("events")
                                         .executes(context -> {
                                             ServerPlayer player = context.getSource().getPlayerOrException();
-                                            boolean currentlyFiltered = DiscordManager.getInstance()
-                                                    .hasEventsFiltered(player.getUUID());
-                                            boolean newFiltered = !currentlyFiltered;
-                                            DiscordManager.getInstance().setEventsFiltered(player.getUUID(), newFiltered);
+                                            boolean nowFiltered = !DiscordManager.getInstance().hasEventsFiltered(player.getUUID());
+                                            DiscordManager.getInstance().setEventsFiltered(player.getUUID(), nowFiltered);
                                             context.getSource().sendSuccess(() -> Component.literal(
-                                                    newFiltered ? "§cEvent messages disabled!" : "§aEvent messages enabled!"),
+                                                    nowFiltered ? "§cEvent messages disabled!" : "§aEvent messages enabled!"),
                                                     false);
                                             return 1;
                                         }))
@@ -304,8 +297,8 @@ public class DiscordEventHandler {
                                                             "§b/discord§7 - Show Discord invite link\n" +
                                                             "§b/viscord discord link§7 - Generate account link code\n" +
                                                             "§b/viscord discord unlink§7 - Unlink your Discord\n" +
-                                                            "§b/viscord discord messages§7 - Toggle cross-server messages on/off\n" +
-                                                            "§b/viscord discord events§7 - Toggle cross-server events on/off\n" +
+                                                            "§b/discord messages [enable|disable]§7 - Toggle cross-server messages\n" +
+                                                            "§b/discord events [enable|disable]§7 - Toggle cross-server events\n" +
                                                             "§b/viscord discord invite§7 - Show Discord invite link\n" +
                                                             "§b/viscord reload§7 - Reload Viscord config (admin)\n" +
                                                             "§b/viscord status§7 - Show Viscord status\n" +

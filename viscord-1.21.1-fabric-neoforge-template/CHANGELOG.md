@@ -7,6 +7,15 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [4.1.5] - 2026-04-22
+
+### Fixed
+- `/discord messages` and `/discord events` not re-enabling — `/viscord discord *` subcommands required OP due to Brigadier merging the two `/viscord` registrations and preserving the first node's `requires(permission 4)` predicate; moved OP requirement down to only `reload` and `status` subcommands so regular players can access discord preference commands via both `/discord` and `/viscord discord` paths
+- All four toggle commands (`/discord messages`, `/discord events`, `/viscord discord messages`, `/viscord discord events`) are now consistent pure-toggle switches
+
+### Changed
+- `PlayerPreferences.savePreferences()` now builds the JSON snapshot on the calling thread then offloads the file write to `ASYNC_EXECUTOR`, preventing disk I/O from blocking the server main thread on every preference change
+
 ## [4.1.4] - 2026-04-04
 
 ### Fixed

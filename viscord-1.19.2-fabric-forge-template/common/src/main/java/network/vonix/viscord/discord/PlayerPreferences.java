@@ -142,29 +142,26 @@ public class PlayerPreferences {
      * Save preferences to file.
      */
     private void savePreferences() {
-        try {
-            JsonObject root = new JsonObject();
-            JsonObject playersObj = new JsonObject();
-
-            for (Map.Entry<UUID, PlayerPreference> entry : preferences.entrySet()) {
-                JsonObject prefObj = new JsonObject();
-                prefObj.addProperty("filterServerSystemMessages", entry.getValue().filterServerSystemMessages);
-                prefObj.addProperty("filterServerMessages", entry.getValue().filterServerMessages);
-                prefObj.addProperty("filterEvents", entry.getValue().filterEvents);
-                playersObj.add(entry.getKey().toString(), prefObj);
-            }
-
-            root.add("players", playersObj);
-
-            String json = GSON.toJson(root);
-            Files.writeString(preferencesFile, json);
-
-            if (ViscordConfigToml.General.DEBUG.get()) {
-                Viscord.LOGGER.debug("Saved Discord player preferences to file");
-            }
-        } catch (IOException e) {
-            Viscord.LOGGER.error("Failed to save Discord player preferences", e);
+        JsonObject root = new JsonObject();
+        JsonObject playersObj = new JsonObject();
+        for (Map.Entry<UUID, PlayerPreference> entry : preferences.entrySet()) {
+            JsonObject prefObj = new JsonObject();
+            prefObj.addProperty("filterServerSystemMessages", entry.getValue().filterServerSystemMessages);
+            prefObj.addProperty("filterServerMessages", entry.getValue().filterServerMessages);
+            prefObj.addProperty("filterEvents", entry.getValue().filterEvents);
+            playersObj.add(entry.getKey().toString(), prefObj);
         }
+        root.add("players", playersObj);
+        String json = GSON.toJson(root);
+        Viscord.ASYNC_EXECUTOR.submit(() -> {
+            try {
+                Files.writeString(preferencesFile, json);
+                if (ViscordConfigToml.General.DEBUG.get())
+                    Viscord.LOGGER.debug("Saved Discord player preferences to file");
+            } catch (IOException e) {
+                Viscord.LOGGER.error("Failed to save Discord player preferences", e);
+            }
+        });
     }
 
     /**

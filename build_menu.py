@@ -50,6 +50,7 @@ class BuildResult:
     error: List[str]
     exit_code: int
     log_path: Optional[str] = None
+    oom_detected: bool = False
 
 
 class ViscordBuildMenu:
@@ -260,7 +261,7 @@ class ViscordBuildMenu:
         btype = "clean" if build_type == BuildType.CLEAN else "quick"
         return logs_dir / f"build-{mc_version}-{btype}-{stamp}.log"
 
-    def _build_with_progress(self, project_name: str, mc_version: str, build_type: BuildType) -> BuildResult:
+    def _build_with_progress(self, project_name: str, mc_version: str, build_type: BuildType, no_parallel: bool = False) -> BuildResult:
         status_text = "Clean Build" if build_type == BuildType.CLEAN else "Quick Build"
         log_path = self._get_log_path(mc_version, build_type)
 
@@ -276,6 +277,8 @@ class ViscordBuildMenu:
 
             try:
                 args = ["clean", "build"] if build_type == BuildType.CLEAN else ["build"]
+                if no_parallel:
+                    args += ["--no-parallel"]
                 cmd = ["cmd.exe", "/c", "gradlew.bat"] + args
 
                 with open(output_file, "w", encoding="utf-8", errors="replace") as out_f, \
@@ -353,13 +356,16 @@ class ViscordBuildMenu:
                 except Exception:
                     log_path = None
 
+                oom = any("OutOfMemoryError" in line for line in error_lines + output_lines)
+
                 progress.update(task, completed=100,
                     description=f"[{'green' if exit_code == 0 else 'red'}]{status_text} {'Complete' if exit_code == 0 else 'FAILED'}![/{'green' if exit_code == 0 else 'red'}]")
                 success = exit_code == 0 or any("BUILD SUCCESSFUL" in line for line in output_lines)
 
                 return BuildResult(
                     success=success, output=output_lines, error=error_lines,
-                    exit_code=exit_code, log_path=str(log_path) if log_path else None
+                    exit_code=exit_code, log_path=str(log_path) if log_path else None,
+                    oom_detected=oom
                 )
 
             except Exception as e:
@@ -445,6 +451,12 @@ class ViscordBuildMenu:
                 os.environ["PATH"] = str(Path(optimal_java.full_path) / "bin") + ";" + original_path
 
             result = self._build_with_progress(f"Minecraft {version}", version, build_type)
+
+            # Parallel subprojects race to lock the execution history cache; retry without --parallel
+            if not result.success and any("has already been locked" in line for line in result.error + result.output):
+                console.print("[yellow]Detected Gradle cache lock conflict — retrying without parallel execution...[/yellow]")
+                self._clear_gradle_lock(version)
+                result = self._build_with_progress(f"Minecraft {version} (retry)", version, build_type, no_parallel=True)
         finally:
             os.environ["JAVA_HOME"] = original_java_home
             os.environ["PATH"] = original_path
@@ -452,7 +464,46 @@ class ViscordBuildMenu:
 
         return result
 
+    def _clear_gradle_lock(self, version: str) -> bool:
+        ver_dir = self._get_version_dir(version)
+        if not ver_dir:
+            return False
+        lock_file = ver_dir / ".gradle" / "8.14" / "executionHistory" / "executionHistory.lock"
+        if not lock_file.exists():
+            # Try any Gradle version subfolder
+            gradle_dir = ver_dir / ".gradle"
+            locks = list(gradle_dir.glob("*/executionHistory/executionHistory.lock")) if gradle_dir.exists() else []
+            if not locks:
+                return False
+            lock_file = locks[0]
+        try:
+            lock_file.unlink()
+            console.print(f"[cyan]Removed stale Gradle lock: {lock_file.name}[/cyan]")
+            return True
+        except Exception as e:
+            console.print(f"[yellow]Could not remove lock file: {e}[/yellow]")
+            return False
+
+    def _stop_gradle_daemons(self, version: str):
+        ver_dir = self._get_version_dir(version)
+        if not ver_dir:
+            return
+        try:
+            console.print("[yellow]Stopping all Gradle daemons to free memory...[/yellow]")
+            subprocess.run(
+                ["cmd.exe", "/c", "gradlew.bat", "--stop"],
+                cwd=ver_dir, capture_output=True, timeout=30
+            )
+            console.print("[cyan]Gradle daemons stopped.[/cyan]")
+        except Exception:
+            pass
+
     def _display_build_error(self, result: BuildResult):
+        if result.oom_detected:
+            console.print("[bold red]Out of Memory: Java heap space exhausted.[/bold red]")
+            console.print("[yellow]Too many Gradle daemons are running. Daemons have been stopped.[/yellow]")
+            console.print("[yellow]Try running a Clean Build, or close other applications and retry.[/yellow]")
+            console.print()
         console.print(f"[red]Exit code: {result.exit_code}[/red]")
 
         # Extract the most useful lines: compiler errors and FAILED markers
@@ -516,6 +567,11 @@ class ViscordBuildMenu:
             else:
                 console.print(f"[red]X Failed to build {version}![/red]")
                 self._display_build_error(result)
+                if result.oom_detected:
+                    self._stop_gradle_daemons(version)
+                    console.print("[bold red]Aborting remaining builds due to out-of-memory error.[/bold red]")
+                    console.print()
+                    break
 
             console.print()
 
@@ -546,6 +602,11 @@ class ViscordBuildMenu:
             else:
                 console.print(f"[red]X Failed to build {version}![/red]")
                 self._display_build_error(result)
+                if result.oom_detected:
+                    self._stop_gradle_daemons(version)
+                    console.print("[bold red]Aborting remaining builds due to out-of-memory error.[/bold red]")
+                    console.print()
+                    break
 
             console.print()
 
@@ -664,6 +725,11 @@ class ViscordBuildMenu:
             else:
                 console.print(f"[red]X Failed to build {version}![/red]")
                 self._display_build_error(result)
+                if result.oom_detected:
+                    self._stop_gradle_daemons(version)
+                    console.print("[bold red]Aborting remaining builds due to out-of-memory error.[/bold red]")
+                    console.print()
+                    break
 
             console.print()
 
