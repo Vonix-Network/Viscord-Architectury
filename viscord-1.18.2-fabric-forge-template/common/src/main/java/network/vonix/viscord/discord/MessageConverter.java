@@ -7,6 +7,7 @@ import net.minecraft.network.chat.HoverEvent;
 import net.minecraft.network.chat.MutableComponent;
 import net.minecraft.network.chat.Style;
 import net.minecraft.network.chat.TextColor;
+import network.vonix.viscord.config.ViscordConfig;
 import org.javacord.api.entity.message.Message;
 import org.javacord.api.entity.message.MessageAttachment;
 import org.javacord.api.entity.message.embed.Embed;
@@ -33,11 +34,14 @@ public class MessageConverter {
         MutableComponent root = new TextComponent("");
 
         // 1. Author Name (with hover tooltip)
-        String authorName = message.getAuthor().getDisplayName();
+        boolean useDisplayName = ViscordConfig.CONFIG.useDisplayName.get();
+        String authorName = useDisplayName
+                ? message.getAuthor().getDisplayName()
+                : message.getAuthor().getName();
         MutableComponent authorComponent = new TextComponent("<" + authorName + "> ")
                 .withStyle(Style.EMPTY
                         .withColor(TextColor.fromRgb(0x5865F2)) // Discord Blurple
-                        .withHoverEvent(new HoverEvent(HoverEvent.Action.SHOW_TEXT, 
+                        .withHoverEvent(new HoverEvent(HoverEvent.Action.SHOW_TEXT,
                                 new TextComponent(message.getAuthor().getDiscriminatedName()))));
         root.append(authorComponent);
 

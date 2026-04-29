@@ -9,7 +9,8 @@ import network.vonix.viscord.discord.FluxerBotClient;
 import network.vonix.viscord.discord.FluxerWebhookClient;
 import network.vonix.viscord.utils.DiscordFormatter;
 
-import java.util.Arrays;
+import java.util.ArrayList;
+import java.util.List;
 
 /**
  * Manages all Fluxer platform logic: gateway connection, webhook sending,
@@ -58,11 +59,14 @@ public class FluxerPlatform {
             return false;
         }
 
-        // Only listen to configured channels
-        botClient.setAllowedChannelIds(Arrays.asList(
-            channelId,
-            ViscordConfigToml.Fluxer.EVENT_CHANNEL_ID.get()
-        ));
+        // Only listen to configured channels (each value may be comma-separated)
+        List<String> allowedIds = new ArrayList<>();
+        for (String id : channelId.split(",")) { String t = id.trim(); if (!t.isEmpty()) allowedIds.add(t); }
+        String evtIds = ViscordConfigToml.Fluxer.EVENT_CHANNEL_ID.get();
+        if (evtIds != null && !evtIds.isEmpty()) {
+            for (String id : evtIds.split(",")) { String t = id.trim(); if (!t.isEmpty()) allowedIds.add(t); }
+        }
+        botClient.setAllowedChannelIds(allowedIds);
 
         // Register our own webhook ID so the bot can distinguish our echoes from other servers' messages
         String fluxerWebhookUrl = ViscordConfigToml.Fluxer.WEBHOOK_URL.get();
@@ -82,7 +86,6 @@ public class FluxerPlatform {
             String webhookUrl = ViscordConfigToml.Fluxer.WEBHOOK_URL.get();
             if (webhookUrl != null && !webhookUrl.isEmpty()) {
                 webhookClient.updateUrl(webhookUrl);
-                eventWebhookClient.updateUrl(webhookUrl);
             }
             // Delay status push slightly — sending OP 3 immediately on the READY
             // receive thread races with the gateway's own session setup on some servers.
@@ -105,9 +108,9 @@ public class FluxerPlatform {
         }
 
         botClient.connect(apiKey).thenRun(() -> {
+            Viscord.LOGGER.info("[Fluxer] Bot connected successfully.");
             // Send startup embed after bot is connected, for all modes.
             // DiscordPlatform handles its own startup embed independently.
-            // Small delay to ensure config is fully settled after potential reload.
             try { Thread.sleep(500); } catch (InterruptedException ignored) {}
             String eventCh = getEventChannelId();
             Viscord.LOGGER.info("[Fluxer] Sending startup embed to event channel: {}", eventCh);
@@ -128,12 +131,6 @@ public class FluxerPlatform {
 
     public void shutdown() {
         if (!initialized) return;
-        try {
-            botClient.setOffline();
-            Thread.sleep(300); // allow offline presence to flush before closing socket
-        } catch (Exception e) {
-            Viscord.LOGGER.warn("[Fluxer] Could not send offline presence: {}", e.getMessage());
-        }
         try { botClient.disconnect(); } catch (Exception e) {
             Viscord.LOGGER.error("[Fluxer] Error disconnecting bot: {}", e.getMessage());
         }

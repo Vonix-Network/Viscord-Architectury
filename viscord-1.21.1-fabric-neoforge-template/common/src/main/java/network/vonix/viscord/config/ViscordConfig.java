@@ -49,6 +49,7 @@ public class ViscordConfig {
         public final SimpleConfigValue<String> minecraftToDiscordFormat;
         public final SimpleConfigValue<String> webhookUsernameFormat;
         public final SimpleConfigValue<String> avatarUrl;
+        public final SimpleConfigValue<Boolean> useDisplayName;
 
         // Event settings
         public final SimpleConfigValue<Boolean> sendJoin;
@@ -61,6 +62,7 @@ public class ViscordConfig {
         // Loop prevention
         public final SimpleConfigValue<Boolean> ignoreBots;
         public final SimpleConfigValue<Boolean> ignoreWebhooks;
+        public final SimpleConfigValue<String> trustedBotIds;
         public final SimpleConfigValue<Boolean> filterByPrefix;
         public final SimpleConfigValue<Boolean> showOtherServerEvents;
 
@@ -151,9 +153,10 @@ public class ViscordConfig {
                                 .define("bot_token", "YOUR_BOT_TOKEN_HERE");
 
                 discordChannelId = builder.comment(
-                                "Discord Channel ID for chat messages",
+                                "Discord Channel ID(s) for chat messages",
                                 "Right-click channel -> Copy Channel ID",
-                                "(Enable Developer Mode in Discord settings)")
+                                "(Enable Developer Mode in Discord settings)",
+                                "Multiple channels: separate with commas, e.g. \"123,456,789\"")
                                 .define("channel_id", "YOUR_CHANNEL_ID_HERE");
 
                 discordWebhookUrl = builder.comment(
@@ -189,15 +192,17 @@ public class ViscordConfig {
                                 .define("bot_token", "YOUR_FLUXER_BOT_TOKEN");
                 
                 fluxerChannelId = builder.comment(
-                                "Fluxer Channel ID for chat messages",
+                                "Fluxer Channel ID(s) for chat messages",
                                 "Right-click channel -> Copy Channel ID",
-                                "(Enable Developer Mode in Fluxer settings)")
+                                "(Enable Developer Mode in Fluxer settings)",
+                                "Multiple channels: separate with commas, e.g. \"123,456,789\"")
                                 .define("channel_id", "YOUR_FLUXER_CHANNEL_ID");
-                
+
                 fluxerEventChannelId = builder.comment(
-                                "Fluxer Channel ID for server events (optional)",
+                                "Fluxer Channel ID(s) for server events (optional)",
                                 "Join/leave/death/advancement notifications go here",
-                                "Leave empty to use the main channel_id above")
+                                "Leave empty to use the main channel_id above",
+                                "Multiple channels: separate with commas, e.g. \"123,456,789\"")
                                 .define("event_channel_id", "");
                 
                 fluxerWebhookUrl = builder.comment(
@@ -251,6 +256,12 @@ public class ViscordConfig {
                                 "Placeholders: {uuid}, {username}")
                                 .define("avatar_url", "https://minotar.net/armor/bust/{username}/100.png");
 
+                useDisplayName = builder.comment(
+                                "Show Discord display name (nickname) instead of username in Minecraft chat",
+                                "true  - use server nickname / global display name",
+                                "false - use the plain @username")
+                                .define("use_display_name", true);
+
                 builder.pop().comment(
                                 "Event Notifications",
                                 "Choose which events to send to Discord/Fluxer")
@@ -269,8 +280,9 @@ public class ViscordConfig {
                                 .define("send_advancement", true);
 
                 eventChannelId = builder.comment(
-                                "Separate Discord channel ID for events (optional)",
-                                "Leave empty to use main Discord channel")
+                                "Separate Discord channel ID(s) for events (optional)",
+                                "Leave empty to use main Discord channel",
+                                "Multiple channels: separate with commas, e.g. \"123,456,789\"")
                                 .define("event_channel_id", "");
 
                 eventWebhookUrl = builder.comment(
@@ -288,6 +300,13 @@ public class ViscordConfig {
 
                 ignoreWebhooks = builder.comment("Ignore other webhook messages")
                                 .define("ignore_webhooks", true);
+
+                trustedBotIds = builder.comment(
+                                "Trusted bot/webhook IDs whose messages always pass through",
+                                "Use this to receive event embeds (join/leave/death) from other servers' Viscord bots",
+                                "Right-click bot -> Copy ID in Discord (Developer Mode required)",
+                                "Multiple IDs: separate with commas, e.g. \"123456789,987654321\"")
+                                .define("trusted_bot_ids", "");
 
                 filterByPrefix = builder.comment(
                                 "Filter messages by server prefix",

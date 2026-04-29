@@ -7,14 +7,27 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [4.1.6] - 2026-04-28
+
+### Added
+- **Display name toggle**: new `formats.use_display_name` config option (default `true`). When `false`, Discord messages show the plain `@username` instead of the server nickname / global display name (all templates)
+- **Multi-channel monitoring**: `discord.channel_id`, `discord.event_channel_id`, `fluxer.channel_id`, and `fluxer.event_channel_id` now accept comma-separated channel IDs (e.g. `"123,456,789"`), allowing a single bot to monitor multiple channels simultaneously (all templates)
+- **Trusted bot IDs**: new `filters.trusted_bot_ids` config option (comma-separated Discord user/webhook IDs). Bots in this list bypass `ignore_bots` / `ignore_webhooks` filters so their event embeds (join/leave/death/advancement) are always relayed to Minecraft chat. Use this to receive cross-server event messages from another server's Viscord bot (all templates)
+
+### Fixed
+- Cross-server event embeds (join/leave/death/advancement) from other servers' Viscord bots were silently dropped because `ignore_bots` / `ignore_webhooks` filters fired before any embed detection. Messages from bots listed in `trusted_bot_ids` now skip those filters entirely (all templates)
+
 ## [4.1.5] - 2026-04-22
 
 ### Fixed
-- `/discord messages` and `/discord events` not re-enabling — `/viscord discord *` subcommands required OP due to Brigadier merging the two `/viscord` registrations and preserving the first node's `requires(permission 4)` predicate; moved OP requirement down to only `reload` and `status` subcommands so regular players can access discord preference commands via both `/discord` and `/viscord discord` paths
-- All four toggle commands (`/discord messages`, `/discord events`, `/viscord discord messages`, `/viscord discord events`) are now consistent pure-toggle switches
+- `/discord messages` and `/discord events` not re-enabling — `/viscord discord *` subcommands required OP due to Brigadier merging the two `/viscord` registrations and preserving the first node's `requires(permission 4)` predicate; moved OP requirement down to only `reload` and `status` subcommands so regular players can access discord preference commands via both `/discord` and `/viscord discord` paths (all templates)
+- All four toggle commands (`/discord messages`, `/discord events`, `/viscord discord messages`, `/viscord discord events`) are now consistent pure-toggle switches across all templates — 1.18.2/1.19.2/1.20.1 had explicit `enable`/`disable` subcommands instead
 
 ### Changed
-- `PlayerPreferences.savePreferences()` now builds the JSON snapshot on the calling thread then offloads the file write to `ASYNC_EXECUTOR`, preventing disk I/O from blocking the server main thread on every preference change
+- `PlayerPreferences.savePreferences()` now builds the JSON snapshot on the calling thread then offloads the file write to `ASYNC_EXECUTOR`, preventing disk I/O from blocking the server main thread on every preference change (all templates)
+
+### Fixed (build)
+- 1.19.2 `gradle.properties`: corrected `org.gradle.parallel=false` → `true` and removed duplicate comment line that was degrading parallel build performance
 
 ## [4.1.4] - 2026-04-04
 

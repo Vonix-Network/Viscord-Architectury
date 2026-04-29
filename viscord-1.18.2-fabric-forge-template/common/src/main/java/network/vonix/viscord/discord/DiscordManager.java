@@ -7,10 +7,8 @@ import net.minecraft.network.chat.Component;
 import net.minecraft.network.chat.HoverEvent;
 import net.minecraft.network.chat.MutableComponent;
 import net.minecraft.network.chat.Style;
-import net.minecraft.network.chat.TextComponent;
 import net.minecraft.server.MinecraftServer;
 import net.minecraft.server.level.ServerPlayer;
-import net.minecraft.Util;
 import network.vonix.viscord.Viscord;
 import network.vonix.viscord.config.toml.ViscordConfigToml;
 import network.vonix.viscord.discord.platform.DiscordPlatform;
@@ -194,9 +192,9 @@ public class DiscordManager {
         String mainChannelId = ViscordConfigToml.Discord.CHANNEL_ID.get();
         String evtChannelId = ViscordConfigToml.Discord.Events.CHANNEL_ID.get();
 
-        boolean isMainChannel = mainChannelId != null && mainChannelId.equals(msgChannelId);
+        boolean isMainChannel = isInChannelList(mainChannelId, msgChannelId);
         boolean isEventChannel = evtChannelId != null && !evtChannelId.isEmpty()
-            && evtChannelId.equals(msgChannelId);
+            && isInChannelList(evtChannelId, msgChannelId);
 
         if (!isMainChannel && !isEventChannel) return;
 
@@ -207,8 +205,9 @@ public class DiscordManager {
             handleLinkCommand(event); return;
         }
         if (isEventChannel && !ViscordConfigToml.Filters.SHOW_OTHER_SERVER_EVENTS.get()) return;
-        if (ViscordConfigToml.Filters.IGNORE_BOTS.get() && message.getAuthor().isBotUser()) return;
-        if (ViscordConfigToml.Filters.IGNORE_WEBHOOKS.get() && message.getAuthor().isWebhook()) return;
+        boolean trusted = isTrustedAuthor(message.getAuthor());
+        if (!trusted && ViscordConfigToml.Filters.IGNORE_BOTS.get() && message.getAuthor().isBotUser()) return;
+        if (!trusted && ViscordConfigToml.Filters.IGNORE_WEBHOOKS.get() && message.getAuthor().isWebhook()) return;
 
         String authorName = message.getAuthor().getDisplayName();
         String content = message.getContent();
@@ -227,14 +226,14 @@ public class DiscordManager {
         // Echo suppression via bridge cache
         if (bridge != null && bridge.checkAndSuppressEcho(username, message)) return;
 
+        // In "both" mode, cross-server messages are read from Discord only to avoid duplicates
+        if (isBoth() && isOtherServerUsername(username)) return;
+
         // Handle !list command from Fluxer
         if (message.trim().equalsIgnoreCase("!list")) {
             handleFluxerListCommand();
             return;
         }
-
-        // In "both" mode, cross-server messages are handled exclusively by Discord to prevent duplicates
-        if (isBoth() && isOtherServerUsername(username)) return;
 
         if (ViscordConfigToml.Filters.FILTER_BY_PREFIX.get()) {
             String prefix = ViscordConfigToml.Server.PREFIX.get();
@@ -266,9 +265,9 @@ public class DiscordManager {
         String mainChannelId = ViscordConfigToml.Discord.CHANNEL_ID.get();
         String evtChannelId = ViscordConfigToml.Discord.Events.CHANNEL_ID.get();
 
-        boolean isMainChannel = mainChannelId != null && mainChannelId.equals(msgChannelId);
+        boolean isMainChannel = isInChannelList(mainChannelId, msgChannelId);
         boolean isEventChannel = evtChannelId != null && !evtChannelId.isEmpty()
-            && evtChannelId.equals(msgChannelId);
+            && isInChannelList(evtChannelId, msgChannelId);
 
         if (!isMainChannel && !isEventChannel) return;
 
@@ -276,8 +275,9 @@ public class DiscordManager {
             handleTextListCommand(event); return;
         }
         if (isEventChannel && !ViscordConfigToml.Filters.SHOW_OTHER_SERVER_EVENTS.get()) return;
-        if (ViscordConfigToml.Filters.IGNORE_BOTS.get() && message.getAuthor().isBotUser()) return;
-        if (ViscordConfigToml.Filters.IGNORE_WEBHOOKS.get() && message.getAuthor().isWebhook()) return;
+        boolean trusted = isTrustedAuthor(message.getAuthor());
+        if (!trusted && ViscordConfigToml.Filters.IGNORE_BOTS.get() && message.getAuthor().isBotUser()) return;
+        if (!trusted && ViscordConfigToml.Filters.IGNORE_WEBHOOKS.get() && message.getAuthor().isWebhook()) return;
 
         if (ViscordConfigToml.Filters.FILTER_BY_PREFIX.get()) {
             String serverPrefix = ViscordConfigToml.Server.PREFIX.get();
@@ -328,7 +328,7 @@ public class DiscordManager {
             }
         }
 
-        MutableComponent finalComponent = new TextComponent("");
+        MutableComponent finalComponent = Component.empty();
         if (isWebhook) {
             String cleanedContent = content;
             if (content.startsWith(authorName + ": ")) cleanedContent = content.substring(authorName.length() + 2);
@@ -360,11 +360,11 @@ public class DiscordManager {
                 String[] parts = rawFormat.split("\\[Discord\\]", 2);
                 if (parts.length > 0 && !parts[0].isEmpty())
                     finalComponent.append(toMinecraftComponentWithLinks(parts[0]));
-                finalComponent.append(new TextComponent("[Discord]").setStyle(Style.EMPTY
+                finalComponent.append(Component.literal("[Discord]").setStyle(Style.EMPTY
                     .withColor(ChatFormatting.AQUA)
                     .withClickEvent(new ClickEvent(ClickEvent.Action.OPEN_URL, inviteUrl))
                     .withHoverEvent(new HoverEvent(HoverEvent.Action.SHOW_TEXT,
-                        new TextComponent("Click to join our Discord!")))));
+                        Component.literal("Click to join our Discord!")))));
                 if (parts.length > 1 && !parts[1].isEmpty())
                     finalComponent.append(toMinecraftComponentWithLinks(parts[1]));
             } else {
@@ -454,15 +454,6 @@ public class DiscordManager {
         }
     }
 
-    private boolean isOtherServerUsername(String username) {
-        if (username == null || !username.startsWith("[")) return false;
-        int end = username.indexOf("]");
-        if (end < 1) return false;
-        String foundPrefix = username.substring(0, end + 1);
-        String myPrefix = ViscordConfigToml.Server.PREFIX.get();
-        return myPrefix != null && !foundPrefix.equalsIgnoreCase(myPrefix);
-    }
-
     private String extractServerPrefixFromAuthor(String authorName) {
         if (authorName == null) return "Cross-Server";
         if (authorName.startsWith("[")) {
@@ -473,39 +464,39 @@ public class DiscordManager {
     }
 
     private Component toMinecraftComponentWithLinks(String text) {
-        if (text == null || text.isEmpty()) return new TextComponent("");
+        if (text == null || text.isEmpty()) return Component.empty();
         Matcher matcher = DISCORD_MARKDOWN_LINK.matcher(text);
-        MutableComponent result = new TextComponent("");
+        MutableComponent result = Component.empty();
         int lastEnd = 0;
         boolean hasLink = false;
         while (matcher.find()) {
-            if (matcher.start() > lastEnd) result.append(new TextComponent(text.substring(lastEnd, matcher.start())));
-            result.append(new TextComponent(matcher.group(1)).withStyle(style -> style
+            if (matcher.start() > lastEnd) result.append(Component.literal(text.substring(lastEnd, matcher.start())));
+            result.append(Component.literal(matcher.group(1)).withStyle(style -> style
                 .withClickEvent(new ClickEvent(ClickEvent.Action.OPEN_URL, matcher.group(2)))
                 .withUnderlined(true).withColor(ChatFormatting.AQUA)));
             lastEnd = matcher.end();
             hasLink = true;
         }
-        if (lastEnd < text.length()) result.append(new TextComponent(text.substring(lastEnd)));
-        return hasLink ? result : new TextComponent(text);
+        if (lastEnd < text.length()) result.append(Component.literal(text.substring(lastEnd)));
+        return hasLink ? result : Component.literal(text);
     }
 
     private void broadcastSystemMessageRespectingFilters(Component message) {
         if (server == null) return;
         for (ServerPlayer p : server.getPlayerList().getPlayers())
-            if (!hasServerMessagesFiltered(p.getUUID())) p.sendMessage(message, Util.NIL_UUID);
+            if (!hasServerMessagesFiltered(p.getUUID())) p.sendSystemMessage(message, false);
     }
 
     private void broadcastEventMessageRespectingFilters(Component message) {
         if (server == null) return;
         for (ServerPlayer p : server.getPlayerList().getPlayers())
-            if (!hasEventsFiltered(p.getUUID())) p.sendMessage(message, Util.NIL_UUID);
+            if (!hasEventsFiltered(p.getUUID())) p.sendSystemMessage(message, false);
     }
 
     private void broadcastServerSystemMessageRespectingFilters(Component message) {
         if (server == null) return;
         for (ServerPlayer p : server.getPlayerList().getPlayers())
-            if (!hasServerSystemMessagesFiltered(p.getUUID())) p.sendMessage(message, Util.NIL_UUID);
+            if (!hasServerSystemMessagesFiltered(p.getUUID())) p.sendSystemMessage(message, false);
     }
 
     // =========================================================================
@@ -519,17 +510,13 @@ public class DiscordManager {
     public void sendChatMessage(String username, String message, String uuid) {
         if (!running) return;
         String prefix = ViscordConfigToml.Server.PREFIX.get();
-
-        // Strip §/& color codes that nick plugins inject into display names
         String cleanUsername = DiscordFormatter.stripFormatting(username);
-
-        // Resolve real username and UUID for avatar URL via player lookup
         String realUsername = cleanUsername;
         String resolvedUuid = uuid != null ? uuid.replace("-", "") : null;
         if (server != null) {
             ServerPlayer player = null;
             if (uuid != null && !uuid.isEmpty()) {
-                try { player = server.getPlayerList().getPlayer(UUID.fromString(uuid)); }
+                try { player = server.getPlayerList().getPlayer(java.util.UUID.fromString(uuid)); }
                 catch (IllegalArgumentException ignored) {}
             }
             if (player == null) player = server.getPlayerList().getPlayerByName(cleanUsername);
@@ -538,18 +525,12 @@ public class DiscordManager {
                 resolvedUuid = player.getUUID().toString().replace("-", "");
             }
         }
-
         String formattedUsername = ViscordConfigToml.Messages.WEBHOOK_USERNAME.get()
             .replace("{prefix}", prefix).replace("{username}", cleanUsername);
         String avatarUrl = buildAvatarUrl(realUsername, resolvedUuid);
         String formattedMessage = DiscordFormatter.convertToDiscordFormatting(message);
-
-        if (usesFluxer()) {
-            fluxerPlatform.sendChatMessage(formattedUsername, avatarUrl, formattedMessage);
-        }
-        if (usesDiscord()) {
-            discordPlatform.sendChatMessage(formattedUsername, avatarUrl, formattedMessage);
-        }
+        if (usesFluxer()) fluxerPlatform.sendChatMessage(formattedUsername, avatarUrl, formattedMessage);
+        if (usesDiscord()) discordPlatform.sendChatMessage(formattedUsername, avatarUrl, formattedMessage);
     }
 
     // =========================================================================
@@ -740,9 +721,40 @@ public class DiscordManager {
     // =========================================================================
 
     private String buildAvatarUrl(String username, String uuidNoDashes) {
-        // Prefer UUID for reliable Minotar lookup (unaffected by username changes)
         String identifier = (uuidNoDashes != null && !uuidNoDashes.isEmpty()) ? uuidNoDashes : username;
         return "https://minotar.net/armor/bust/" + identifier + "/100.png";
+    }
+
+    private boolean isOtherServerUsername(String username) {
+        if (username == null || !username.startsWith("[")) return false;
+        int end = username.indexOf("]");
+        if (end < 1) return false;
+        String foundPrefix = username.substring(0, end + 1);
+        String myPrefix = ViscordConfigToml.Server.PREFIX.get();
+        return myPrefix != null && !foundPrefix.equalsIgnoreCase(myPrefix);
+    }
+
+    /** Returns true if channelId is contained in a comma-separated config value. */
+    private static boolean isInChannelList(String configValue, String channelId) {
+        if (configValue == null || configValue.isEmpty() || channelId == null) return false;
+        for (String id : configValue.split(",")) {
+            if (id.trim().equals(channelId)) return true;
+        }
+        return false;
+    }
+
+    /**
+     * Returns true if this author should bypass ignoreBots/ignoreWebhooks filters.
+     * Matches against the trusted_bot_ids config by Discord user/webhook ID.
+     */
+    private static boolean isTrustedAuthor(org.javacord.api.entity.message.MessageAuthor author) {
+        String trusted = ViscordConfigToml.Filters.TRUSTED_BOT_IDS.get();
+        if (trusted == null || trusted.isEmpty()) return false;
+        String authorId = author.getIdAsString();
+        for (String id : trusted.split(",")) {
+            if (id.trim().equals(authorId)) return true;
+        }
+        return false;
     }
 
     private boolean isPlayerListEmbed(Embed embed) {
@@ -751,8 +763,39 @@ public class DiscordManager {
     }
 
     private void processPlayerListEmbed(Embed embed, MessageCreateEvent event) {
-        // Delegate to fallback — player list embeds from other servers are displayed as text
-        handleEmbedFallback(embed, event);
+        try {
+            String authorName = event.getMessageAuthor().getDisplayName();
+            String serverPrefix = extractServerPrefixFromAuthor(authorName);
+
+            StringBuilder sb = new StringBuilder();
+            sb.append("§a[").append(serverPrefix).append("] §7Players online: ");
+
+            boolean hasPlayers = false;
+            for (org.javacord.api.entity.message.embed.EmbedField field : embed.getFields()) {
+                String fieldName = field.getName();
+                if (fieldName != null && fieldName.toLowerCase().startsWith("players")) {
+                    String value = field.getValue();
+                    if (value != null && !value.isEmpty()) {
+                        String names = value.replace("• ", "").replace("\n", ", ").replaceAll(", $", "").trim();
+                        sb.append("§f").append(names);
+                        hasPlayers = true;
+                    }
+                }
+            }
+
+            if (!hasPlayers) {
+                embed.getDescription().ifPresent(d -> {
+                    if (!d.trim().isEmpty()) sb.append("§7").append(d.trim());
+                });
+                if (sb.toString().endsWith("online: ")) sb.append("§7No players online");
+            }
+
+            Component comp = toMinecraftComponentWithLinks(sb.toString());
+            if (server != null) server.execute(() -> broadcastSystemMessageRespectingFilters(comp));
+        } catch (Exception e) {
+            Viscord.LOGGER.warn("[Discord] Failed to format player list embed: {}", e.getMessage());
+            handleEmbedFallback(embed, event);
+        }
     }
 
     private void handleTextListCommand(MessageCreateEvent event) {

@@ -58,6 +58,7 @@ public class ViscordConfigToml {
         public static final ConfigValue<String> DISCORD_TO_MINECRAFT = new ConfigValue<>("messages.discord_to_minecraft", "[Discord] {username}: {message}");
         public static final ConfigValue<String> MINECRAFT_TO_DISCORD = new ConfigValue<>("messages.minecraft_to_discord", "{message}");
         public static final ConfigValue<String> WEBHOOK_USERNAME = new ConfigValue<>("messages.webhook_username", "{prefix} {username}");
+        public static final ConfigValue<Boolean> USE_DISPLAY_NAME = new ConfigValue<>("messages.use_display_name", true);
 
         public static class Events {
             public static final ConfigValue<Boolean> JOIN = new ConfigValue<>("messages.events.join", true);
@@ -71,6 +72,7 @@ public class ViscordConfigToml {
     public static class Filters {
         public static final ConfigValue<Boolean> IGNORE_BOTS = new ConfigValue<>("filters.ignore_bots", true);
         public static final ConfigValue<Boolean> IGNORE_WEBHOOKS = new ConfigValue<>("filters.ignore_webhooks", true);
+        public static final ConfigValue<String> TRUSTED_BOT_IDS = new ConfigValue<>("filters.trusted_bot_ids", "");
         public static final ConfigValue<Boolean> FILTER_BY_PREFIX = new ConfigValue<>("filters.filter_by_prefix", true);
         public static final ConfigValue<Boolean> SHOW_OTHER_SERVER_EVENTS = new ConfigValue<>("filters.show_other_server_events", true);
 

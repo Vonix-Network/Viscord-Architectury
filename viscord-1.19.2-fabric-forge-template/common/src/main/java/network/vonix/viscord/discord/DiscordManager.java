@@ -192,9 +192,9 @@ public class DiscordManager {
         String mainChannelId = ViscordConfigToml.Discord.CHANNEL_ID.get();
         String evtChannelId = ViscordConfigToml.Discord.Events.CHANNEL_ID.get();
 
-        boolean isMainChannel = mainChannelId != null && mainChannelId.equals(msgChannelId);
+        boolean isMainChannel = isInChannelList(mainChannelId, msgChannelId);
         boolean isEventChannel = evtChannelId != null && !evtChannelId.isEmpty()
-            && evtChannelId.equals(msgChannelId);
+            && isInChannelList(evtChannelId, msgChannelId);
 
         if (!isMainChannel && !isEventChannel) return;
 
@@ -205,8 +205,9 @@ public class DiscordManager {
             handleLinkCommand(event); return;
         }
         if (isEventChannel && !ViscordConfigToml.Filters.SHOW_OTHER_SERVER_EVENTS.get()) return;
-        if (ViscordConfigToml.Filters.IGNORE_BOTS.get() && message.getAuthor().isBotUser()) return;
-        if (ViscordConfigToml.Filters.IGNORE_WEBHOOKS.get() && message.getAuthor().isWebhook()) return;
+        boolean trusted = isTrustedAuthor(message.getAuthor());
+        if (!trusted && ViscordConfigToml.Filters.IGNORE_BOTS.get() && message.getAuthor().isBotUser()) return;
+        if (!trusted && ViscordConfigToml.Filters.IGNORE_WEBHOOKS.get() && message.getAuthor().isWebhook()) return;
 
         String authorName = message.getAuthor().getDisplayName();
         String content = message.getContent();
@@ -264,9 +265,9 @@ public class DiscordManager {
         String mainChannelId = ViscordConfigToml.Discord.CHANNEL_ID.get();
         String evtChannelId = ViscordConfigToml.Discord.Events.CHANNEL_ID.get();
 
-        boolean isMainChannel = mainChannelId != null && mainChannelId.equals(msgChannelId);
+        boolean isMainChannel = isInChannelList(mainChannelId, msgChannelId);
         boolean isEventChannel = evtChannelId != null && !evtChannelId.isEmpty()
-            && evtChannelId.equals(msgChannelId);
+            && isInChannelList(evtChannelId, msgChannelId);
 
         if (!isMainChannel && !isEventChannel) return;
 
@@ -274,8 +275,9 @@ public class DiscordManager {
             handleTextListCommand(event); return;
         }
         if (isEventChannel && !ViscordConfigToml.Filters.SHOW_OTHER_SERVER_EVENTS.get()) return;
-        if (ViscordConfigToml.Filters.IGNORE_BOTS.get() && message.getAuthor().isBotUser()) return;
-        if (ViscordConfigToml.Filters.IGNORE_WEBHOOKS.get() && message.getAuthor().isWebhook()) return;
+        boolean trusted = isTrustedAuthor(message.getAuthor());
+        if (!trusted && ViscordConfigToml.Filters.IGNORE_BOTS.get() && message.getAuthor().isBotUser()) return;
+        if (!trusted && ViscordConfigToml.Filters.IGNORE_WEBHOOKS.get() && message.getAuthor().isWebhook()) return;
 
         if (ViscordConfigToml.Filters.FILTER_BY_PREFIX.get()) {
             String serverPrefix = ViscordConfigToml.Server.PREFIX.get();
@@ -730,6 +732,29 @@ public class DiscordManager {
         String foundPrefix = username.substring(0, end + 1);
         String myPrefix = ViscordConfigToml.Server.PREFIX.get();
         return myPrefix != null && !foundPrefix.equalsIgnoreCase(myPrefix);
+    }
+
+    /** Returns true if channelId is contained in a comma-separated config value. */
+    private static boolean isInChannelList(String configValue, String channelId) {
+        if (configValue == null || configValue.isEmpty() || channelId == null) return false;
+        for (String id : configValue.split(",")) {
+            if (id.trim().equals(channelId)) return true;
+        }
+        return false;
+    }
+
+    /**
+     * Returns true if this author should bypass ignoreBots/ignoreWebhooks filters.
+     * Matches against the trusted_bot_ids config by Discord user/webhook ID.
+     */
+    private static boolean isTrustedAuthor(org.javacord.api.entity.message.MessageAuthor author) {
+        String trusted = ViscordConfigToml.Filters.TRUSTED_BOT_IDS.get();
+        if (trusted == null || trusted.isEmpty()) return false;
+        String authorId = author.getIdAsString();
+        for (String id : trusted.split(",")) {
+            if (id.trim().equals(authorId)) return true;
+        }
+        return false;
     }
 
     private boolean isPlayerListEmbed(Embed embed) {

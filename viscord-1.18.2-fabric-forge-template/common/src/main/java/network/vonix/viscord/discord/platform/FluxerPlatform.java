@@ -9,7 +9,8 @@ import network.vonix.viscord.discord.FluxerBotClient;
 import network.vonix.viscord.discord.FluxerWebhookClient;
 import network.vonix.viscord.utils.DiscordFormatter;
 
-import java.util.Arrays;
+import java.util.ArrayList;
+import java.util.List;
 
 /**
  * Manages all Fluxer platform logic: gateway connection, webhook sending,
@@ -58,11 +59,14 @@ public class FluxerPlatform {
             return false;
         }
 
-        // Only listen to configured channels
-        botClient.setAllowedChannelIds(Arrays.asList(
-            channelId,
-            ViscordConfigToml.Fluxer.EVENT_CHANNEL_ID.get()
-        ));
+        // Only listen to configured channels (each value may be comma-separated)
+        List<String> allowedIds = new ArrayList<>();
+        for (String id : channelId.split(",")) { String t = id.trim(); if (!t.isEmpty()) allowedIds.add(t); }
+        String evtIds = ViscordConfigToml.Fluxer.EVENT_CHANNEL_ID.get();
+        if (evtIds != null && !evtIds.isEmpty()) {
+            for (String id : evtIds.split(",")) { String t = id.trim(); if (!t.isEmpty()) allowedIds.add(t); }
+        }
+        botClient.setAllowedChannelIds(allowedIds);
 
         // Register our own webhook ID so the bot can distinguish our echoes from other servers' messages
         String fluxerWebhookUrl = ViscordConfigToml.Fluxer.WEBHOOK_URL.get();
