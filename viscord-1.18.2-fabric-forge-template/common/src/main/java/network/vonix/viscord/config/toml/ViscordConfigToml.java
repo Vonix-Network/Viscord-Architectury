@@ -122,6 +122,11 @@ public class ViscordConfigToml {
             }
 
             try {
+                if (value instanceof Number) {
+                    if (defaultValue instanceof Integer) return (T) (Integer) ((Number) value).intValue();
+                    if (defaultValue instanceof Long) return (T) (Long) ((Number) value).longValue();
+                    if (defaultValue instanceof Double) return (T) (Double) ((Number) value).doubleValue();
+                }
                 return (T) value;
             } catch (ClassCastException e) {
                 return defaultValue;

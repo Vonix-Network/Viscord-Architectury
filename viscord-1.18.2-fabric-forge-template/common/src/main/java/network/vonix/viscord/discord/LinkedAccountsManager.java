@@ -8,8 +8,10 @@ import network.vonix.viscord.config.toml.ViscordConfigToml;
 
 import java.io.*;
 import java.lang.reflect.Type;
+import java.nio.charset.StandardCharsets;
 import java.nio.file.Files;
 import java.nio.file.Path;
+import java.security.SecureRandom;
 import java.util.*;
 import java.util.concurrent.ConcurrentHashMap;
 
@@ -22,6 +24,7 @@ public class LinkedAccountsManager {
 
     private static final Gson GSON = new GsonBuilder().setPrettyPrinting().create();
     private static final String LINKED_ACCOUNTS_FILE = "viscord-links.json";
+    private static final SecureRandom SECURE_RANDOM = new SecureRandom();
 
     // UUID -> LinkedAccount
     private final Map<UUID, LinkedAccount> linkedAccounts = new ConcurrentHashMap<>();
@@ -46,7 +49,7 @@ public class LinkedAccountsManager {
         // Generate unique 6-digit code
         String code;
         do {
-            code = String.format("%06d", new Random().nextInt(1000000));
+            code = String.format("%06d", SECURE_RANDOM.nextInt(1000000));
         } while (pendingLinks.containsKey(code));
 
         // Store pending link
@@ -68,33 +71,36 @@ public class LinkedAccountsManager {
             return new LinkResult(false, "Invalid or expired link code!");
         }
 
-        // Check if Minecraft account is already linked
-        LinkedAccount existing = linkedAccounts.get(pending.minecraftUUID);
-        if (existing != null) {
-            pendingLinks.remove(code);
-            return new LinkResult(false,
-                    "This Minecraft account is already linked to Discord user " + existing.discordUsername);
-        }
-
-        // Check if Discord account is already linked to another Minecraft account
-        for (LinkedAccount account : linkedAccounts.values()) {
-            if (account.discordId.equals(discordId)) {
+        synchronized (linkedAccounts) {
+            // Check if Minecraft account is already linked
+            LinkedAccount existing = linkedAccounts.get(pending.minecraftUUID);
+            if (existing != null) {
                 pendingLinks.remove(code);
                 return new LinkResult(false,
-                        "This Discord account is already linked to Minecraft player " + account.minecraftUsername);
+                        "This Minecraft account is already linked to Discord user " + existing.discordUsername);
             }
+
+            // Check if Discord account is already linked to another Minecraft account
+            for (LinkedAccount account : linkedAccounts.values()) {
+                if (account.discordId.equals(discordId)) {
+                    pendingLinks.remove(code);
+                    return new LinkResult(false,
+                            "This Discord account is already linked to Minecraft player " + account.minecraftUsername);
+                }
+            }
+
+            // Create link
+            LinkedAccount link = new LinkedAccount(
+                    pending.minecraftUUID,
+                    pending.minecraftUsername,
+                    discordId,
+                    discordUsername,
+                    System.currentTimeMillis());
+
+            linkedAccounts.put(pending.minecraftUUID, link);
+            pendingLinks.remove(code);
         }
 
-        // Create link
-        LinkedAccount link = new LinkedAccount(
-                pending.minecraftUUID,
-                pending.minecraftUsername,
-                discordId,
-                discordUsername,
-                System.currentTimeMillis());
-
-        linkedAccounts.put(pending.minecraftUUID, link);
-        pendingLinks.remove(code);
         save();
 
         Viscord.LOGGER.info("Successfully linked {} ({}) to Discord user {} ({})",
@@ -185,7 +191,7 @@ public class LinkedAccountsManager {
         try {
             Files.createDirectories(dataFile.getParent());
 
-            try (Writer writer = new FileWriter(dataFile.toFile())) {
+            try (Writer writer = new FileWriter(dataFile.toFile(), StandardCharsets.UTF_8)) {
                 Type type = new TypeToken<Map<UUID, LinkedAccount>>() {
                 }.getType();
                 GSON.toJson(linkedAccounts, type, writer);
@@ -208,7 +214,7 @@ public class LinkedAccountsManager {
             return;
         }
 
-        try (Reader reader = new FileReader(dataFile.toFile())) {
+        try (Reader reader = new FileReader(dataFile.toFile(), StandardCharsets.UTF_8)) {
             Type type = new TypeToken<Map<UUID, LinkedAccount>>() {
             }.getType();
             Map<UUID, LinkedAccount> loaded = GSON.fromJson(reader, type);

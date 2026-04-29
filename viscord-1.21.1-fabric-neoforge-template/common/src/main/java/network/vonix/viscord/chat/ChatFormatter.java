@@ -61,8 +61,8 @@ public class ChatFormatter {
             return Component.empty();
         }
 
-        // Convert & codes to § codes
-        text = text.replace("&", "§");
+        // Convert & codes to § codes (only when followed by a valid formatting code or # for hex)
+        text = text.replaceAll("&([0-9a-fk-orA-FK-OR#])", "§$1");
 
         // Parse hex colors (&#RRGGBB -> §x§R§R§G§G§B§B)
         Matcher hexMatcher = Pattern.compile("§#([0-9A-Fa-f]{6})").matcher(text);

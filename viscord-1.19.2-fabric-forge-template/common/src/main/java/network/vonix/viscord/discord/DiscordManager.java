@@ -38,7 +38,7 @@ import org.javacord.api.event.message.MessageCreateEvent;
  */
 public class DiscordManager {
 
-    private static DiscordManager instance;
+    private static volatile DiscordManager instance;
 
     // Platform delegates
     private final DiscordPlatform discordPlatform = new DiscordPlatform();
@@ -67,13 +67,13 @@ public class DiscordManager {
 
     private DiscordManager() {}
 
-    public static DiscordManager getInstance() {
+    public static synchronized DiscordManager getInstance() {
         if (instance == null) instance = new DiscordManager();
         return instance;
     }
 
     /** Resets the singleton so the next getInstance() returns a fresh instance. Call before reload. */
-    public static void resetInstance() {
+    public static synchronized void resetInstance() {
         instance = null;
     }
 
@@ -154,18 +154,14 @@ public class DiscordManager {
                 JsonObject embed = new JsonObject();
                 EmbedFactory.createServerStatusEmbed("Server Offline", "Server is shutting down", 0xF04747, serverName, "Viscord · Server Offline").accept(embed);
                 fluxerPlatform.sendEventEmbed(embed);
-                // Give Fluxer message time to send before disconnecting
-                try { Thread.sleep(1500); } catch (InterruptedException ignored) {}
             }
 
             if (usesDiscord()) {
-                // DiscordPlatform.shutdown() sends the shutdown embed internally and disconnects
                 CompletableFuture<?> shutdownFuture = discordPlatform.shutdown();
                 if (shutdownFuture != null) {
-                    shutdownFuture.orTimeout(3, TimeUnit.SECONDS)
-                        .whenComplete((m, e) -> fluxerPlatform.shutdown());
-                    Thread.sleep(100);
-                    return;
+                    try {
+                        shutdownFuture.orTimeout(3, TimeUnit.SECONDS).join();
+                    } catch (Exception ignored) {}
                 }
             }
 
@@ -271,9 +267,6 @@ public class DiscordManager {
 
         if (!isMainChannel && !isEventChannel) return;
 
-        if (message.getContent().trim().equalsIgnoreCase("!list")) {
-            handleTextListCommand(event); return;
-        }
         if (isEventChannel && !ViscordConfigToml.Filters.SHOW_OTHER_SERVER_EVENTS.get()) return;
         boolean trusted = isTrustedAuthor(message.getAuthor());
         if (!trusted && ViscordConfigToml.Filters.IGNORE_BOTS.get() && message.getAuthor().isBotUser()) return;
@@ -799,53 +792,61 @@ public class DiscordManager {
     }
 
     private void handleTextListCommand(MessageCreateEvent event) {
-        try {
-            if (server == null) return;
-            java.util.List<net.minecraft.server.level.ServerPlayer> players = server.getPlayerList().getPlayers();
-            int online = players.size();
-            int max = server.getPlayerList().getMaxPlayers();
-            org.javacord.api.entity.message.embed.EmbedBuilder embed =
-                new org.javacord.api.entity.message.embed.EmbedBuilder()
-                    .setTitle("\uD83D\uDCCB " + ViscordConfigToml.Server.NAME.get())
-                    .setColor(java.awt.Color.GREEN)
-                    .setFooter("Viscord · Player List");
-            if (online == 0) {
-                embed.setDescription("No players are currently online.");
-            } else {
-                StringBuilder sb = new StringBuilder();
-                for (int i = 0; i < players.size(); i++) {
-                    if (i > 0) sb.append("\n");
-                    sb.append("• ").append(players.get(i).getName().getString());
+        if (server == null) return;
+        server.execute(() -> {
+            try {
+                java.util.List<net.minecraft.server.level.ServerPlayer> players = server.getPlayerList().getPlayers();
+                int online = players.size();
+                int max = server.getPlayerList().getMaxPlayers();
+                org.javacord.api.entity.message.embed.EmbedBuilder embed =
+                    new org.javacord.api.entity.message.embed.EmbedBuilder()
+                        .setTitle("\uD83D\uDCCB " + ViscordConfigToml.Server.NAME.get())
+                        .setColor(java.awt.Color.GREEN)
+                        .setFooter("Viscord \u00B7 Player List");
+                if (online == 0) {
+                    embed.setDescription("No players are currently online.");
+                } else {
+                    StringBuilder sb = new StringBuilder();
+                    for (int i = 0; i < players.size(); i++) {
+                        if (i > 0) sb.append("
+");
+                        sb.append("\u2022 ").append(players.get(i).getName().getString());
+                    }
+                    embed.addField("Players " + online + "/" + max, sb.toString(), false);
                 }
-                embed.addField("Players " + online + "/" + max, sb.toString(), false);
+                Viscord.executeAsync(() -> event.getChannel().sendMessage(embed)
+                    .exceptionally(t -> { Viscord.LOGGER.error("[Discord] Failed to send !list embed", t); return null; }));
+            } catch (Exception e) {
+                Viscord.LOGGER.error("[Discord] Error handling !list command", e);
             }
-            event.getChannel().sendMessage(embed);
-        } catch (Exception e) {
-            Viscord.LOGGER.error("[Discord] Error handling !list command", e);
-        }
+        });
     }
 
-    /** Handles !list command received from Fluxer — sends player list back to Fluxer event channel. */
+    /** Handles !list command received from Fluxer -- sends player list back to Fluxer event channel. */
     private void handleFluxerListCommand() {
         if (server == null) return;
-        try {
-            java.util.List<net.minecraft.server.level.ServerPlayer> players = server.getPlayerList().getPlayers();
-            int online = players.size();
-            int max = server.getPlayerList().getMaxPlayers();
-            StringBuilder sb = new StringBuilder();
-            sb.append("\uD83D\uDCCB **").append(ViscordConfigToml.Server.NAME.get()).append("** — Players ")
-              .append(online).append("/").append(max).append("\n");
-            if (online == 0) {
-                sb.append("No players are currently online.");
-            } else {
-                for (net.minecraft.server.level.ServerPlayer p : players) {
-                    sb.append("• ").append(p.getName().getString()).append("\n");
+        server.execute(() -> {
+            try {
+                java.util.List<net.minecraft.server.level.ServerPlayer> players = server.getPlayerList().getPlayers();
+                int online = players.size();
+                int max = server.getPlayerList().getMaxPlayers();
+                StringBuilder sb = new StringBuilder();
+                sb.append("\uD83D\uDCCB **").append(ViscordConfigToml.Server.NAME.get()).append("** -- Players ")
+                  .append(online).append("/").append(max).append("
+");
+                if (online == 0) {
+                    sb.append("No players are currently online.");
+                } else {
+                    for (net.minecraft.server.level.ServerPlayer p : players) {
+                        sb.append("\u2022 ").append(p.getName().getString()).append("
+");
+                    }
                 }
+                fluxerPlatform.sendEventMessage(sb.toString().trim());
+            } catch (Exception e) {
+                Viscord.LOGGER.error("[Fluxer] Error handling !list command", e);
             }
-            fluxerPlatform.sendEventMessage(sb.toString().trim());
-        } catch (Exception e) {
-            Viscord.LOGGER.error("[Fluxer] Error handling !list command", e);
-        }
+        });
     }
 
     private void handleLinkCommand(MessageCreateEvent event) {

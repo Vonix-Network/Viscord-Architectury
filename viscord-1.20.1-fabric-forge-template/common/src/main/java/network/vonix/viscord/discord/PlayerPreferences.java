@@ -9,9 +9,9 @@ import network.vonix.viscord.config.toml.ViscordConfigToml;
 import java.io.IOException;
 import java.nio.file.Files;
 import java.nio.file.Path;
-import java.util.HashMap;
 import java.util.Map;
 import java.util.UUID;
+import java.util.concurrent.ConcurrentHashMap;
 
 /**
  * Manages per-player preferences for Discord features.
@@ -24,7 +24,7 @@ public class PlayerPreferences {
 
     public PlayerPreferences(Path configDir) throws IOException {
         this.preferencesFile = configDir.resolve("viscord-preferences.json");
-        this.preferences = new HashMap<>();
+        this.preferences = new ConcurrentHashMap<>();
         loadPreferences();
     }
 

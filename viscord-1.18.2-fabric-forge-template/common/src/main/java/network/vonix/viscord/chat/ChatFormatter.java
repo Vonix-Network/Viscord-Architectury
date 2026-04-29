@@ -31,12 +31,12 @@ public class ChatFormatter {
     public static Component formatChatMessage(ServerPlayer player, String message) {
         String playerName = player.getName().getString();
         
-        net.minecraft.network.chat.MutableComponent result = new net.minecraft.network.chat.TextComponent("");
+        net.minecraft.network.chat.MutableComponent result = Component.empty();
         
-        net.minecraft.network.chat.MutableComponent nameComponent = new net.minecraft.network.chat.TextComponent("<" + playerName + "> ")
+        net.minecraft.network.chat.MutableComponent nameComponent = Component.literal("<" + playerName + "> ")
                 .setStyle(Style.EMPTY.withHoverEvent(new HoverEvent(
                         HoverEvent.Action.SHOW_TEXT,
-                        new net.minecraft.network.chat.TextComponent("§7Click to message §e" + playerName))).withClickEvent(new ClickEvent(
+                        Component.literal("§7Click to message §e" + playerName))).withClickEvent(new ClickEvent(
                                 ClickEvent.Action.SUGGEST_COMMAND,
                                 "/msg " + playerName + " ")));
                                 
@@ -50,7 +50,7 @@ public class ChatFormatter {
      * Format display name for tab list / scoreboard.
      */
     public static Component formatDisplayName(ServerPlayer player) {
-        return new net.minecraft.network.chat.TextComponent(player.getName().getString());
+        return Component.literal(player.getName().getString());
     }
 
     /**
@@ -58,11 +58,11 @@ public class ChatFormatter {
      */
     public static MutableComponent parseColors(String text) {
         if (text == null || text.isEmpty()) {
-            return new net.minecraft.network.chat.TextComponent("");
+            return Component.empty();
         }
 
-        // Convert & codes to § codes
-        text = text.replace("&", "§");
+        // Convert & codes to § codes (only when followed by a valid formatting code or # for hex)
+        text = text.replaceAll("&([0-9a-fk-orA-FK-OR#])", "§$1");
 
         // Parse hex colors (&#RRGGBB -> §x§R§R§G§G§B§B)
         Matcher hexMatcher = Pattern.compile("§#([0-9A-Fa-f]{6})").matcher(text);
@@ -81,7 +81,7 @@ public class ChatFormatter {
         // Parse MiniMessage-style tags
         text = parseMiniMessageTags(text);
 
-        return new net.minecraft.network.chat.TextComponent(text);
+        return Component.literal(text);
     }
 
     /**
@@ -155,14 +155,14 @@ public class ChatFormatter {
      * Create a gradient between two colors.
      */
     public static MutableComponent gradient(String text, int startColor, int endColor) {
-        MutableComponent result = new net.minecraft.network.chat.TextComponent("");
+        MutableComponent result = Component.empty();
         int length = text.length();
 
         for (int i = 0; i < length; i++) {
             float ratio = (float) i / Math.max(1, length - 1);
             int color = interpolateColor(startColor, endColor, ratio);
 
-            result.append(new net.minecraft.network.chat.TextComponent(String.valueOf(text.charAt(i)))
+            result.append(Component.literal(String.valueOf(text.charAt(i)))
                     .setStyle(Style.EMPTY.withColor(TextColor.fromRgb(color))));
         }
 
@@ -189,13 +189,13 @@ public class ChatFormatter {
      * Rainbow text effect.
      */
     public static MutableComponent rainbow(String text) {
-        MutableComponent result = new net.minecraft.network.chat.TextComponent("");
+        MutableComponent result = Component.empty();
         int[] colors = { 0xFF0000, 0xFF7F00, 0xFFFF00, 0x00FF00, 0x0000FF, 0x4B0082, 0x9400D3 };
         int length = text.length();
 
         for (int i = 0; i < length; i++) {
             int colorIndex = (int) ((float) i / length * colors.length) % colors.length;
-            result.append(new net.minecraft.network.chat.TextComponent(String.valueOf(text.charAt(i)))
+            result.append(Component.literal(String.valueOf(text.charAt(i)))
                     .setStyle(Style.EMPTY.withColor(TextColor.fromRgb(colors[colorIndex]))));
         }
 

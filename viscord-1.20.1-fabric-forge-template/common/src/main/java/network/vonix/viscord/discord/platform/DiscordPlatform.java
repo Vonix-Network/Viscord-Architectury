@@ -91,6 +91,9 @@ public class DiscordPlatform {
     public CompletableFuture<org.javacord.api.entity.message.Message> shutdown() {
         CompletableFuture<org.javacord.api.entity.message.Message> shutdownFuture =
             sendShutdownEmbed(ViscordConfigToml.Server.NAME.get());
+        try {
+            shutdownFuture.orTimeout(3, TimeUnit.SECONDS).join();
+        } catch (Exception ignored) {}
         try { botClient.disconnect(); } catch (Exception e) {
             Viscord.LOGGER.error("[Discord] Error disconnecting bot: {}", e.getMessage());
         }

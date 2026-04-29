@@ -7,6 +7,24 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [4.1.7] - 2026-04-29
+
+### Fixed
+- **Thread-safety: volatile singleton** — `DiscordManager.instance` was a plain (non-volatile) static field; `getInstance()` and `resetInstance()` are now `synchronized` and the field is `volatile`, eliminating a double-checked-locking race on multi-core JVMs (all templates)
+- **Thread-safety: `discordEnabled` flag** — `Viscord.discordEnabled` was set from an async thread and read from the server thread with no visibility guarantee; field is now `volatile` (all templates)
+- **Thread-safety: `PlayerPreferences` map** — changed backing store from `HashMap` to `ConcurrentHashMap` to prevent `ConcurrentModificationException` when server thread reads while async thread writes (all templates)
+- **Shutdown: `Thread.sleep` on server thread** — `DiscordManager.shutdown()` was calling `Thread.sleep(1500)` and `Thread.sleep(100)` directly on the Minecraft server thread during `SERVER_STOPPING`; both sleeps removed and the Discord shutdown future is now joined with a 3-second timeout instead (all templates)
+- **Shutdown: shutdown embed dropped** — `DiscordPlatform.shutdown()` was calling `botClient.disconnect()` immediately after firing the async shutdown embed, so the embed HTTP request was typically cancelled; now waits up to 3 seconds for the embed future before disconnecting (all templates)
+- **Shutdown: `ASYNC_EXECUTOR` never terminated** — the cached thread pool was never shut down on `SERVER_STOPPING`, leaving non-daemon threads alive after server stop; executor is now shut down with a 5-second `awaitTermination` (all templates)
+- **Shutdown: `WebhookClient` dispatcher not awaited** — `WebhookClient.shutdown()` called `executorService().shutdown()` but never waited for in-flight requests to finish; now calls `awaitTermination(3, SECONDS)` so in-progress webhook sends are not abandoned (all templates)
+- **Security: predictable link codes** — `LinkedAccountsManager` used `new Random()` (time-seeded, predictable) to generate 6-digit account-link codes; replaced with a shared `SecureRandom` instance (all templates)
+- **Security: account-link TOCTOU** — the "is Discord already linked?" check and `linkedAccounts.put()` in `verifyAndLink` were not atomic; concurrent `/link` calls could bind one Discord account to two Minecraft UUIDs; protected by a `synchronized (linkedAccounts)` block (all templates)
+- **Data integrity: `FileWriter`/`FileReader` without charset** — `LinkedAccountsManager` used platform-default encoding; both now explicitly use `StandardCharsets.UTF_8` to prevent non-ASCII username corruption on Windows (all templates)
+- **Config: `Long` → `Integer` silent coercion failure** — NightConfig stores TOML integers as `Long`; `ConfigValue<Integer>.get()` was catching `ClassCastException` and silently returning the hardcoded default, ignoring all user-configured integer values (e.g. `account_linking.code_expiry`); added `Number` coercion before the cast (all templates)
+- **Thread-safety: `!list` player list read off server thread** — `handleTextListCommand` and `handleFluxerListCommand` called `server.getPlayerList().getPlayers()` directly on the Javacord/Fluxer WebSocket thread, violating Minecraft's thread-safety model; both methods now marshal via `server.execute()` before accessing player list state (all templates)
+- **Duplicate `!list` handling** — `processDiscordMessageForMinecraft` re-checked for `!list` after `onDiscordMessage` had already handled and returned, causing the player-list embed to be sent twice per command; duplicate guard removed (all templates)
+- **Chat formatting: `&` replacement breaks URLs** — `ChatFormatter.parseColors` unconditionally replaced all `&` with `§`, corrupting URLs like `?a=1&b=2` into `?a=1§b=2`; now only replaces `&` when followed by a valid Minecraft formatting code character or `#` for hex colors (all templates)
+
 ## [4.1.6] - 2026-04-28
 
 ### Added

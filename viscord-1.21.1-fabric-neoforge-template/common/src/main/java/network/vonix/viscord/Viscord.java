@@ -16,7 +16,7 @@ public final class Viscord {
     public static final String MOD_ID = "viscord";
     public static final Logger LOGGER = LogManager.getLogger(MOD_ID);
     private static Viscord instance;
-    private boolean discordEnabled = false;
+    private volatile boolean discordEnabled = false;
     public static final ExecutorService ASYNC_EXECUTOR = Executors.newCachedThreadPool();
 
     public static void executeAsync(Runnable runnable) {
@@ -86,6 +86,13 @@ public final class Viscord {
                 } catch (Exception e) {
                     LOGGER.error("[{}] Error during Discord shutdown", MOD_ID, e);
                 }
+            }
+            ASYNC_EXECUTOR.shutdown();
+            try {
+                if (!ASYNC_EXECUTOR.awaitTermination(5, TimeUnit.SECONDS))
+                    LOGGER.warn("[{}] Async executor did not terminate in time", MOD_ID);
+            } catch (InterruptedException ignored) {
+                Thread.currentThread().interrupt();
             }
         });
     }

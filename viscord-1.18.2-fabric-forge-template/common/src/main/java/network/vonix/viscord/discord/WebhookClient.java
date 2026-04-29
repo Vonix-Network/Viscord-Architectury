@@ -89,6 +89,11 @@ public class WebhookClient {
 
     public void shutdown() {
         httpClient.dispatcher().executorService().shutdown();
+        try {
+            httpClient.dispatcher().executorService().awaitTermination(3, TimeUnit.SECONDS);
+        } catch (InterruptedException ignored) {
+            Thread.currentThread().interrupt();
+        }
         httpClient.connectionPool().evictAll();
     }
 }
