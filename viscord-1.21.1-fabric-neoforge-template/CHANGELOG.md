@@ -7,10 +7,18 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [4.1.9] - 2026-04-30
+
+### Fixed
+- **Display name toggle not respected in all message paths** — `DiscordManager` had four code paths (tridirectional bridge author name, direct message author, embed fallback author, player-list embed author) that called `.getDisplayName()` directly without checking the `formats.use_display_name` config, so setting it to `false` had no effect on those paths. All four now go through a shared `resolveAuthorName()` helper that checks the config (all templates)
+- **New config keys missing from existing TOML on upgrade** — `TomlConfigManager.createConfigSpec()` and `applyDefaults()` were both missing `messages.use_display_name` and `filters.trusted_bot_ids`, so `ConfigSpec.correct()` never injected them into existing `viscord.toml` files on server start. Users upgrading from 4.1.5 would not see these options in their config. Both keys are now registered in the spec and defaults (all templates)
+- **`use_display_name = true` shows username instead of display name** — `resolveAuthorName()` called `MessageAuthor.getDisplayName()` which resolves to server nickname or falls back directly to the plain username, skipping Discord's global display name (`global_name`). For users with no server nickname the setting had no effect. Now unwraps to the `User` object and resolves: server nickname → global display name → username (all templates)
+
 ## [4.1.8] - 2026-04-30
 
 ### Fixed
 - **Echo loop prevention**: Minecraft→Discord messages no longer echo back into game chat regardless of `ignore_bots`, `ignore_webhooks`, or `filter_by_prefix` settings. `onDiscordMessage` now unconditionally blocks messages from this server's own origin via three independent checks: (1) webhook ID matched against the numeric ID extracted from `discord.webhook_url`, (2) bot user ID matched against the connected bot's own account, (3) author display name prefix matched against the configured `server.prefix` pattern (all templates)
+- **`!list` corrupted output**: `handleTextListCommand` and `handleFluxerListCommand` had literal newline characters embedded directly in string literals (`sb.append("↵")`), which produced garbled player-list output; replaced with proper `"\n"` escape sequences (all templates)
 
 ## [4.1.7] - 2026-04-29
 

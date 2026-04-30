@@ -209,7 +209,7 @@ public class DiscordManager {
         if (!trusted && ViscordConfigToml.Filters.IGNORE_BOTS.get() && message.getAuthor().isBotUser()) return;
         if (!trusted && ViscordConfigToml.Filters.IGNORE_WEBHOOKS.get() && message.getAuthor().isWebhook()) return;
 
-        String authorName = message.getAuthor().getDisplayName();
+        String authorName = resolveAuthorName(message.getAuthor());
         String content = message.getContent();
 
         processDiscordMessageForMinecraft(event);
@@ -290,7 +290,7 @@ public class DiscordManager {
         }
 
         boolean isWebhook = message.getAuthor().isWebhook();
-        String authorName = message.getAuthor().getDisplayName();
+        String authorName = resolveAuthorName(message.getAuthor());
         String content = message.getContent();
 
         if (!message.getEmbeds().isEmpty()) {
@@ -436,7 +436,7 @@ public class DiscordManager {
             embed.getDescription().ifPresent(d -> { if (!d.trim().isEmpty()) content.append(d.trim()); });
             String text = content.toString().trim();
             if (text.isEmpty()) return null;
-            String authorName = event.getMessageAuthor().getDisplayName();
+            String authorName = resolveAuthorName(event.getMessageAuthor());
             String formatted;
             if (authorName != null && authorName.startsWith("[") && authorName.contains("]")) {
                 int end = authorName.indexOf("]");
@@ -792,6 +792,20 @@ public class DiscordManager {
      * Returns true if this author should bypass ignoreBots/ignoreWebhooks filters.
      * Matches against the trusted_bot_ids config by Discord user/webhook ID.
      */
+    private static String resolveAuthorName(org.javacord.api.entity.message.MessageAuthor author) {
+        if (!ViscordConfigToml.Messages.USE_DISPLAY_NAME.get()) {
+            return author.getName();
+        }
+        // Resolution order: server nickname → global display name → username.
+        // MessageAuthor.getDisplayName() skips the global display name and falls back
+        // directly to username when no server nickname is set, so we unwrap to User.
+        return author.asUser()
+                .map(user -> author.getServer()
+                        .flatMap(server -> user.getNickname(server))
+                        .orElseGet(user::getDisplayName))
+                .orElseGet(author::getDisplayName);
+    }
+
     private static boolean isTrustedAuthor(org.javacord.api.entity.message.MessageAuthor author) {
         String trusted = ViscordConfigToml.Filters.TRUSTED_BOT_IDS.get();
         if (trusted == null || trusted.isEmpty()) return false;
@@ -809,7 +823,7 @@ public class DiscordManager {
 
     private void processPlayerListEmbed(Embed embed, MessageCreateEvent event) {
         try {
-            String authorName = event.getMessageAuthor().getDisplayName();
+            String authorName = resolveAuthorName(event.getMessageAuthor());
             String serverPrefix = extractServerPrefixFromAuthor(authorName);
 
             StringBuilder sb = new StringBuilder();

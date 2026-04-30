@@ -228,6 +228,7 @@ public class TomlConfigManager {
         spec.define("messages.discord_to_minecraft", "[Discord] {username}: {message}");
         spec.define("messages.minecraft_to_discord", "{message}");
         spec.define("messages.webhook_username", "{prefix} {username}");
+        spec.define("messages.use_display_name", true);
 
         // [messages.events] section
         spec.define("messages.events.join", true);
@@ -238,6 +239,7 @@ public class TomlConfigManager {
         // [filters] section
         spec.define("filters.ignore_bots", true);
         spec.define("filters.ignore_webhooks", true);
+        spec.define("filters.trusted_bot_ids", "");
         spec.define("filters.filter_by_prefix", true);
         spec.define("filters.show_other_server_events", true);
 
@@ -301,6 +303,7 @@ public class TomlConfigManager {
         config.set("messages.discord_to_minecraft", "[Discord] {username}: {message}");
         config.set("messages.minecraft_to_discord", "{message}");
         config.set("messages.webhook_username", "{prefix} {username}");
+        config.set("messages.use_display_name", true);
 
         // [messages.events] section
         config.set("messages.events.join", true);
@@ -311,6 +314,7 @@ public class TomlConfigManager {
         // [filters] section
         config.set("filters.ignore_bots", true);
         config.set("filters.ignore_webhooks", true);
+        config.set("filters.trusted_bot_ids", "");
         config.set("filters.filter_by_prefix", true);
         config.set("filters.show_other_server_events", true);
 
@@ -415,6 +419,9 @@ public class TomlConfigManager {
                 "Placeholder: {message}");
         config.setComment("messages.webhook_username", "Webhook display name format (Discord only)\n" +
                 "Placeholders: {prefix}, {username}");
+        config.setComment("messages.use_display_name", "Show Discord display name (server nickname) instead of username in Minecraft chat\n" +
+                "  true  - use server nickname / global display name\n" +
+                "  false - use the plain @username");
 
         // [messages.events] comments
         config.setComment("messages.events", "Event Notifications\n" +
@@ -429,6 +436,10 @@ public class TomlConfigManager {
                 "Prevent message loops and filter unwanted content");
         config.setComment("filters.ignore_bots", "Ignore bot messages from Discord/Fluxer");
         config.setComment("filters.ignore_webhooks", "Ignore other webhook messages (prevents echo loops)");
+        config.setComment("filters.trusted_bot_ids", "Trusted bot/webhook IDs whose messages always pass through (comma-separated)\n" +
+                "Use to receive event embeds from other servers' Viscord bots\n" +
+                "Right-click bot -> Copy ID in Discord (Developer Mode required)\n" +
+                "Example: \"123456789,987654321\"");
         config.setComment("filters.filter_by_prefix", "Filter messages by server prefix (prevents echoing your own server's bridged messages back)");
         config.setComment("filters.show_other_server_events", "Show events from other servers in Minecraft chat (multi-server setups)");
 
