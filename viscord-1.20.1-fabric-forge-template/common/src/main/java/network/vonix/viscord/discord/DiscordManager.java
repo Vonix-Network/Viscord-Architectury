@@ -194,6 +194,10 @@ public class DiscordManager {
 
         if (!isMainChannel && !isEventChannel) return;
 
+        // Always block messages originating from this server (webhook ID, bot ID, or prefix match)
+        // regardless of IGNORE_BOTS / IGNORE_WEBHOOKS / FILTER_BY_PREFIX settings.
+        if (isSelfOriginated(message)) return;
+
         if (message.getContent().trim().equalsIgnoreCase("!list")) {
             handleTextListCommand(event); return;
         }
@@ -737,6 +741,54 @@ public class DiscordManager {
     }
 
     /**
+     * Returns true if this message was sent by this server's own bot or webhook,
+     * blocking it unconditionally to prevent Minecraft→Discord→Minecraft echo loops.
+     * Checks webhook ID (extracted from webhook URL), bot ID, and server prefix pattern.
+     */
+    private boolean isSelfOriginated(Message message) {
+        org.javacord.api.entity.message.MessageAuthor author = message.getAuthor();
+
+        // Webhook ID check — matches only our configured webhook, not arbitrary webhooks
+        if (author.isWebhook()) {
+            String webhookUrl = ViscordConfigToml.Discord.WEBHOOK_URL.get();
+            String webhookId = extractWebhookId(webhookUrl);
+            if (webhookId != null && webhookId.equals(author.getIdAsString())) return true;
+        }
+
+        // Bot ID check — bot's own user ID (complements BotClient's isYourself() guard)
+        if (author.isBotUser()) {
+            String botId = discordPlatform.getBotUserId();
+            if (botId != null && botId.equals(author.getIdAsString())) return true;
+        }
+
+        // Prefix check — webhook username always starts with the server prefix when sent by us
+        String serverPrefix = ViscordConfigToml.Server.PREFIX.get();
+        if (serverPrefix != null && !serverPrefix.isEmpty()) {
+            String authorName = author.getDisplayName();
+            String webhookFormat = ViscordConfigToml.Messages.WEBHOOK_USERNAME.get();
+            if (webhookFormat != null && webhookFormat.contains("{prefix}")) {
+                String expectedStart = webhookFormat.split("\\{prefix\\}", 2)[0] + serverPrefix;
+                if (authorName.startsWith(expectedStart)) return true;
+            }
+            if (authorName.startsWith(serverPrefix)) return true;
+        }
+
+        return false;
+    }
+
+    /** Extracts the numeric webhook ID from a Discord webhook URL. */
+    private static String extractWebhookId(String webhookUrl) {
+        if (webhookUrl == null || webhookUrl.isEmpty()) return null;
+        String[] parts = webhookUrl.split("/");
+        for (int i = 0; i < parts.length - 1; i++) {
+            if ("webhooks".equals(parts[i]) && parts[i + 1].matches("\\d+")) {
+                return parts[i + 1];
+            }
+        }
+        return null;
+    }
+
+    /**
      * Returns true if this author should bypass ignoreBots/ignoreWebhooks filters.
      * Matches against the trusted_bot_ids config by Discord user/webhook ID.
      */
@@ -808,8 +860,7 @@ public class DiscordManager {
                 } else {
                     StringBuilder sb = new StringBuilder();
                     for (int i = 0; i < players.size(); i++) {
-                        if (i > 0) sb.append("
-");
+                        if (i > 0) sb.append("\n");
                         sb.append("\u2022 ").append(players.get(i).getName().getString());
                     }
                     embed.addField("Players " + online + "/" + max, sb.toString(), false);
@@ -832,14 +883,12 @@ public class DiscordManager {
                 int max = server.getPlayerList().getMaxPlayers();
                 StringBuilder sb = new StringBuilder();
                 sb.append("\uD83D\uDCCB **").append(ViscordConfigToml.Server.NAME.get()).append("** -- Players ")
-                  .append(online).append("/").append(max).append("
-");
+                  .append(online).append("/").append(max).append("\n");
                 if (online == 0) {
                     sb.append("No players are currently online.");
                 } else {
                     for (net.minecraft.server.level.ServerPlayer p : players) {
-                        sb.append("\u2022 ").append(p.getName().getString()).append("
-");
+                        sb.append("\u2022 ").append(p.getName().getString()).append("\n");
                     }
                 }
                 fluxerPlatform.sendEventMessage(sb.toString().trim());

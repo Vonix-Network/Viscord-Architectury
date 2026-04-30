@@ -157,4 +157,9 @@ public class BotClient {
     public boolean isConnected() {
         return api != null;
     }
+
+    /** Returns the bot's own Discord user ID, or null if not connected. */
+    public String getBotUserId() {
+        return api != null ? api.getYourself().getIdAsString() : null;
+    }
 }

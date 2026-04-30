@@ -7,6 +7,29 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [4.1.8] - 2026-04-30
+
+### Fixed
+- **Echo loop prevention**: Minecraft→Discord messages no longer echo back into game chat regardless of `ignore_bots`, `ignore_webhooks`, or `filter_by_prefix` settings. `onDiscordMessage` now unconditionally blocks messages from this server's own origin via three independent checks: (1) webhook ID matched against the numeric ID extracted from `discord.webhook_url`, (2) bot user ID matched against the connected bot's own account, (3) author display name prefix matched against the configured `server.prefix` pattern (all templates)
+
+## [4.1.7] - 2026-04-29
+
+### Fixed
+- **Thread-safety: volatile singleton** — `DiscordManager.instance` is now `volatile` with synchronized `getInstance`/`resetInstance` (all templates)
+- **Thread-safety: `discordEnabled` flag** — `Viscord.discordEnabled` is now `volatile` (all templates)
+- **Thread-safety: `PlayerPreferences` map** — backing store changed from `HashMap` to `ConcurrentHashMap` (all templates)
+- **Shutdown: `Thread.sleep` on server thread** — removed `Thread.sleep(1500/100)` from `DiscordManager.shutdown()`; shutdown future now joined with a 3-second timeout (all templates)
+- **Shutdown: shutdown embed dropped** — `DiscordPlatform.shutdown()` now waits up to 3 seconds for the embed future before calling `botClient.disconnect()` (all templates)
+- **Shutdown: `ASYNC_EXECUTOR` never terminated** — executor now shut down with 5-second `awaitTermination` on `SERVER_STOPPING` (all templates)
+- **Shutdown: `WebhookClient` dispatcher not awaited** — `WebhookClient.shutdown()` now calls `awaitTermination(3, SECONDS)` (all templates)
+- **Security: predictable link codes** — `LinkedAccountsManager` replaced `new Random()` with `SecureRandom` (all templates)
+- **Security: account-link TOCTOU** — `verifyAndLink` check-then-put now protected by `synchronized (linkedAccounts)` (all templates)
+- **Data integrity: charset in file I/O** — `LinkedAccountsManager` now explicitly uses `UTF-8` in `FileWriter`/`FileReader` (all templates)
+- **Config: `Long` → `Integer` coercion** — `ConfigValue<Integer>.get()` now coerces via `Number` before casting, fixing silent fallback to defaults for all integer config values (all templates)
+- **Thread-safety: `!list` off server thread** — `handleTextListCommand` and `handleFluxerListCommand` now marshal via `server.execute()` (all templates)
+- **Duplicate `!list` handling** — removed duplicate guard in `processDiscordMessageForMinecraft` that sent the player-list embed twice (all templates)
+- **Chat formatting: `&` breaks URLs** — `ChatFormatter.parseColors` now only replaces `&` when followed by a valid Minecraft format code character (all templates)
+
 ## [4.1.6] - 2026-04-28
 
 ### Added

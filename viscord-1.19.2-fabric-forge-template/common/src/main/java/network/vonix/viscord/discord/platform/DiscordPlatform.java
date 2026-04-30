@@ -213,6 +213,11 @@ public class DiscordPlatform {
         return botClient.isConnected();
     }
 
+    /** Returns the bot's own Discord user ID, or null if not connected. */
+    public String getBotUserId() {
+        return botClient.getBotUserId();
+    }
+
     public boolean isConfigured() {
         String webhookUrl = ViscordConfigToml.Discord.WEBHOOK_URL.get();
         return webhookUrl != null && !webhookUrl.isEmpty();
