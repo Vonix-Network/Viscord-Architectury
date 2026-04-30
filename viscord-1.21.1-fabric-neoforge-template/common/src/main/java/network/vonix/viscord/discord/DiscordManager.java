@@ -796,13 +796,11 @@ public class DiscordManager {
         if (!ViscordConfigToml.Messages.USE_DISPLAY_NAME.get()) {
             return author.getName();
         }
-        // Resolution order: server nickname → global display name → username.
-        // MessageAuthor.getDisplayName() skips the global display name and falls back
-        // directly to username when no server nickname is set, so we unwrap to User.
+        // User.getDisplayName() returns the global display name (global_name) if set,
+        // otherwise the username. MessageAuthor.getDisplayName() skips global_name and
+        // falls back directly to the username, so we unwrap to User when possible.
         return author.asUser()
-                .map(user -> author.getServer()
-                        .flatMap(server -> user.getNickname(server))
-                        .orElseGet(user::getDisplayName))
+                .<String>map(org.javacord.api.entity.user.User::getDisplayName)
                 .orElseGet(author::getDisplayName);
     }
 
