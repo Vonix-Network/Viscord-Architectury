@@ -7,6 +7,7 @@ import net.minecraft.network.chat.Component;
 import net.minecraft.network.chat.HoverEvent;
 import net.minecraft.network.chat.MutableComponent;
 import net.minecraft.network.chat.Style;
+import net.minecraft.network.chat.TextComponent;
 import net.minecraft.server.MinecraftServer;
 import net.minecraft.server.level.ServerPlayer;
 import network.vonix.viscord.Viscord;
@@ -325,7 +326,7 @@ public class DiscordManager {
             }
         }
 
-        MutableComponent finalComponent = Component.empty();
+        MutableComponent finalComponent = new TextComponent("");
         if (isWebhook) {
             String cleanedContent = content;
             if (content.startsWith(authorName + ": ")) cleanedContent = content.substring(authorName.length() + 2);
@@ -357,11 +358,11 @@ public class DiscordManager {
                 String[] parts = rawFormat.split("\\[Discord\\]", 2);
                 if (parts.length > 0 && !parts[0].isEmpty())
                     finalComponent.append(toMinecraftComponentWithLinks(parts[0]));
-                finalComponent.append(Component.literal("[Discord]").setStyle(Style.EMPTY
+                finalComponent.append(new TextComponent("[Discord]").setStyle(Style.EMPTY
                     .withColor(ChatFormatting.AQUA)
                     .withClickEvent(new ClickEvent(ClickEvent.Action.OPEN_URL, inviteUrl))
                     .withHoverEvent(new HoverEvent(HoverEvent.Action.SHOW_TEXT,
-                        Component.literal("Click to join our Discord!")))));
+                        new TextComponent("Click to join our Discord!")))));
                 if (parts.length > 1 && !parts[1].isEmpty())
                     finalComponent.append(toMinecraftComponentWithLinks(parts[1]));
             } else {
@@ -461,39 +462,39 @@ public class DiscordManager {
     }
 
     private Component toMinecraftComponentWithLinks(String text) {
-        if (text == null || text.isEmpty()) return Component.empty();
+        if (text == null || text.isEmpty()) return new TextComponent("");
         Matcher matcher = DISCORD_MARKDOWN_LINK.matcher(text);
-        MutableComponent result = Component.empty();
+        MutableComponent result = new TextComponent("");
         int lastEnd = 0;
         boolean hasLink = false;
         while (matcher.find()) {
-            if (matcher.start() > lastEnd) result.append(Component.literal(text.substring(lastEnd, matcher.start())));
-            result.append(Component.literal(matcher.group(1)).withStyle(style -> style
+            if (matcher.start() > lastEnd) result.append(new TextComponent(text.substring(lastEnd, matcher.start())));
+            result.append(new TextComponent(matcher.group(1)).withStyle(style -> style
                 .withClickEvent(new ClickEvent(ClickEvent.Action.OPEN_URL, matcher.group(2)))
                 .withUnderlined(true).withColor(ChatFormatting.AQUA)));
             lastEnd = matcher.end();
             hasLink = true;
         }
-        if (lastEnd < text.length()) result.append(Component.literal(text.substring(lastEnd)));
-        return hasLink ? result : Component.literal(text);
+        if (lastEnd < text.length()) result.append(new TextComponent(text.substring(lastEnd)));
+        return hasLink ? result : new TextComponent(text);
     }
 
     private void broadcastSystemMessageRespectingFilters(Component message) {
         if (server == null) return;
         for (ServerPlayer p : server.getPlayerList().getPlayers())
-            if (!hasServerMessagesFiltered(p.getUUID())) p.sendSystemMessage(message, false);
+            if (!hasServerMessagesFiltered(p.getUUID())) p.sendMessage(message, net.minecraft.Util.NIL_UUID);
     }
 
     private void broadcastEventMessageRespectingFilters(Component message) {
         if (server == null) return;
         for (ServerPlayer p : server.getPlayerList().getPlayers())
-            if (!hasEventsFiltered(p.getUUID())) p.sendSystemMessage(message, false);
+            if (!hasEventsFiltered(p.getUUID())) p.sendMessage(message, net.minecraft.Util.NIL_UUID);
     }
 
     private void broadcastServerSystemMessageRespectingFilters(Component message) {
         if (server == null) return;
         for (ServerPlayer p : server.getPlayerList().getPlayers())
-            if (!hasServerSystemMessagesFiltered(p.getUUID())) p.sendSystemMessage(message, false);
+            if (!hasServerSystemMessagesFiltered(p.getUUID())) p.sendMessage(message, net.minecraft.Util.NIL_UUID);
     }
 
     // =========================================================================

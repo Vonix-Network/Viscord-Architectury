@@ -37,7 +37,7 @@ public abstract class PlayerAdvancementsMixin {
         if (display == null) return;
         if (!display.shouldAnnounceChat()) return;
 
-        // Only notify when ALL criteria are satisfied — not on partial progress
+        // Only notify when ALL criteria are satisfied - not on partial progress
         try {
             AdvancementProgress progress = getOrStartProgress(advancement);
             if (!progress.isDone()) return;
@@ -51,7 +51,7 @@ public abstract class PlayerAdvancementsMixin {
                     display.getTitle().getString(),
                     display.getDescription().getString());
         } catch (Exception e) {
-            // Silently fail — don't break advancement system
+            // Silently fail - don't break advancement system
         }
     }
 }

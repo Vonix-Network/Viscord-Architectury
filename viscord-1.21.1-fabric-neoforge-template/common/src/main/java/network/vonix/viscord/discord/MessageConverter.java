@@ -39,7 +39,7 @@ public class MessageConverter {
                 : message.getAuthor().getName();
         MutableComponent authorComponent = Component.literal("<" + authorName + "> ")
                 .withStyle(Style.EMPTY
-                        .withColor(TextColor.parseColor("#5865F2")) // Discord Blurple
+                        .withColor(TextColor.fromRgb(0x5865F2)) // Discord Blurple
                         .withHoverEvent(new HoverEvent(HoverEvent.Action.SHOW_TEXT,
                                 Component.literal(message.getAuthor().getDiscriminatedName()))));
         root.append(authorComponent);

@@ -18,21 +18,24 @@ modId = "neoforge"
 type = "required"
 versionRange = "[21.1,)"
 ordering = "NONE"
-side = "BOTH"
+side = "SERVER"
 
 [[dependencies.viscord]]
 modId = "minecraft"
 type = "required"
 versionRange = "[1.21.1,)"
 ordering = "NONE"
-side = "BOTH"
+side = "SERVER"
 
 [[dependencies.viscord]]
 modId = "architectury"
 type = "required"
 versionRange = "[13.0.8,)"
 ordering = "AFTER"
-side = "BOTH"
+side = "SERVER"
 
 [[mixins]]
 config = "viscord-platform.mixins.json"
+
+[modProperties]
+eventBus.excludedPackages = "network.vonix.viscord.shadow"

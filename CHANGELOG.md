@@ -7,6 +7,12 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [4.1.11] - 2026-05-07
+
+### Fixed
+- **Server-side only configuration** — Removed client entrypoint from all `fabric.mod.json` files, set environment to `"server"`, deleted client directories, and changed dependency sides to `"SERVER"` in all `mods.toml` files. Mod now runs server-side only and does not require players to have the mod installed (all templates)
+- **Shutdown ClassNotFoundException in shadowed Javacord classes** — Added `eventBus.excludedPackages = "network.vonix.viscord.shadow"` to Forge/NeoForge `mods.toml` files to prevent EventBus transformer from attempting to transform shadowed classes during server shutdown, which caused `ClassNotFoundException: MessageBuilderBase` errors (all Forge/NeoForge templates)
+
 ## [4.1.10] - 2026-04-30
 
 ### Fixed

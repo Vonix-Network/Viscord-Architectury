@@ -47,9 +47,9 @@ public abstract class PlayerAdvancementsMixin {
 
         try {
             DiscordManager.getInstance().sendAdvancementEmbed(
-                    player.getName().getContents(),
-                    display.getTitle().getContents(),
-                    display.getDescription().getContents());
+                    player.getName().getString(),
+                    display.getTitle().getString(),
+                    display.getDescription().getString());
         } catch (Exception e) {
             // Silently fail — don't break advancement system
         }

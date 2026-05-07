@@ -6,6 +6,7 @@ import net.minecraft.network.chat.Style;
 import net.minecraft.network.chat.TextColor;
 import net.minecraft.network.chat.ClickEvent;
 import net.minecraft.network.chat.HoverEvent;
+import net.minecraft.network.chat.TextComponent;
 import net.minecraft.server.level.ServerPlayer;
 
 import java.util.regex.Matcher;
@@ -31,12 +32,12 @@ public class ChatFormatter {
     public static Component formatChatMessage(ServerPlayer player, String message) {
         String playerName = player.getName().getString();
         
-        net.minecraft.network.chat.MutableComponent result = Component.empty();
+        net.minecraft.network.chat.MutableComponent result = new TextComponent("");
         
-        net.minecraft.network.chat.MutableComponent nameComponent = Component.literal("<" + playerName + "> ")
+        net.minecraft.network.chat.MutableComponent nameComponent = new TextComponent("<" + playerName + "> ")
                 .setStyle(Style.EMPTY.withHoverEvent(new HoverEvent(
                         HoverEvent.Action.SHOW_TEXT,
-                        Component.literal("§7Click to message §e" + playerName))).withClickEvent(new ClickEvent(
+                        new TextComponent("§7Click to message §e" + playerName))).withClickEvent(new ClickEvent(
                                 ClickEvent.Action.SUGGEST_COMMAND,
                                 "/msg " + playerName + " ")));
                                 
@@ -50,7 +51,7 @@ public class ChatFormatter {
      * Format display name for tab list / scoreboard.
      */
     public static Component formatDisplayName(ServerPlayer player) {
-        return Component.literal(player.getName().getString());
+        return new TextComponent(player.getName().getString());
     }
 
     /**
@@ -58,7 +59,7 @@ public class ChatFormatter {
      */
     public static MutableComponent parseColors(String text) {
         if (text == null || text.isEmpty()) {
-            return Component.empty();
+            return new TextComponent("");
         }
 
         // Convert & codes to § codes (only when followed by a valid formatting code or # for hex)
@@ -81,7 +82,7 @@ public class ChatFormatter {
         // Parse MiniMessage-style tags
         text = parseMiniMessageTags(text);
 
-        return Component.literal(text);
+        return new TextComponent(text);
     }
 
     /**
@@ -155,14 +156,14 @@ public class ChatFormatter {
      * Create a gradient between two colors.
      */
     public static MutableComponent gradient(String text, int startColor, int endColor) {
-        MutableComponent result = Component.empty();
+        MutableComponent result = new TextComponent("");
         int length = text.length();
 
         for (int i = 0; i < length; i++) {
             float ratio = (float) i / Math.max(1, length - 1);
             int color = interpolateColor(startColor, endColor, ratio);
 
-            result.append(Component.literal(String.valueOf(text.charAt(i)))
+            result.append(new TextComponent(String.valueOf(text.charAt(i)))
                     .setStyle(Style.EMPTY.withColor(TextColor.fromRgb(color))));
         }
 
@@ -189,13 +190,13 @@ public class ChatFormatter {
      * Rainbow text effect.
      */
     public static MutableComponent rainbow(String text) {
-        MutableComponent result = Component.empty();
+        MutableComponent result = new TextComponent("");
         int[] colors = { 0xFF0000, 0xFF7F00, 0xFFFF00, 0x00FF00, 0x0000FF, 0x4B0082, 0x9400D3 };
         int length = text.length();
 
         for (int i = 0; i < length; i++) {
             int colorIndex = (int) ((float) i / length * colors.length) % colors.length;
-            result.append(Component.literal(String.valueOf(text.charAt(i)))
+            result.append(new TextComponent(String.valueOf(text.charAt(i)))
                     .setStyle(Style.EMPTY.withColor(TextColor.fromRgb(colors[colorIndex]))));
         }
 

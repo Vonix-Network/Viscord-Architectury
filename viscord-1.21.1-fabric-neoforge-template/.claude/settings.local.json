@@ -1,0 +1,19 @@
+{
+  "permissions": {
+    "allow": [
+      "Bash(./gradlew build *)",
+      "Read(//c/Program Files/**)",
+      "Read(//c/Program Files/Java//**)",
+      "Bash(export JAVA_HOME=\"/c/Program Files/Eclipse Adoptium/jdk-21.0.11\")",
+      "Bash(export PATH=\"$JAVA_HOME/bin:$PATH\")",
+      "Bash(export JAVA_HOME=\"C:/Program Files/Eclipse Adoptium/jdk-21.0.11\")",
+      "Bash(java -version)",
+      "Skill(update-config)",
+      "Bash(cmd.exe *)",
+      "Bash(powershell.exe *)",
+      "Bash(/c/Program Files/Java/jdk-21.0.11/bin/java *)",
+      "Bash(export JAVA_HOME=\"/c/Program Files/Java/jdk-21.0.11\")",
+      "Bash(curl -sL \"https://github.com/gradle/gradle/raw/v8.14.0/gradle/wrapper/gradle-wrapper.jar\" -o gradle/wrapper/gradle-wrapper.jar)"
+    ]
+  }
+}

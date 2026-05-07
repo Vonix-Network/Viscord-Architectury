@@ -18,21 +18,24 @@ modId = "forge"
 mandatory = true
 versionRange = "[43,)"
 ordering = "NONE"
-side = "BOTH"
+side = "SERVER"
 
 [[dependencies.viscord]]
 modId = "minecraft"
 mandatory = true
 versionRange = "[1.19.2,)"
 ordering = "NONE"
-side = "BOTH"
+side = "SERVER"
 
 [[dependencies.viscord]]
 modId = "architectury"
 mandatory = true
 versionRange = "[6.6.92,)"
 ordering = "AFTER"
-side = "BOTH"
+side = "SERVER"
 
 [[mixins]]
 config = "viscord-platform.mixins.json"
+
+[modProperties]
+eventBus.excludedPackages = "network.vonix.viscord.shadow"

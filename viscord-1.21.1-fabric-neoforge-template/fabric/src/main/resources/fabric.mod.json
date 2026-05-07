@@ -13,13 +13,10 @@
   },
   "license": "CC0-1.0",
   "icon": "assets/viscord/icon.png",
-  "environment": "*",
+  "environment": "server",
   "entrypoints": {
     "main": [
       "network.vonix.viscord.fabric.ViscordFabric"
-    ],
-    "client": [
-      "network.vonix.viscord.fabric.client.ExampleModFabricClient"
     ]
   },
   "mixins": [
