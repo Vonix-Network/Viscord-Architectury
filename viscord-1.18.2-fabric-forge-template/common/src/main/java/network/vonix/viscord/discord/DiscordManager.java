@@ -277,14 +277,14 @@ public class DiscordManager {
         if (!trusted && ViscordConfigToml.Filters.IGNORE_BOTS.get() && message.getAuthor().isBotUser()) return;
         if (!trusted && ViscordConfigToml.Filters.IGNORE_WEBHOOKS.get() && message.getAuthor().isWebhook()) return;
 
-        if (ViscordConfigToml.Filters.FILTER_BY_PREFIX.get()) {
+        if (ViscordConfigToml.Filters.FILTER_BY_PREFIX.get() && (message.getAuthor().isWebhook() || message.getAuthor().isBotUser())) {
             String serverPrefix = ViscordConfigToml.Server.PREFIX.get();
             if (serverPrefix != null && !serverPrefix.isEmpty()) {
                 String authorName = message.getAuthor().getDisplayName();
                 if (authorName.startsWith(serverPrefix)) return;
                 String webhookFormat = ViscordConfigToml.Messages.WEBHOOK_USERNAME.get();
                 if (webhookFormat != null && webhookFormat.contains("{prefix}")) {
-                    String expectedStart = webhookFormat.split("\\{prefix\\}")[0] + serverPrefix;
+                    String expectedStart = webhookFormat.split("\\{prefix\\}", 2)[0] + serverPrefix;
                     if (authorName.startsWith(expectedStart) || authorName.startsWith(serverPrefix)) return;
                 }
             }
@@ -749,6 +749,9 @@ public class DiscordManager {
     private boolean isSelfOriginated(Message message) {
         org.javacord.api.entity.message.MessageAuthor author = message.getAuthor();
 
+        // Regular user messages are never self-originated — only bots and webhooks are checked
+        if (!author.isWebhook() && !author.isBotUser()) return false;
+
         // Webhook ID check — matches only our configured webhook, not arbitrary webhooks
         if (author.isWebhook()) {
             String webhookUrl = ViscordConfigToml.Discord.WEBHOOK_URL.get();
@@ -762,7 +765,7 @@ public class DiscordManager {
             if (botId != null && botId.equals(author.getIdAsString())) return true;
         }
 
-        // Prefix check — webhook username always starts with the server prefix when sent by us
+        // Prefix check — applies to both bots and webhooks sent by this server
         String serverPrefix = ViscordConfigToml.Server.PREFIX.get();
         if (serverPrefix != null && !serverPrefix.isEmpty()) {
             String authorName = author.getDisplayName();

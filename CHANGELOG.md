@@ -7,6 +7,11 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [4.1.12] - 2026-05-08
+
+### Fixed
+- **Discord chat and cross-server events not visible in Minecraft** — `isSelfOriginated()` and the `FILTER_BY_PREFIX` guard in `processDiscordMessageForMinecraft()` were applying the server-prefix check to *all* Discord message authors, not just webhooks/bots. Any regular Discord user whose display name started with the server prefix (e.g. `[MC]`) was silently dropped, and even trusted cross-server bots could be blocked. Prefix/ID checks are now restricted to webhook and bot authors only; regular users always pass through (all templates)
+
 ## [4.1.11] - 2026-05-07
 
 ### Fixed
