@@ -83,6 +83,15 @@ This is a stability and consolidation release. No new user-facing features, but 
 - **Display name toggle not respected in all message paths** — `DiscordManager` had four code paths (tridirectional bridge author name, direct message author, embed fallback author, player-list embed author) that called `.getDisplayName()` directly without checking the `formats.use_display_name` config, so setting it to `false` had no effect on those paths. All four now go through a shared `resolveAuthorName()` helper that checks the config (1.20.1 template)
 - **New config keys missing from existing TOML on upgrade** — `TomlConfigManager.createConfigSpec()` and `applyDefaults()` were both missing `messages.use_display_name` and `filters.trusted_bot_ids`, so `ConfigSpec.correct()` never injected them into existing `viscord.toml` files on server start. Users upgrading from 4.1.5 would not see these options in their config. Both keys are now registered in the spec and defaults (1.20.1 template)
 
+## [4.1.8] - 2026-04-30
+
+### Fixed
+- **Echo loop prevention regardless of filter config** — Minecraft → Discord messages could be re-bridged back into game chat when any of `filters.ignore_bots`, `filters.ignore_webhooks`, or `filters.filter_by_prefix` were disabled (or when their checks misfired). Added `isSelfOriginated()` invoked **unconditionally at the very top of `onDiscordMessage`**, checking three independent signals: (1) webhook ID extracted from `discord.webhook_url`, (2) the bot's own user ID via `BotClient.getBotUserId()`, (3) author display-name prefix pattern. Any match drops the message. Self-origin filtering is now a hard guarantee rather than a side-effect of configurable filters. Exposes `getBotUserId()` on `BotClient` and `DiscordPlatform` so the manager can resolve the bot ID at runtime (all templates)
+- **Garbled `!list` output** — `handleTextListCommand` and `handleFluxerListCommand` contained literal newline characters embedded directly in Java string literals where `"\n"` escape sequences were intended, producing a single-line wall of names with no separators. Replaced with proper escapes (all templates)
+
+### Documentation
+- Backfills the `4.1.7` per-template `CHANGELOG.md` entries which were committed with empty bodies. (Top-level `CHANGELOG.md` already had the full 4.1.7 entry from commit `fd37659`.)
+
 ## [4.1.7] - 2026-04-29
 
 ### Fixed
@@ -268,6 +277,14 @@ This is a stability and consolidation release. No new user-facing features, but 
 - Added `GUILD_MESSAGES` intent (bit 9) to receive `MESSAGE_CREATE` events
 - Implemented immediate `online` presence during OP 2 Identify and on READY/RESUMED
 
+## [2.4.8] - 2026-03-24
+
+### Fixed
+- **Fluxer Bot compilation error** — `FluxerBotClient` declared a 5-argument override of `onDisconnected` that did not exist on the supertype, causing `method does not override or implement a method from a supertype` errors across all four version templates. Reverted to the standard 4-argument signature (all templates)
+
+### Changed
+- **Build tooling** — `build_menu.ps1` defaults bumped to 2.4.8 and Java 21 detection logic refined so legacy Minecraft versions (1.18.2 / 1.19.2 / 1.20.1) consistently pick a supported JDK toolchain on Windows
+
 ## [2.4.7] - 2026-03-24
 
 ### Fixed
@@ -298,6 +315,16 @@ This is a stability and consolidation release. No new user-facing features, but 
 ### Fixed
 - Startup embed double-sending in Fluxer mode
 - Tridirectional event embeds (advancements, death, server startup) not being bridged back to Discord
+
+## [2.4.2] - 2026-03-21
+
+### Fixed
+- **Fluxer event embeds not appearing** — join/leave/death/advancement notifications were never reaching Fluxer because of a routing gap in `FluxerPlatform` event handling. Embeds now render correctly via the Fluxer webhook path (all templates)
+- **Tridirectional bot init in Fluxer-only mode** — when `general.platform = "fluxer"` with tridirectional disabled, the Discord bot was still being partially initialized, holding open a Javacord client with no purpose. The bot is now skipped entirely in Fluxer-only mode (all templates)
+- **Bot status not updating in Fluxer mode** — `scheduleStatusUpdate` only pushed to the Discord client; Fluxer mode showed a stale presence. Status updates now flow through the active platform delegate, so Fluxer mode shows live `Online: X/Y` (all templates)
+
+### Changed
+- **`DiscordEventHandler` Brigadier registration** — minor cleanup to the command-registration paths to support the routing fixes above
 
 ## [2.4.1] - 2026-03-21
 
