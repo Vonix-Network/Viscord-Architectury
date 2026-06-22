@@ -23,3 +23,16 @@ release-2.2.0/
 !gradlew.bat
 !gradlew
 !build_menu.ps1
+
+# Python build helper artefacts
+__pycache__/
+*.pyc
+*.pyo
+
+# Build / dev scratch logs
+*.txt
+!README.txt
+!LICENSE.txt
+
+# Ad-hoc fix scripts
+fix*.py

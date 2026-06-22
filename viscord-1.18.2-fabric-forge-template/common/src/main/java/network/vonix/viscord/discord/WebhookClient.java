@@ -82,7 +82,7 @@ public class WebhookClient {
                     }
                 }
             } catch (Exception e) {
-                Viscord.LOGGER.error("Error sending webhook payload to {}: {}", webhookUrl, e.getMessage());
+                Viscord.LOGGER.error("Error sending webhook payload to {}: {}", redactWebhookUrl(webhookUrl), e.getMessage());
             }
         });
     }
@@ -95,5 +95,12 @@ public class WebhookClient {
             Thread.currentThread().interrupt();
         }
         httpClient.connectionPool().evictAll();
+    }
+
+    /** Redacts the token segment of a webhook URL so it can be safely logged. */
+    static String redactWebhookUrl(String url) {
+        if (url == null || url.isEmpty()) return "<unset>";
+        // Discord: .../webhooks/{id}/{token}  →  .../webhooks/{id}/***
+        return url.replaceAll("(/webhooks/\\d+/)[^/?#]+", "$1***");
     }
 }

@@ -91,17 +91,22 @@ public class DiscordPlatform {
     public CompletableFuture<org.javacord.api.entity.message.Message> shutdown() {
         CompletableFuture<org.javacord.api.entity.message.Message> shutdownFuture =
             sendShutdownEmbed(ViscordConfigToml.Server.NAME.get());
-        try {
-            shutdownFuture.orTimeout(3, TimeUnit.SECONDS).join();
-        } catch (Exception ignored) {}
-        try { botClient.disconnect(); } catch (Exception e) {
-            Viscord.LOGGER.error("[Discord] Error disconnecting bot: {}", e.getMessage());
-        }
-        try { webhookClient.shutdown(); } catch (Exception e) {
-            Viscord.LOGGER.error("[Discord] Error shutting down webhook: {}", e.getMessage());
-        }
+        // Chain disconnect after embed (or timeout) so we don't cancel the embed mid-flight,
+        // but we don't block the caller.
+        CompletableFuture<?> finalCleanup = shutdownFuture
+            .orTimeout(3, TimeUnit.SECONDS)
+            .handle((msg, t) -> {
+                if (t != null) Viscord.LOGGER.warn("[Discord] Shutdown embed did not complete: {}", t.getMessage());
+                try { botClient.disconnect(); } catch (Exception e) {
+                    Viscord.LOGGER.error("[Discord] Error disconnecting bot: {}", e.getMessage());
+                }
+                try { webhookClient.shutdown(); } catch (Exception e) {
+                    Viscord.LOGGER.error("[Discord] Error shutting down webhook: {}", e.getMessage());
+                }
+                return null;
+            });
         initialized = false;
-        return shutdownFuture;
+        return shutdownFuture; // caller awaits this for the embed; cleanup runs in background
     }
 
     // =========================================================================

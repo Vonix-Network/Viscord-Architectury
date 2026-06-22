@@ -7,6 +7,42 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [4.2.0] - 2026-06-15
+
+This is a stability and consolidation release. No new user-facing features, but a large number of latent thread-safety bugs are fixed, dead code is removed, and the four MC-version templates are brought back into parity. Drop-in compatible with 4.1.x configs.
+
+### Security
+- **Webhook tokens no longer leak into logs.** `WebhookClient` and `FluxerWebhookClient` both shipped error/warn log lines that included the full webhook URL — including the bearer token segment — on every send failure or URL-parse failure. Both now route any URL into a `redactWebhookUrl()` helper that emits `…/webhooks/{id}/***` (all templates)
+
+### Fixed (thread-safety & async correctness)
+- **Unbounded `Executors.newCachedThreadPool()` replaced.** `Viscord.ASYNC_EXECUTOR` is now a bounded `ScheduledThreadPoolExecutor` (cores/2 core → cores×2 max, 30s keepalive, named daemon `Viscord-Async-N` threads, `CallerRunsPolicy` back-pressure). A burst of misbehaving network calls can no longer spawn unlimited threads. New `Viscord.scheduleAsync(Runnable, long delayMs)` helper for delayed work (all templates)
+- **`DiscordManager` shared mutable fields not visible across threads.** `server`, `bridge`, `linkedAccountsManager`, `playerPreferences`, and `running` are read from Javacord listener / Fluxer WebSocket / Brigadier / tick threads but were not `volatile`. All five are now `volatile`. Same fix applied to `BotClient.api` and `FluxerBotClient.{webSocket,token,sessionId,onReadyCallback,messageHandler}` (all templates)
+- **`BotClient` TOCTOU NPE between `api != null` check and `api.xxx()` call.** Every method that touches `api` now captures `DiscordApi local = api;` at entry and uses `local` (all templates)
+- **`FluxerBotClient` WebSocket TOCTOU.** Every method touching `webSocket` now captures a local before use; same pattern applied (all templates)
+- **`recentAdvancements` debounce cache was unbounded and used a racy `if (size > 100) clear()` eviction** that destroyed all in-flight dedupe state at once. Replaced with a synchronized access-order `LinkedHashMap` (cap 256, auto-LRU eviction) and a clean read-then-put block under `synchronized` (all templates)
+- **`TridirectionalBridge` echo cache was unbounded.** Same `if(size>X) clear()` racy pattern lived in `FluxerPlatform.sendWebhookMessage` as well. Replaced with a 512-entry synchronized LRU owned by the bridge; `FluxerPlatform.sendWebhookMessage` dropped from 4-arg to 3-arg (no longer touches the cache); new `TridirectionalBridge.rememberOutgoing(...)` helper handles registration (all templates)
+- **`scheduleStatusUpdate` burned one pool thread per call holding a `Thread.sleep` for the full delay.** 100 reconnecting players × 500 ms = 100 sleeping threads. Now uses `Viscord.scheduleAsync(...)` (true scheduling, no thread held) and coalesces bursts via an `AtomicBoolean` CAS — at most one pending status update at a time (all templates)
+- **`FluxerPlatform` initialize used `submit({sleep(1500); pushStatus();})` and `thenRun({sleep(500); ...})` patterns** that held pool threads. Both replaced with `Viscord.scheduleAsync` and `CompletableFuture.delayedExecutor(..., ASYNC_EXECUTOR)` respectively (all templates)
+- **`SERVER_STOPPING` lifecycle thread was blocked by nested `.join()` calls** in `DiscordManager.shutdown` → `DiscordPlatform.shutdown` (`orTimeout(3s).join()`) → `WebhookClient.shutdown` (`awaitTermination(3s)`) → executor `awaitTermination(5s)`. Worst-case ~11 s of stop-thread blocking. Shutdown now runs entirely on `ASYNC_EXECUTOR` with a single overall `orTimeout(5s)`; `DiscordPlatform.shutdown` chains cleanup via `.handle(...)` instead of `.join()` (all templates)
+- **`/viscord reload` sent command feedback from the executor thread.** `sendSuccess` / `sendFailure` from off-thread can corrupt the Vanilla packet pipeline. All command output is now bounced back to the server thread via `mcServer.execute(...)`. The arbitrary 1-second `Thread.sleep` after shutdown is gone (all templates)
+- **`LinkedAccountsManager.save()` ran synchronous file I/O** on whichever thread called `unlinkAccount` — typically the Brigadier command thread, i.e. the server tick thread. The JSON snapshot is now built on the caller under `synchronized(linkedAccounts)` and the disk write is offloaded to `Viscord.ASYNC_EXECUTOR` (matches the `PlayerPreferences` fix from 4.1.5) (all templates)
+- **`FluxerBotClient` `CompletableFuture.supplyAsync(...)` calls** (sendEmbed, sendMessage) ran blocking `HttpURLConnection` on `ForkJoinPool.commonPool`, which is the wrong pool for blocking work. Both now pass `Viscord.ASYNC_EXECUTOR` as the explicit executor (all templates)
+
+### Removed
+- **Dead `FluxerPlatform.eventWebhookClient` field.** Declared but never wired or shut down — its OkHttpClient pool leaked for the JVM lifetime (all templates)
+- **Dead `/viscord fluxer invite` and top-level `/fluxer` Brigadier commands.** Both unconditionally returned "Fluxer bot invite is not available". Removed entirely (all templates)
+- **Legacy JSON config system: `config/ViscordConfig.java` and the `config/simple/` package** (4 files). Replaced by TOML in 4.0; one stale read remained in `MessageConverter` (caused `messages.use_display_name` to silently have no effect through that path). `MessageConverter` now reads from `ViscordConfigToml.Messages.USE_DISPLAY_NAME` (all templates)
+- **Stale `SimpleConfigManager` / `SimpleConfigSpec` imports** in `TomlConfigManager.java` (1.21.1)
+- **Tracked build artefacts** removed from git: `__pycache__/`, `error.txt`, `build_errors.txt`. `.gitignore` extended to cover `__pycache__/`, `*.pyc`, ad-hoc `fix*.py`, and build log `*.txt`
+
+### Changed
+- **Cross-version drift eliminated.** Before 4.2.0 the 1.21.1 template held bug fixes that the 1.18.2/1.19.2/1.20.1 templates were missing — most notably `FluxerBotClient.selfId` ID-based self-message filtering (the older templates fell back to broken prefix matching) and `DiscordManager.resetInstance()`. All four templates are now in parity on every common-tree file except for unavoidable Mojang-API renames (`TextComponent` → `Component.literal`, `sendMessage(msg, NIL_UUID)` → `sendSystemMessage(msg, false)`, Brigadier `sendSuccess(Component, ...)` → `sendSuccess(Supplier<Component>, ...)`)
+- **`/viscord discord help` text corrected.** No longer advertises `[enable|disable]` subcommands that don't exist; no longer references the deleted `/viscord fluxer invite`; the line about `Discord: /list` corrected to `!list` (the actual trigger is text, not a slash command)
+- **`DiscordPlatform.shutdown()` no longer blocks** on the embed future internally — caller awaits the returned future; bot/webhook teardown chains via `.handle(...)`
+
+### Documentation
+- **README rewritten** to reflect shipping 4.2.0 surface — the previous README still described the legacy `config/viscord.json` format with deprecated key names, recommended Fluxer port-forwarding (no longer needed — Fluxer uses WebSocket Gateway), omitted the `both` and `tridirectional` modes, and listed nonexistent commands like `/link` / `/unlink` (the real ones are `/viscord discord link` / `unlink`)
+
 ## [4.1.12] - 2026-05-08
 
 ### Fixed

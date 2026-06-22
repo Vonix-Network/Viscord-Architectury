@@ -31,13 +31,13 @@ public class FluxerBotClient {
 
     private static final String GATEWAY_URL = "wss://gateway.fluxer.app/?v=1&encoding=json";
     
-    private WebSocket webSocket;
-    private String token;
+    private volatile WebSocket webSocket;
+    private volatile String token;
     private volatile boolean connected = false;
     private volatile boolean authenticated = false;
     private volatile String selfId = null; // Bot's own user ID from READY — used for self-message filtering
     private volatile String ownWebhookId = null; // Our own webhook ID — only our echoes are filtered, not other servers'
-    private MessageHandler messageHandler;
+    private volatile MessageHandler messageHandler;
     
     private final ScheduledExecutorService scheduler = Executors.newSingleThreadScheduledExecutor(r -> {
         Thread t = new Thread(r, "Fluxer-Scheduler");
@@ -46,7 +46,7 @@ public class FluxerBotClient {
     });
     
     private final AtomicInteger sequenceNumber = new AtomicInteger(0);
-    private String sessionId;
+    private volatile String sessionId;
     
     private int reconnectAttempts = 0;
     private static final int MAX_RECONNECT_DELAY_MS = 60000; // 60s max backoff
@@ -62,7 +62,7 @@ public class FluxerBotClient {
         void onMessage(String username, String message, String avatarUrl);
     }
 
-    private Runnable onReadyCallback;
+    private volatile Runnable onReadyCallback;
     private final java.util.Set<String> allowedChannelIds = new java.util.concurrent.CopyOnWriteArraySet<>();
 
     public void setOnReadyCallback(Runnable callback) {
@@ -97,7 +97,8 @@ public class FluxerBotClient {
             return CompletableFuture.completedFuture(null);
         }
         
-        if (connected || (webSocket != null && webSocket.isOpen())) {
+        WebSocket existing = webSocket;
+        if (connected || (existing != null && existing.isOpen())) {
             Viscord.LOGGER.warn("[Fluxer Bot] Already connected or connecting, skipping.");
             return CompletableFuture.completedFuture(null);
         }
@@ -112,9 +113,10 @@ public class FluxerBotClient {
         Viscord.LOGGER.info("[Fluxer Bot] Connecting to gateway...");
 
         try {
-            if (webSocket != null) {
+            WebSocket old = webSocket;
+            if (old != null) {
                 try {
-                    webSocket.disconnect();
+                    old.disconnect();
                 } catch (Exception e) {
                     // Ignore cleanup errors
                 }
@@ -373,9 +375,10 @@ public class FluxerBotClient {
                     connected = false;
                     authenticated = false;
                     stopHeartbeating();
-                    if (webSocket != null) {
-                        try { webSocket.disconnect(); } catch (Exception ignored) {}
+                    WebSocket toClose = webSocket;
+                    if (toClose != null) {
                         webSocket = null;
+                        try { toClose.disconnect(); } catch (Exception ignored) {}
                     }
                     scheduleReconnect();
                     break;
@@ -485,6 +488,8 @@ public class FluxerBotClient {
         presence.add("since", com.google.gson.JsonNull.INSTANCE);
         d.add("presence", presence);
         
+        WebSocket ws = webSocket;
+        if (ws == null) return;
         // If we have a session ID, try to resume instead of identify
         if (sessionId != null && !sessionId.isEmpty()) {
             Viscord.LOGGER.debug("[Fluxer Bot] Sending Resume payload for session {}...", sessionId);
@@ -495,13 +500,13 @@ public class FluxerBotClient {
             r.addProperty("session_id", sessionId);
             r.addProperty("seq", sequenceNumber.get());
             resume.add("d", r);
-            webSocket.sendText(resume.toString());
+            ws.sendText(resume.toString());
         } else {
             // GUILD_MESSAGES (1<<9 = 512) to receive MESSAGE_CREATE events
             // MESSAGE_CONTENT (1<<15 = 32768) to read message text
             d.addProperty("intents", (1 << 9) | (1 << 15));
             identify.add("d", d);
-            webSocket.sendText(identify.toString());
+            ws.sendText(identify.toString());
         }
     }
 
@@ -511,7 +516,8 @@ public class FluxerBotClient {
         stopHeartbeating(); // Ensure no duplicates
         
         heartbeatTask = scheduler.scheduleAtFixedRate(() -> {
-            if (webSocket != null && webSocket.isOpen()) {
+            WebSocket ws = webSocket;
+            if (ws != null && ws.isOpen()) {
                 sendHeartbeat();
             }
         }, interval, interval, TimeUnit.MILLISECONDS);
@@ -525,8 +531,9 @@ public class FluxerBotClient {
     }
 
     private void sendHeartbeat() {
-        if (webSocket == null || !webSocket.isOpen()) return;
-        
+        WebSocket ws = webSocket;
+        if (ws == null || !ws.isOpen()) return;
+
         JsonObject heartbeat = new JsonObject();
         heartbeat.addProperty("op", 1);
         int seq = sequenceNumber.get();
@@ -535,23 +542,24 @@ public class FluxerBotClient {
         } else {
             heartbeat.add("d", com.google.gson.JsonNull.INSTANCE);
         }
-        webSocket.sendText(heartbeat.toString());
+        ws.sendText(heartbeat.toString());
         Viscord.LOGGER.debug("[Fluxer Bot] Sent heartbeat");
     }
 
     public void updateStatus(String status) {
         this.pendingStatus = status; // persist for reconnects — will be embedded in identify payload
-        if (!authenticated || webSocket == null || !webSocket.isOpen()) {
+        WebSocket ws = webSocket;
+        if (!authenticated || ws == null || !ws.isOpen()) {
             Viscord.LOGGER.debug("[Fluxer Bot] Status queued as pendingStatus (not yet connected — will send after READY): {}", status);
             return;
         }
 
         Viscord.LOGGER.info("[Fluxer Bot] Sending status update: {}", status);
-        
+
         try {
             JsonObject presence = new JsonObject();
             presence.addProperty("op", 3);
-            
+
             JsonObject d = new JsonObject();
             d.add("since", com.google.gson.JsonNull.INSTANCE);
             JsonArray activities = new JsonArray();
@@ -562,10 +570,10 @@ public class FluxerBotClient {
             d.add("activities", activities);
             d.addProperty("status", "online");
             d.addProperty("afk", false);
-            
+
             presence.add("d", d);
-            
-            webSocket.sendText(presence.toString());
+
+            ws.sendText(presence.toString());
             Viscord.LOGGER.debug("[Fluxer Bot] Updated status to: {}", status);
         } catch (Exception e) {
             Viscord.LOGGER.error("[Fluxer Bot] Failed to update status", e);
@@ -573,7 +581,8 @@ public class FluxerBotClient {
     }
 
     public void setOffline() {
-        if (!authenticated || webSocket == null || !webSocket.isOpen()) return;
+        WebSocket ws = webSocket;
+        if (!authenticated || ws == null || !ws.isOpen()) return;
         try {
             JsonObject presence = new JsonObject();
             presence.addProperty("op", 3);
@@ -583,7 +592,7 @@ public class FluxerBotClient {
             d.addProperty("status", "invisible");
             d.addProperty("afk", false);
             presence.add("d", d);
-            webSocket.sendText(presence.toString());
+            ws.sendText(presence.toString());
             Viscord.LOGGER.info("[Fluxer Bot] Sent offline presence before disconnect.");
         } catch (Exception e) {
             Viscord.LOGGER.warn("[Fluxer Bot] Could not send offline presence: {}", e.getMessage());
@@ -593,23 +602,24 @@ public class FluxerBotClient {
     public synchronized void disconnect() {
         String oldToken = this.token;
         this.token = null; // Prevent auto-reconnect
-        
+
         stopHeartbeating();
 
-        if (webSocket != null) {
+        WebSocket ws = webSocket;
+        if (ws != null) {
+            webSocket = null;
             try {
-                if (webSocket.isOpen()) {
-                    webSocket.sendClose(WebSocketCloseCode.NORMAL, "Client disconnecting");
+                if (ws.isOpen()) {
+                    ws.sendClose(WebSocketCloseCode.NORMAL, "Client disconnecting");
                 }
             } catch (Exception e) {
                 // Ignore close errors
             }
             try {
-                webSocket.disconnect();
+                ws.disconnect();
             } catch (Exception e) {
                 // Ignore disconnect errors
             }
-            webSocket = null;
         }
         connected = false;
         authenticated = false;
@@ -627,7 +637,8 @@ public class FluxerBotClient {
     }
 
     public boolean isConnected() {
-        return connected && authenticated && webSocket != null && webSocket.isOpen();
+        WebSocket ws = webSocket;
+        return connected && authenticated && ws != null && ws.isOpen();
     }
     
     /**
@@ -687,7 +698,7 @@ public class FluxerBotClient {
                     conn.disconnect();
                 }
             }
-        });
+        }, Viscord.ASYNC_EXECUTOR);
     }
 
     public CompletableFuture<Boolean> sendMessage(String channelId, String content) {
@@ -733,6 +744,6 @@ public class FluxerBotClient {
                     conn.disconnect();
                 }
             }
-        });
+        }, Viscord.ASYNC_EXECUTOR);
     }
 }

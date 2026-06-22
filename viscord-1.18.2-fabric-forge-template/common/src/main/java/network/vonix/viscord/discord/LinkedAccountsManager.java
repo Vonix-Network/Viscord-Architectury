@@ -185,24 +185,34 @@ public class LinkedAccountsManager {
     }
 
     /**
-     * Save linked accounts to file
+     * Save linked accounts to file.
+     * Builds the JSON snapshot on the calling thread (consistent point-in-time view),
+     * then offloads the disk write to the async executor to avoid hitching the tick thread
+     * when called from Brigadier command handlers (unlinkMinecraft / unlinkDiscord).
      */
     private void save() {
-        try {
-            Files.createDirectories(dataFile.getParent());
-
-            try (Writer writer = new FileWriter(dataFile.toFile(), StandardCharsets.UTF_8)) {
-                Type type = new TypeToken<Map<UUID, LinkedAccount>>() {
-                }.getType();
-                GSON.toJson(linkedAccounts, type, writer);
-            }
-
-            if (ViscordConfigToml.General.DEBUG.get()) {
-                Viscord.LOGGER.debug("Saved {} linked accounts to {}", linkedAccounts.size(), dataFile);
-            }
-        } catch (IOException e) {
-            Viscord.LOGGER.error("Failed to save linked accounts!", e);
+        // Build snapshot on calling thread to capture a consistent view, then write off-thread.
+        final String snapshot;
+        final int snapshotSize;
+        synchronized (linkedAccounts) {
+            Type type = new TypeToken<Map<UUID, LinkedAccount>>() {
+            }.getType();
+            snapshot = GSON.toJson(linkedAccounts, type);
+            snapshotSize = linkedAccounts.size();
         }
+        Viscord.executeAsync(() -> {
+            try {
+                Files.createDirectories(dataFile.getParent());
+                try (Writer writer = new FileWriter(dataFile.toFile(), StandardCharsets.UTF_8)) {
+                    writer.write(snapshot);
+                }
+                if (ViscordConfigToml.General.DEBUG.get()) {
+                    Viscord.LOGGER.debug("Saved {} linked accounts to {}", snapshotSize, dataFile);
+                }
+            } catch (IOException e) {
+                Viscord.LOGGER.error("Failed to save linked accounts!", e);
+            }
+        });
     }
 
     /**

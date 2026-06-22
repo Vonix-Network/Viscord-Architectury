@@ -6,7 +6,6 @@ import network.vonix.viscord.utils.DiscordFormatter;
 import org.javacord.api.entity.message.Message;
 
 import java.util.Map;
-import java.util.concurrent.ConcurrentHashMap;
 import java.util.regex.Pattern;
 
 /**
@@ -22,18 +21,23 @@ public class TridirectionalBridge {
 
     // Echo suppression: records fingerprints of messages we sent via webhook
     // so when the gateway echoes them back we can drop them.
-    private final Map<String, Long> recentDiscordBridges = new ConcurrentHashMap<>();
+    // Bounded LRU with implicit TTL check in checkAndSuppressEcho.
+    // Caps at 512 entries; oldest entries fall out when the map is full.
+    private final Map<String, Long> recentDiscordBridges =
+        java.util.Collections.synchronizedMap(new java.util.LinkedHashMap<String, Long>(64, 0.75f, true) {
+            @Override protected boolean removeEldestEntry(Map.Entry<String, Long> e) {
+                return size() > 512;
+            }
+        });
 
     public TridirectionalBridge(DiscordPlatform discord, FluxerPlatform fluxer) {
         this.discord = discord;
         this.fluxer = fluxer;
     }
 
-    /**
-     * Returns the echo cache so FluxerPlatform's message listener can check it.
-     */
-    public Map<String, Long> getEchoCache() {
-        return recentDiscordBridges;
+    /** Records a fingerprint of a message we just bridged out, so the gateway echo can be suppressed. */
+    public void rememberOutgoing(String username, String message) {
+        recentDiscordBridges.put(username + ":" + message, System.currentTimeMillis());
     }
 
     // =========================================================================
@@ -58,7 +62,8 @@ public class TridirectionalBridge {
             } catch (Exception ignored) {}
 
             if (hasWebhook) {
-                fluxer.sendWebhookMessage(authorName, avatarUrl, content, recentDiscordBridges);
+                rememberOutgoing(authorName, content);
+                fluxer.sendWebhookMessage(authorName, avatarUrl, content);
             } else {
                 String formatted = formatWithSource(content, "Discord", authorName);
                 fluxer.sendBotMessage(fluxer.getChannelId(), formatted);

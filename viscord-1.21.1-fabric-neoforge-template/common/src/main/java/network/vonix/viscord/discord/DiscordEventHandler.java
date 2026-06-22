@@ -155,13 +155,14 @@ public class DiscordEventHandler {
                                     context.getSource().sendSuccess(() -> Component.literal(
                                             "§aReloading Viscord configuration..."), false);
 
-                                    // Run reload async to prevent blocking
+                                    final net.minecraft.server.MinecraftServer mcServer = context.getSource().getServer();
+                                    final CommandSourceStack source = context.getSource();
+                                    // Run reload async to prevent blocking; bounce UI back to server thread.
                                     Viscord.ASYNC_EXECUTOR.submit(() -> {
                                         try {
-                                            // Shutdown current connection
+                                            // Shutdown current connection (new shutdown() handles its own timing)
                                             if (DiscordManager.getInstance().isRunning()) {
                                                 DiscordManager.getInstance().shutdown();
-                                                Thread.sleep(1000); // Wait for clean shutdown
                                             }
 
                                             // Reset singleton so fresh platform instances are created
@@ -174,17 +175,16 @@ public class DiscordEventHandler {
 
                                             // Re-initialize if enabled
                                             if (ViscordConfigToml.General.ENABLED.get()) {
-                                                DiscordManager.getInstance().initialize(
-                                                        context.getSource().getServer());
-                                                context.getSource().sendSuccess(() -> Component.literal(
-                                                        "§aViscord reloaded successfully!"), false);
+                                                DiscordManager.getInstance().initialize(mcServer);
+                                                mcServer.execute(() -> source.sendSuccess(
+                                                        () -> Component.literal("§aViscord reloaded successfully!"), false));
                                             } else {
-                                                context.getSource().sendSuccess(() -> Component.literal(
-                                                        "§eViscord is disabled in config."), false);
+                                                mcServer.execute(() -> source.sendSuccess(
+                                                        () -> Component.literal("§eViscord is disabled in config."), false));
                                             }
                                         } catch (Exception e) {
-                                            context.getSource().sendFailure(Component.literal(
-                                                    "§cFailed to reload: " + e.getMessage()));
+                                            mcServer.execute(() -> source.sendFailure(
+                                                    Component.literal("§cFailed to reload: " + e.getMessage())));
                                             Viscord.LOGGER.error("[Viscord] Reload failed", e);
                                         }
                                     });
@@ -297,25 +297,15 @@ public class DiscordEventHandler {
                                                             "§b/discord§7 - Show Discord invite link\n" +
                                                             "§b/viscord discord link§7 - Generate account link code\n" +
                                                             "§b/viscord discord unlink§7 - Unlink your Discord\n" +
-                                                            "§b/discord messages [enable|disable]§7 - Toggle cross-server messages\n" +
-                                                            "§b/discord events [enable|disable]§7 - Toggle cross-server events\n" +
+                                                            "§b/discord messages§7 - Toggle cross-server messages\n" +
+                                                            "§b/discord events§7 - Toggle cross-server events\n" +
                                                             "§b/viscord discord invite§7 - Show Discord invite link\n" +
                                                             "§b/viscord reload§7 - Reload Viscord config (admin)\n" +
                                                             "§b/viscord status§7 - Show Viscord status\n" +
-                                                            "§b/viscord fluxer invite§7 - Show Fluxer bot invite link\n" +
-                                                            "§7Discord: §b/list§7 - Show online players"),
+                                                            "§7Discord: §b!list§7 - Show online players (type in Discord chat)"),
                                                     false);
                                             return 1;
-                                        }))
-                        .then(Commands.literal("fluxer")
-                                .then(Commands.literal("invite")
-                                        .executes(context -> {
-                                            CommandSourceStack source = context.getSource();
-                                            source.sendFailure(Component.literal(
-                                                    "§cFluxer bot invite is not available.\n" +
-                                                    "§7Please invite the bot through the Fluxer Developer Portal."));
-                                            return 0;
-                                        })))));
+                                        }))));
         // Backward compatibility alias for /vonix commands
         dispatcher.register(
                 Commands.literal("vonix")
@@ -332,18 +322,5 @@ public class DiscordEventHandler {
                                             "§e/vonix is deprecated. Use §b/viscord discord§e instead."), false);
                                     return 1;
                                 })));
-
-        // /fluxer command alias
-        dispatcher.register(
-                Commands.literal("fluxer")
-                        .requires(source -> source.hasPermission(0))
-                        .executes(context -> {
-                            CommandSourceStack source = context.getSource();
-                            source.sendFailure(Component.literal(
-                                    "§cFluxer bot invite is not available.\n" +
-                                    "§7Please invite the bot through the Fluxer Developer Portal."));
-                            return 0;
-                        })
-        );
     }
 }

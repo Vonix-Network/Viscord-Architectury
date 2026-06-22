@@ -61,7 +61,7 @@ public class FluxerWebhookClient {
             this.webhookId = matcher.group(1);
             this.webhookToken = matcher.group(2);
         } else {
-            Viscord.LOGGER.warn("[Fluxer Webhook] Invalid webhook URL format. Received: '{}'. Expected: https://api.fluxer.app/v1/webhooks/{{id}}/{{token}}", url);
+            Viscord.LOGGER.warn("[Fluxer Webhook] Invalid webhook URL format. Received: '{}'. Expected: https://api.fluxer.app/v1/webhooks/{{id}}/{{token}}", redactWebhookUrl(url));
             this.webhookId = null;
             this.webhookToken = null;
         }
@@ -126,5 +126,11 @@ public class FluxerWebhookClient {
     public void shutdown() {
         httpClient.dispatcher().executorService().shutdown();
         httpClient.connectionPool().evictAll();
+    }
+
+    /** Redacts the token segment of a webhook URL so it can be safely logged. */
+    static String redactWebhookUrl(String url) {
+        if (url == null || url.isEmpty()) return "<unset>";
+        return url.replaceAll("(/webhooks/\\d+/)[^/?#]+", "$1***");
     }
 }

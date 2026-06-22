@@ -5,8 +5,6 @@ import com.electronwill.nightconfig.core.ConfigSpec;
 import com.electronwill.nightconfig.core.file.CommentedFileConfig;
 import com.electronwill.nightconfig.core.file.FileConfig;
 import network.vonix.viscord.Viscord;
-import network.vonix.viscord.config.simple.SimpleConfigManager;
-import network.vonix.viscord.config.simple.SimpleConfigSpec;
 
 import java.io.File;
 import java.nio.file.Path;

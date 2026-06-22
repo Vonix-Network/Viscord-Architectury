@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Viscord 2.4.14 - Complete Documentation</title>
+    <title>Viscord 4.2.0 - Complete Documentation</title>
     <link href="https://fonts.googleapis.com/css2?family=Outfit:wght@300;400;500;600;700;800&display=swap" rel="stylesheet">
     <link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css" rel="stylesheet">
     <style>
@@ -535,7 +535,7 @@
     <div class="container">
         <header>
             <div class="logo">Viscord</div>
-            <div class="version"><i class="fas fa-code-branch" style="margin-right: 8px;"></i> Version 2.4.13</div>
+            <div class="version"><i class="fas fa-code-branch" style="margin-right: 8px;"></i> Version 4.2.0</div>
             <p style="font-size: 1.3rem; color: var(--text-primary); margin-bottom: 20px; font-weight: 300;">
                 The Ultimate Cross-Platform Minecraft Chat Solution
             </p>
@@ -557,8 +557,8 @@
         <!-- Overview Tab -->
         <div id="overview" class="tab-content active">
             <div class="card">
-                <h2><i class="fas fa-rocket"></i> Welcome to Viscord 2.4.13 <span class="badge">LATEST</span></h2>
-                <p>Viscord is the most advanced, heavily optimized Minecraft chat integration mod. Enabling seamless communication between Minecraft, Discord, and Fluxer platforms. Version 2.4.13 introduces <strong>Fluxer Gateway v8+ Compatibility</strong> with modern identify payload properties to fix the 4002 "Invalid identify payload" error that caused connection failures.</p>
+                <h2><i class="fas fa-rocket"></i> Welcome to Viscord 4.2.0 <span class="badge">LATEST</span></h2>
+                <p>Viscord is a server-side Minecraft chat-integration mod that bridges Minecraft, Discord, and Fluxer. Players do not need to install the mod. Version 4.2.0 is a stability and consolidation release: webhook tokens are no longer leaked in logs, the async executor is bounded, advancement/echo caches are bounded LRU + TTL, shutdown no longer blocks the server-stopping thread, and all four MC-version templates are brought back into parity (the <code>FluxerBotClient</code> ID-based self-filter and <code>DiscordManager.resetInstance()</code> are now present on 1.18.2 / 1.19.2 / 1.20.1 in addition to 1.21.1). See <code>CHANGELOG.md</code> for the full list.</p>
                 
                 <div class="feature-grid">
                     <div class="feature-card">
@@ -628,7 +628,7 @@
                         <div class="code-block">
                             <pre>server/
 ├── mods/
-│   └── viscord-1.21.1-neoforge-2.4.7.jar
+│   └── viscord-1.21.1-neoforge-4.2.0.jar
 └── ...</pre>
                             <button class="copy-btn" onclick="copyCode(this)"><i class="fas fa-copy"></i></button>
                         </div>
@@ -639,7 +639,7 @@
                     <div class="step-number">3</div>
                     <div class="step-content">
                         <h3>Boot Server</h3>
-                        <p>Start your Minecraft server to load the Viscord environment. A configuration schema will be generated automatically in <code>config/viscord/viscord.json</code>.</p>
+                        <p>Start your Minecraft server to load the Viscord environment. A configuration schema will be generated automatically in <code>config/viscord/viscord.toml</code>.</p>
                     </div>
                 </div>
 
@@ -806,66 +806,60 @@
         <div id="configuration" class="tab-content">
             <div class="card">
                 <h2><i class="fas fa-layer-group"></i> Configuration Architecture</h2>
-                <p>Located cleanly inside <code>config/viscord/viscord.json</code>. Viscord 2.4+ features an incredibly simplified configuration tree.</p>
+                <p>Located in <code>config/viscord/viscord.toml</code>. Viscord 4.x uses TOML with extensive inline comments on every key. Legacy <code>config/viscord.json</code> is auto-migrated on first run and backed up as <code>viscord.json.backup</code>.</p>
 
                 <div class="code-block" style="max-height: 500px; overflow-y: auto;">
-                    <pre>{
-  "general": {
-    "enabled": true,
-    "platform": "discord"
-  },
-  
-  "tridirectional": {
-    "enabled": false,
-    "discord_to_fluxer": true,
-    "fluxer_to_discord": true,
-    "show_source": true
-  },
-  
-  "discord": {
-    "bot_token": "YOUR_TOKEN",
-    "channel_id": "YOUR_CHANNEL",
-    "webhook_url": "YOUR_WEBHOOK"
-  },
-  
-  "fluxer": {
-    "webhook_url": "",
-    "event_webhook_url": "",
-    "api_key": "YOUR_API_KEY",
-    "port": 8080,
-    "path": "/webhook"
-  },
-  
-  "server": {
-    "prefix": "[MC]",
-    "name": "Minecraft Server"
-  },
-  
-  "formats": {
-    "discord_to_minecraft": "[Discord] {username}: {message}",
-    "minecraft_to_discord": "{message}",
-    "webhook_username": "{prefix}{username}",
-    "avatar_url": "https://minotar.net/armor/bust/{username}/100.png"
-  },
-  
-  "events": {
-    "send_join": true,
-    "send_leave": true,
-    "send_death": true,
-    "send_advancement": true
-  },
-  
-  "filters": {
-    "ignore_bots": true,
-    "enable_chat_filter": false,
-    "chat_filter_prefix": "!"
-  },
-  
-  "linking": {
-    "enabled": true,
-    "code_expiry": 300
-  }
-}</pre>
+                    <pre>[general]
+enabled  = true
+platform = "discord"   # "discord" | "fluxer" | "both"
+
+[general.tridirectional]
+enabled            = false
+discord_to_fluxer  = true
+fluxer_to_discord  = true
+show_source        = true
+
+[discord]
+bot_token   = "YOUR_TOKEN"
+channel_id  = "YOUR_CHANNEL"   # comma-separated for multi-channel
+webhook_url = "YOUR_WEBHOOK"
+invite_url  = ""
+
+[fluxer]
+webhook_url       = ""
+event_webhook_url = ""
+api_key           = "YOUR_API_KEY"
+port              = 8080
+path              = "/webhook"
+
+[server]
+prefix = "[MC]"
+name   = "Minecraft Server"
+
+[formats]
+discord_to_minecraft = "[Discord] {username}: {message}"
+minecraft_to_discord = "{message}"
+webhook_username     = "{prefix}{username}"
+avatar_url           = "https://minotar.net/armor/bust/{username}/100.png"
+
+[events]
+send_join        = true
+send_leave       = true
+send_death       = true
+send_advancement = true
+
+[filters]
+ignore_bots         = true
+enable_chat_filter  = false
+chat_filter_prefix  = "!"
+
+[linking]
+enabled     = true
+code_expiry = 300
+
+# Many more keys exist (rate limiting, retries, message cache, embeds,
+# tridirectional echo TTL, async executor bounds, etc.) — the generated
+# viscord.toml contains an inline comment on every key.</pre>
                     <button class="copy-btn" onclick="copyCode(this)"><i class="fas fa-copy"></i></button>
                 </div>
                 
@@ -873,7 +867,7 @@
                     <i class="fas fa-bolt"></i>
                     <div>
                         <strong>Thread Pool Architecture</strong>
-                        <p style="margin: 0; color: inherit;">Fluxer receiver and WebHook senders operate asynchronously via a CachedThreadPool, protecting the main server thread at all costs. Never lower thread limits unless strictly required.</p>
+                        <p style="margin: 0; color: inherit;">As of 4.2.0, Viscord uses a <strong>bounded</strong> <code>ScheduledThreadPoolExecutor</code> sized to <code>cores/2</code> core threads, <code>cores×2</code> max, 30s keepalive, with a <code>CallerRunsPolicy</code> applying back-pressure under saturation. Threads are named <code>Viscord-Async-N</code> and run as daemons. The previous unbounded <code>CachedThreadPool</code> was replaced because a misbehaving network endpoint could spawn unlimited threads under load. Delayed work (status updates, reconnect backoff) uses true scheduling — no thread holds a <code>Thread.sleep</code>.</p>
                     </div>
                 </div>
             </div>
@@ -980,18 +974,13 @@
                         <td style="font-family: monospace; color: var(--text-muted);">—</td>
                         <td>Shows the in-game command index.</td>
                     </tr>
-                    <tr>
-                        <td style="font-family: monospace; color: var(--secondary);">/viscord fluxer invite</td>
-                        <td style="font-family: monospace; color: var(--secondary);">/fluxer</td>
-                        <td>Shows a clickable URL to invite the Fluxer bot to your Discord server. <code>/fluxer</code> is a convenient top-level alias.</td>
-                    </tr>
                 </table>
 
                 <div class="alert alert-success" style="margin-top: 30px;">
                     <i class="fas fa-check-circle"></i>
                     <div>
-                        <strong>Duplicate Advancement Fix (v2.4.6)</strong>
-                        <p style="margin: 0; color: inherit;">Advancement notifications are now deduplicated with a 5-second cooldown window per player. Advancements triggered via commands (e.g. <code>/advancement grant</code>) no longer spam Discord multiple times.</p>
+                        <strong>Advancement Dedup (4.2.0)</strong>
+                        <p style="margin: 0; color: inherit;">Advancement notifications are deduplicated with a 5-second cooldown window per player. The 4.2.0 refresh replaced the previous unbounded <code>ConcurrentHashMap</code> with a synchronized access-order <code>LinkedHashMap</code> (cap 256) — the old <code>if (size &gt; 100) clear()</code> path was racy and could destroy in-flight dedupe state. Advancements triggered via commands (e.g. <code>/advancement grant</code>) no longer spam Discord multiple times.</p>
                     </div>
                 </div>
             </div>
@@ -1019,8 +1008,8 @@
                     </div>
                     
                     <div class="feature-card">
-                        <h4><i class="fas fa-database"></i> JSON Persistence</h4>
-                        <p>All link mapping and cache vectors are serialized optimally into <code>/config/viscord</code> using high-speed Jackson databinding.</p>
+                        <h4><i class="fas fa-database"></i> Off-Thread Persistence</h4>
+                        <p>Linked accounts and per-player preferences are persisted to <code>config/viscord/</code> as JSON via Gson. As of 4.2.0, the disk writes are offloaded to the bounded async executor — the JSON snapshot is built under a lock on the caller, then written off-thread, so unlinking and preference changes never block the server tick.</p>
                     </div>
                 </div>
             </div>
@@ -1102,7 +1091,7 @@
         </div>
 
         <div class="footer">
-            <p>&copy; 2026 Viscord Core Engine - Version 2.4.7</p>
+            <p>&copy; 2026 Viscord Core Engine - Version 4.2.0</p>
             <p style="margin-top: 10px; opacity: 0.5;">Forge & Fabric Interoperability Layer</p>
         </div>
     </div>

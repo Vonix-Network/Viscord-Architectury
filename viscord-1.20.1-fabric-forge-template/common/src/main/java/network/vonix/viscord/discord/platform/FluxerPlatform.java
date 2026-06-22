@@ -31,8 +31,6 @@ public class FluxerPlatform {
     private MinecraftServer server;
     private MessageListener messageListener;
     private boolean initialized = false;
-    // Separate event webhook client so event embeds go to the event channel URL if configured
-    private final FluxerWebhookClient eventWebhookClient = new FluxerWebhookClient();
 
     public void setServer(MinecraftServer server) {
         this.server = server;
@@ -90,10 +88,7 @@ public class FluxerPlatform {
             // Delay status push slightly — sending OP 3 immediately on the READY
             // receive thread races with the gateway's own session setup on some servers.
             if (ViscordConfigToml.BotStatus.ENABLED.get() && server != null) {
-                Viscord.ASYNC_EXECUTOR.submit(() -> {
-                    try { Thread.sleep(1500); } catch (InterruptedException ignored) {}
-                    pushStatus();
-                });
+                Viscord.scheduleAsync(this::pushStatus, 1500);
             }
         });
 
@@ -107,11 +102,10 @@ public class FluxerPlatform {
             botClient.updateStatus(initialStatus);
         }
 
-        botClient.connect(apiKey).thenRun(() -> {
+        botClient.connect(apiKey).thenRunAsync(() -> {
             Viscord.LOGGER.info("[Fluxer] Bot connected successfully.");
             // Send startup embed after bot is connected, for all modes.
             // DiscordPlatform handles its own startup embed independently.
-            try { Thread.sleep(500); } catch (InterruptedException ignored) {}
             String eventCh = getEventChannelId();
             Viscord.LOGGER.info("[Fluxer] Sending startup embed to event channel: {}", eventCh);
             JsonObject embed = new JsonObject();
@@ -119,7 +113,8 @@ public class FluxerPlatform {
                 "Server Online", "Server is now online", 0x43B581,
                 ViscordConfigToml.Server.NAME.get(), "Viscord · Server Online").accept(embed);
             sendEventEmbed(embed);
-        }).exceptionally(ex -> {
+        }, java.util.concurrent.CompletableFuture.delayedExecutor(500, java.util.concurrent.TimeUnit.MILLISECONDS, Viscord.ASYNC_EXECUTOR))
+        .exceptionally(ex -> {
             Viscord.LOGGER.error("[Fluxer] Failed to connect bot: {}", ex.getMessage());
             return null;
         });
@@ -164,10 +159,10 @@ public class FluxerPlatform {
 
     /**
      * Send a webhook message with custom username/avatar (used for tridirectional bridging).
-     * Records echo fingerprint in the provided cache to suppress gateway echo.
+     * The caller (TridirectionalBridge) is responsible for recording the echo fingerprint
+     * in its own cache before invoking this method.
      */
-    public void sendWebhookMessage(String username, String avatarUrl, String content,
-                                   java.util.Map<String, Long> echoCache) {
+    public void sendWebhookMessage(String username, String avatarUrl, String content) {
         String webhookUrl = ViscordConfigToml.Fluxer.WEBHOOK_URL.get();
         if (webhookUrl == null || webhookUrl.isEmpty()) {
             // No webhook — fall back to bot API with formatted message
@@ -178,10 +173,6 @@ public class FluxerPlatform {
         if (!webhookUrl.equals(webhookClient.getUrl())) {
             webhookClient.updateUrl(webhookUrl);
         }
-        // Record fingerprint before sending so echo suppression is ready
-        String echoKey = username + ":" + content;
-        echoCache.put(echoKey, System.currentTimeMillis());
-        if (echoCache.size() > 100) echoCache.clear();
         webhookClient.sendMessage(username, avatarUrl, content);
     }
 

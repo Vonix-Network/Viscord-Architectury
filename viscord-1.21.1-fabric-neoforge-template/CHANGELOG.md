@@ -7,40 +7,81 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
-## [4.1.9] - 2026-04-30
+## [4.2.0] - 2026-06-15
+
+This is a stability and consolidation release. No new user-facing features, but a large number of latent thread-safety bugs are fixed, dead code is removed, and the four MC-version templates are brought back into parity. Drop-in compatible with 4.1.x configs.
+
+### Security
+- **Webhook tokens no longer leak into logs.** `WebhookClient` and `FluxerWebhookClient` both shipped error/warn log lines that included the full webhook URL — including the bearer token segment — on every send failure or URL-parse failure. Both now route any URL into a `redactWebhookUrl()` helper that emits `…/webhooks/{id}/***` (all templates)
+
+### Fixed (thread-safety & async correctness)
+- **Unbounded `Executors.newCachedThreadPool()` replaced.** `Viscord.ASYNC_EXECUTOR` is now a bounded `ScheduledThreadPoolExecutor` (cores/2 core → cores×2 max, 30s keepalive, named daemon `Viscord-Async-N` threads, `CallerRunsPolicy` back-pressure). A burst of misbehaving network calls can no longer spawn unlimited threads. New `Viscord.scheduleAsync(Runnable, long delayMs)` helper for delayed work (all templates)
+- **`DiscordManager` shared mutable fields not visible across threads.** `server`, `bridge`, `linkedAccountsManager`, `playerPreferences`, and `running` are read from Javacord listener / Fluxer WebSocket / Brigadier / tick threads but were not `volatile`. All five are now `volatile`. Same fix applied to `BotClient.api` and `FluxerBotClient.{webSocket,token,sessionId,onReadyCallback,messageHandler}` (all templates)
+- **`BotClient` TOCTOU NPE between `api != null` check and `api.xxx()` call.** Every method that touches `api` now captures `DiscordApi local = api;` at entry and uses `local` (all templates)
+- **`FluxerBotClient` WebSocket TOCTOU.** Every method touching `webSocket` now captures a local before use; same pattern applied (all templates)
+- **`recentAdvancements` debounce cache was unbounded and used a racy `if (size > 100) clear()` eviction** that destroyed all in-flight dedupe state at once. Replaced with a synchronized access-order `LinkedHashMap` (cap 256, auto-LRU eviction) and a clean read-then-put block under `synchronized` (all templates)
+- **`TridirectionalBridge` echo cache was unbounded.** Same `if(size>X) clear()` racy pattern lived in `FluxerPlatform.sendWebhookMessage` as well. Replaced with a 512-entry synchronized LRU owned by the bridge; `FluxerPlatform.sendWebhookMessage` dropped from 4-arg to 3-arg (no longer touches the cache); new `TridirectionalBridge.rememberOutgoing(...)` helper handles registration (all templates)
+- **`scheduleStatusUpdate` burned one pool thread per call holding a `Thread.sleep` for the full delay.** 100 reconnecting players × 500 ms = 100 sleeping threads. Now uses `Viscord.scheduleAsync(...)` (true scheduling, no thread held) and coalesces bursts via an `AtomicBoolean` CAS — at most one pending status update at a time (all templates)
+- **`FluxerPlatform` initialize used `submit({sleep(1500); pushStatus();})` and `thenRun({sleep(500); ...})` patterns** that held pool threads. Both replaced with `Viscord.scheduleAsync` and `CompletableFuture.delayedExecutor(..., ASYNC_EXECUTOR)` respectively (all templates)
+- **`SERVER_STOPPING` lifecycle thread was blocked by nested `.join()` calls** in `DiscordManager.shutdown` → `DiscordPlatform.shutdown` (`orTimeout(3s).join()`) → `WebhookClient.shutdown` (`awaitTermination(3s)`) → executor `awaitTermination(5s)`. Worst-case ~11 s of stop-thread blocking. Shutdown now runs entirely on `ASYNC_EXECUTOR` with a single overall `orTimeout(5s)`; `DiscordPlatform.shutdown` chains cleanup via `.handle(...)` instead of `.join()` (all templates)
+- **`/viscord reload` sent command feedback from the executor thread.** `sendSuccess` / `sendFailure` from off-thread can corrupt the Vanilla packet pipeline. All command output is now bounced back to the server thread via `mcServer.execute(...)`. The arbitrary 1-second `Thread.sleep` after shutdown is gone (all templates)
+- **`LinkedAccountsManager.save()` ran synchronous file I/O** on whichever thread called `unlinkAccount` — typically the Brigadier command thread, i.e. the server tick thread. The JSON snapshot is now built on the caller under `synchronized(linkedAccounts)` and the disk write is offloaded to `Viscord.ASYNC_EXECUTOR` (matches the `PlayerPreferences` fix from 4.1.5) (all templates)
+- **`FluxerBotClient` `CompletableFuture.supplyAsync(...)` calls** (sendEmbed, sendMessage) ran blocking `HttpURLConnection` on `ForkJoinPool.commonPool`, which is the wrong pool for blocking work. Both now pass `Viscord.ASYNC_EXECUTOR` as the explicit executor (all templates)
+
+### Removed
+- **Dead `FluxerPlatform.eventWebhookClient` field.** Declared but never wired or shut down — its OkHttpClient pool leaked for the JVM lifetime (all templates)
+- **Dead `/viscord fluxer invite` and top-level `/fluxer` Brigadier commands.** Both unconditionally returned "Fluxer bot invite is not available". Removed entirely (all templates)
+- **Legacy JSON config system: `config/ViscordConfig.java` and the `config/simple/` package** (4 files). Replaced by TOML in 4.0; one stale read remained in `MessageConverter` (caused `messages.use_display_name` to silently have no effect through that path). `MessageConverter` now reads from `ViscordConfigToml.Messages.USE_DISPLAY_NAME` (all templates)
+- **Stale `SimpleConfigManager` / `SimpleConfigSpec` imports** in `TomlConfigManager.java` (1.21.1)
+- **Tracked build artefacts** removed from git: `__pycache__/`, `error.txt`, `build_errors.txt`. `.gitignore` extended to cover `__pycache__/`, `*.pyc`, ad-hoc `fix*.py`, and build log `*.txt`
+
+### Changed
+- **Cross-version drift eliminated.** Before 4.2.0 the 1.21.1 template held bug fixes that the 1.18.2/1.19.2/1.20.1 templates were missing — most notably `FluxerBotClient.selfId` ID-based self-message filtering (the older templates fell back to broken prefix matching) and `DiscordManager.resetInstance()`. All four templates are now in parity on every common-tree file except for unavoidable Mojang-API renames (`TextComponent` → `Component.literal`, `sendMessage(msg, NIL_UUID)` → `sendSystemMessage(msg, false)`, Brigadier `sendSuccess(Component, ...)` → `sendSuccess(Supplier<Component>, ...)`)
+- **`/viscord discord help` text corrected.** No longer advertises `[enable|disable]` subcommands that don't exist; no longer references the deleted `/viscord fluxer invite`; the line about `Discord: /list` corrected to `!list` (the actual trigger is text, not a slash command)
+- **`DiscordPlatform.shutdown()` no longer blocks** on the embed future internally — caller awaits the returned future; bot/webhook teardown chains via `.handle(...)`
+
+### Documentation
+- **README rewritten** to reflect shipping 4.2.0 surface — the previous README still described the legacy `config/viscord.json` format with deprecated key names, recommended Fluxer port-forwarding (no longer needed — Fluxer uses WebSocket Gateway), omitted the `both` and `tridirectional` modes, and listed nonexistent commands like `/link` / `/unlink` (the real ones are `/viscord discord link` / `unlink`)
+
+## [4.1.12] - 2026-05-08
 
 ### Fixed
-- **Display name toggle not respected in all message paths** — `DiscordManager` had four code paths (tridirectional bridge author name, direct message author, embed fallback author, player-list embed author) that called `.getDisplayName()` directly without checking the `formats.use_display_name` config, so setting it to `false` had no effect on those paths. All four now go through a shared `resolveAuthorName()` helper that checks the config (all templates)
-- **New config keys missing from existing TOML on upgrade** — `TomlConfigManager.createConfigSpec()` and `applyDefaults()` were both missing `messages.use_display_name` and `filters.trusted_bot_ids`, so `ConfigSpec.correct()` never injected them into existing `viscord.toml` files on server start. Users upgrading from 4.1.5 would not see these options in their config. Both keys are now registered in the spec and defaults (all templates)
+- **Discord chat and cross-server events not visible in Minecraft** — `isSelfOriginated()` and the `FILTER_BY_PREFIX` guard in `processDiscordMessageForMinecraft()` were applying the server-prefix check to *all* Discord message authors, not just webhooks/bots. Any regular Discord user whose display name started with the server prefix (e.g. `[MC]`) was silently dropped, and even trusted cross-server bots could be blocked. Prefix/ID checks are now restricted to webhook and bot authors only; regular users always pass through (all templates)
+
+## [4.1.11] - 2026-05-07
+
+### Fixed
+- **Server-side only configuration** — Removed client entrypoint from all `fabric.mod.json` files, set environment to `"server"`, deleted client directories, and changed dependency sides to `"SERVER"` in all `mods.toml` files. Mod now runs server-side only and does not require players to have the mod installed (all templates)
+- **Shutdown ClassNotFoundException in shadowed Javacord classes** — Added `eventBus.excludedPackages = "network.vonix.viscord.shadow"` to Forge/NeoForge `mods.toml` files to prevent EventBus transformer from attempting to transform shadowed classes during server shutdown, which caused `ClassNotFoundException: MessageBuilderBase` errors (all Forge/NeoForge templates)
 
 ## [4.1.10] - 2026-04-30
 
 ### Fixed
 - **`use_display_name = true` shows username instead of display name** — `resolveAuthorName()` called `MessageAuthor.getDisplayName()` which resolves to server nickname or falls back directly to the plain username, skipping Discord's global display name (`global_name`). For users with no server nickname the setting had no effect. Now unwraps to the `User` object and resolves: server nickname → global display name → username (all templates)
 
-## [4.1.8] - 2026-04-30
+## [4.1.9] - 2026-04-30
 
 ### Fixed
-- **Echo loop prevention**: Minecraft→Discord messages no longer echo back into game chat regardless of `ignore_bots`, `ignore_webhooks`, or `filter_by_prefix` settings. `onDiscordMessage` now unconditionally blocks messages from this server's own origin via three independent checks: (1) webhook ID matched against the numeric ID extracted from `discord.webhook_url`, (2) bot user ID matched against the connected bot's own account, (3) author display name prefix matched against the configured `server.prefix` pattern (all templates)
-- **`!list` corrupted output**: `handleTextListCommand` and `handleFluxerListCommand` had literal newline characters embedded directly in string literals (`sb.append("↵")`), which produced garbled player-list output; replaced with proper `"\n"` escape sequences (all templates)
+- **Display name toggle not respected in all message paths** — `DiscordManager` had four code paths (tridirectional bridge author name, direct message author, embed fallback author, player-list embed author) that called `.getDisplayName()` directly without checking the `formats.use_display_name` config, so setting it to `false` had no effect on those paths. All four now go through a shared `resolveAuthorName()` helper that checks the config (1.20.1 template)
+- **New config keys missing from existing TOML on upgrade** — `TomlConfigManager.createConfigSpec()` and `applyDefaults()` were both missing `messages.use_display_name` and `filters.trusted_bot_ids`, so `ConfigSpec.correct()` never injected them into existing `viscord.toml` files on server start. Users upgrading from 4.1.5 would not see these options in their config. Both keys are now registered in the spec and defaults (1.20.1 template)
 
 ## [4.1.7] - 2026-04-29
 
 ### Fixed
-- **Thread-safety: volatile singleton** — `DiscordManager.instance` is now `volatile` with synchronized `getInstance`/`resetInstance` (all templates)
-- **Thread-safety: `discordEnabled` flag** — `Viscord.discordEnabled` is now `volatile` (all templates)
-- **Thread-safety: `PlayerPreferences` map** — backing store changed from `HashMap` to `ConcurrentHashMap` (all templates)
-- **Shutdown: `Thread.sleep` on server thread** — removed `Thread.sleep(1500/100)` from `DiscordManager.shutdown()`; shutdown future now joined with a 3-second timeout (all templates)
-- **Shutdown: shutdown embed dropped** — `DiscordPlatform.shutdown()` now waits up to 3 seconds for the embed future before calling `botClient.disconnect()` (all templates)
-- **Shutdown: `ASYNC_EXECUTOR` never terminated** — executor now shut down with 5-second `awaitTermination` on `SERVER_STOPPING` (all templates)
-- **Shutdown: `WebhookClient` dispatcher not awaited** — `WebhookClient.shutdown()` now calls `awaitTermination(3, SECONDS)` (all templates)
-- **Security: predictable link codes** — `LinkedAccountsManager` replaced `new Random()` with `SecureRandom` (all templates)
-- **Security: account-link TOCTOU** — `verifyAndLink` check-then-put now protected by `synchronized (linkedAccounts)` (all templates)
-- **Data integrity: charset in file I/O** — `LinkedAccountsManager` now explicitly uses `UTF-8` in `FileWriter`/`FileReader` (all templates)
-- **Config: `Long` → `Integer` coercion** — `ConfigValue<Integer>.get()` now coerces via `Number` before casting, fixing silent fallback to defaults for all integer config values (all templates)
-- **Thread-safety: `!list` off server thread** — `handleTextListCommand` and `handleFluxerListCommand` now marshal via `server.execute()` (all templates)
-- **Duplicate `!list` handling** — removed duplicate guard in `processDiscordMessageForMinecraft` that sent the player-list embed twice (all templates)
-- **Chat formatting: `&` breaks URLs** — `ChatFormatter.parseColors` now only replaces `&` when followed by a valid Minecraft format code character (all templates)
+- **Thread-safety: volatile singleton** — `DiscordManager.instance` was a plain (non-volatile) static field; `getInstance()` and `resetInstance()` are now `synchronized` and the field is `volatile`, eliminating a double-checked-locking race on multi-core JVMs (all templates)
+- **Thread-safety: `discordEnabled` flag** — `Viscord.discordEnabled` was set from an async thread and read from the server thread with no visibility guarantee; field is now `volatile` (all templates)
+- **Thread-safety: `PlayerPreferences` map** — changed backing store from `HashMap` to `ConcurrentHashMap` to prevent `ConcurrentModificationException` when server thread reads while async thread writes (all templates)
+- **Shutdown: `Thread.sleep` on server thread** — `DiscordManager.shutdown()` was calling `Thread.sleep(1500)` and `Thread.sleep(100)` directly on the Minecraft server thread during `SERVER_STOPPING`; both sleeps removed and the Discord shutdown future is now joined with a 3-second timeout instead (all templates)
+- **Shutdown: shutdown embed dropped** — `DiscordPlatform.shutdown()` was calling `botClient.disconnect()` immediately after firing the async shutdown embed, so the embed HTTP request was typically cancelled; now waits up to 3 seconds for the embed future before disconnecting (all templates)
+- **Shutdown: `ASYNC_EXECUTOR` never terminated** — the cached thread pool was never shut down on `SERVER_STOPPING`, leaving non-daemon threads alive after server stop; executor is now shut down with a 5-second `awaitTermination` (all templates)
+- **Shutdown: `WebhookClient` dispatcher not awaited** — `WebhookClient.shutdown()` called `executorService().shutdown()` but never waited for in-flight requests to finish; now calls `awaitTermination(3, SECONDS)` so in-progress webhook sends are not abandoned (all templates)
+- **Security: predictable link codes** — `LinkedAccountsManager` used `new Random()` (time-seeded, predictable) to generate 6-digit account-link codes; replaced with a shared `SecureRandom` instance (all templates)
+- **Security: account-link TOCTOU** — the "is Discord already linked?" check and `linkedAccounts.put()` in `verifyAndLink` were not atomic; concurrent `/link` calls could bind one Discord account to two Minecraft UUIDs; protected by a `synchronized (linkedAccounts)` block (all templates)
+- **Data integrity: `FileWriter`/`FileReader` without charset** — `LinkedAccountsManager` used platform-default encoding; both now explicitly use `StandardCharsets.UTF_8` to prevent non-ASCII username corruption on Windows (all templates)
+- **Config: `Long` → `Integer` silent coercion failure** — NightConfig stores TOML integers as `Long`; `ConfigValue<Integer>.get()` was catching `ClassCastException` and silently returning the hardcoded default, ignoring all user-configured integer values (e.g. `account_linking.code_expiry`); added `Number` coercion before the cast (all templates)
+- **Thread-safety: `!list` player list read off server thread** — `handleTextListCommand` and `handleFluxerListCommand` called `server.getPlayerList().getPlayers()` directly on the Javacord/Fluxer WebSocket thread, violating Minecraft's thread-safety model; both methods now marshal via `server.execute()` before accessing player list state (all templates)
+- **Duplicate `!list` handling** — `processDiscordMessageForMinecraft` re-checked for `!list` after `onDiscordMessage` had already handled and returned, causing the player-list embed to be sent twice per command; duplicate guard removed (all templates)
+- **Chat formatting: `&` replacement breaks URLs** — `ChatFormatter.parseColors` unconditionally replaced all `&` with `§`, corrupting URLs like `?a=1&b=2` into `?a=1§b=2`; now only replaces `&` when followed by a valid Minecraft formatting code character or `#` for hex colors (all templates)
 
 ## [4.1.6] - 2026-04-28
 

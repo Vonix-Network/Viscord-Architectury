@@ -7,7 +7,7 @@ import net.minecraft.network.chat.HoverEvent;
 import net.minecraft.network.chat.MutableComponent;
 import net.minecraft.network.chat.Style;
 import net.minecraft.network.chat.TextColor;
-import network.vonix.viscord.config.ViscordConfig;
+import network.vonix.viscord.config.toml.ViscordConfigToml;
 import org.javacord.api.entity.message.Message;
 import org.javacord.api.entity.message.MessageAttachment;
 import org.javacord.api.entity.message.embed.Embed;
@@ -33,7 +33,7 @@ public class MessageConverter {
         MutableComponent root = Component.literal("");
 
         // 1. Author Name (with hover tooltip)
-        boolean useDisplayName = ViscordConfig.CONFIG.useDisplayName.get();
+        boolean useDisplayName = ViscordConfigToml.Messages.USE_DISPLAY_NAME.get();
         String authorName = useDisplayName
                 ? message.getAuthor().getDisplayName()
                 : message.getAuthor().getName();

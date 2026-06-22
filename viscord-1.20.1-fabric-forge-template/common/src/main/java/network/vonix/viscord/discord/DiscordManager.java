@@ -43,7 +43,7 @@ public class DiscordManager {
     // Platform delegates
     private final DiscordPlatform discordPlatform = new DiscordPlatform();
     private final FluxerPlatform fluxerPlatform = new FluxerPlatform();
-    private TridirectionalBridge bridge;
+    private volatile TridirectionalBridge bridge;
 
     // Minecraft-specific processing
     private final EventEmbedDetector eventDetector = new EventEmbedDetector();
@@ -55,15 +55,24 @@ public class DiscordManager {
         Pattern.compile("\\[([^\\]]+)]\\((https?://[^)]+)\\)");
 
     // Server + sub-systems
-    private MinecraftServer server;
-    private LinkedAccountsManager linkedAccountsManager;
-    private PlayerPreferences playerPreferences;
+    private volatile MinecraftServer server;
+    private volatile LinkedAccountsManager linkedAccountsManager;
+    private volatile PlayerPreferences playerPreferences;
 
-    private boolean running = false;
+    private volatile boolean running = false;
 
-    // Advancement debounce cache
+    // Coalesces bursts of scheduleStatusUpdate (e.g. mass-join) into a single update
+    private final java.util.concurrent.atomic.AtomicBoolean statusUpdatePending =
+        new java.util.concurrent.atomic.AtomicBoolean(false);
+
+    // Advancement debounce cache — bounded LRU with TTL-on-read in sendAdvancementEmbed.
+    // access-order LinkedHashMap evicts least-recently-used once size exceeds 256.
     private final java.util.Map<String, Long> recentAdvancements =
-        new java.util.concurrent.ConcurrentHashMap<>();
+        java.util.Collections.synchronizedMap(new java.util.LinkedHashMap<String, Long>(64, 0.75f, true) {
+            @Override protected boolean removeEldestEntry(java.util.Map.Entry<String, Long> e) {
+                return size() > 256;
+            }
+        });
 
     private DiscordManager() {}
 
@@ -610,9 +619,11 @@ public class DiscordManager {
         if (!ViscordConfigToml.Messages.Events.ADVANCEMENT.get() || !isRunning()) return;
         long now = System.currentTimeMillis();
         String key = username + ":" + title;
-        Long prev = recentAdvancements.merge(key, now, (existing, nv) -> (now - existing < 5000) ? existing : nv);
-        if (!prev.equals(now)) return;
-        if (recentAdvancements.size() > 100) { recentAdvancements.clear(); recentAdvancements.put(key, now); }
+        synchronized (recentAdvancements) {
+            Long prev = recentAdvancements.get(key);
+            if (prev != null && now - prev < 5000) return; // deduped
+            recentAdvancements.put(key, now);
+        }
         if (usesFluxer()) {
             JsonObject embed = new JsonObject();
             EmbedFactory.createAdvancementEmbed("\uD83C\uDFC6", 0xFAA61A, username, title, desc).accept(embed);
@@ -642,10 +653,12 @@ public class DiscordManager {
 
     public void scheduleStatusUpdate(int delayMs) {
         if (server == null || !ViscordConfigToml.BotStatus.ENABLED.get()) return;
-        Viscord.ASYNC_EXECUTOR.submit(() -> {
-            try { Thread.sleep(delayMs); updateBotStatus(); }
-            catch (InterruptedException ignored) { Thread.currentThread().interrupt(); }
-        });
+        // Coalesce bursts (e.g. mass-join) into a single update
+        if (!statusUpdatePending.compareAndSet(false, true)) return;
+        Viscord.scheduleAsync(() -> {
+            statusUpdatePending.set(false);
+            updateBotStatus();
+        }, delayMs);
     }
 
     // =========================================================================

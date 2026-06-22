@@ -16,7 +16,7 @@ import java.util.function.Consumer;
  */
 public class BotClient {
 
-    private DiscordApi api;
+    private volatile DiscordApi api;
     private String token;
     private String channelId;
     private Consumer<MessageCreateEvent> messageHandler;
@@ -90,29 +90,32 @@ public class BotClient {
     }
 
     public void updateStatus(String status) {
-        if (api != null) {
-            api.updateActivity(ActivityType.PLAYING, status);
-            api.updateStatus(org.javacord.api.entity.user.UserStatus.ONLINE);
+        DiscordApi local = api;
+        if (local != null) {
+            local.updateActivity(ActivityType.PLAYING, status);
+            local.updateStatus(org.javacord.api.entity.user.UserStatus.ONLINE);
         }
     }
 
     public void disconnect() {
-        if (api != null) {
-            api.disconnect();
+        DiscordApi local = api;
+        if (local != null) {
             api = null;
+            local.disconnect();
         }
     }
 
     public CompletableFuture<org.javacord.api.entity.message.Message> sendEmbed(String channelId,
             com.google.gson.JsonObject embedJson) {
-        if (api == null) {
+        DiscordApi local = api;
+        if (local == null) {
             Viscord.LOGGER.warn("[Discord] Cannot send embed - API is null (bot not connected)");
             return CompletableFuture.completedFuture(null);
         }
-        
+
         Viscord.LOGGER.info("[Discord] Attempting to send embed to channel ID: {}", channelId);
 
-        java.util.Optional<org.javacord.api.entity.channel.TextChannel> channelOpt = api.getTextChannelById(channelId);
+        java.util.Optional<org.javacord.api.entity.channel.TextChannel> channelOpt = local.getTextChannelById(channelId);
         if (!channelOpt.isPresent()) {
             Viscord.LOGGER.warn("[Discord] Cannot send embed - channel {} not found (bot may lack access)", channelId);
             return CompletableFuture.completedFuture(null);
@@ -160,6 +163,7 @@ public class BotClient {
 
     /** Returns the bot's own Discord user ID, or null if not connected. */
     public String getBotUserId() {
-        return api != null ? api.getYourself().getIdAsString() : null;
+        DiscordApi local = api;
+        return local != null ? local.getYourself().getIdAsString() : null;
     }
 }
