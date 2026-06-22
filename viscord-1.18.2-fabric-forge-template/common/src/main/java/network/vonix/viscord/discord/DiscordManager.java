@@ -55,6 +55,12 @@ public class DiscordManager {
     private static final Pattern DISCORD_MARKDOWN_LINK =
         Pattern.compile("\\[([^\\]]+)]\\((https?://[^)]+)\\)");
 
+    /** Strict format for /link &lt;code&gt;: exactly 6 ASCII digits. Anything else is rejected pre-lookup. */
+    private static final Pattern LINK_CODE_FORMAT = Pattern.compile("\\d{6}");
+
+    /** Bot-side text-trigger rate limiter (/link, !list). Lazily initialized on first use. */
+    private final DiscordCommandRateLimiter rateLimiter = new DiscordCommandRateLimiter();
+
     // Server + sub-systems
     private volatile MinecraftServer server;
     private volatile LinkedAccountsManager linkedAccountsManager;
@@ -869,6 +875,8 @@ public class DiscordManager {
 
     private void handleTextListCommand(MessageCreateEvent event) {
         if (server == null) return;
+        String discordId = event.getMessageAuthor().getIdAsString();
+        if (!rateLimiter.tryConsume(DiscordCommandRateLimiter.Command.LIST, discordId)) return;
         server.execute(() -> {
             try {
                 java.util.List<net.minecraft.server.level.ServerPlayer> players = server.getPlayerList().getPlayers();
@@ -900,6 +908,9 @@ public class DiscordManager {
     /** Handles !list command received from Fluxer -- sends player list back to Fluxer event channel. */
     private void handleFluxerListCommand() {
         if (server == null) return;
+        // Fluxer's onFluxerMessage signature does not surface a stable per-user id; bucket all
+        // Fluxer !list calls into a shared "fluxer" key so the global cap still applies.
+        if (!rateLimiter.tryConsume(DiscordCommandRateLimiter.Command.LIST, "fluxer")) return;
         server.execute(() -> {
             try {
                 java.util.List<net.minecraft.server.level.ServerPlayer> players = server.getPlayerList().getPlayers();
@@ -925,24 +936,40 @@ public class DiscordManager {
     private void handleLinkCommand(MessageCreateEvent event) {
         try {
             if (!ViscordConfigToml.AccountLinking.ENABLED.get()) {
-                event.getChannel().sendMessage("❌ Account linking is disabled."); return;
+                event.getChannel().sendMessage("\u274c Account linking is disabled."); return;
             }
+            String discordId = event.getMessageAuthor().getIdAsString();
+
+            // Rate limit BEFORE doing any work (defends against brute force of 6-digit code).
+            // Silent on hit: replying would let an attacker measure the limit window and pace around it,
+            // and would also spam the channel under attack. Log line emitted at debug level only.
+            if (!rateLimiter.tryConsume(DiscordCommandRateLimiter.Command.LINK, discordId)) {
+                return;
+            }
+
             String content = event.getMessage().getContent().trim();
             String[] parts = content.split(" ", 2);
             if (parts.length < 2) {
-                event.getChannel().sendMessage("❌ Usage: `/link <code>`"); return;
+                event.getChannel().sendMessage("\u274c Usage: `/link <code>`"); return;
             }
             if (linkedAccountsManager == null) {
-                event.getChannel().sendMessage("❌ Account linking system is not available."); return;
+                event.getChannel().sendMessage("\u274c Account linking system is not available."); return;
             }
             String code = parts[1].trim();
-            String discordId = event.getMessageAuthor().getIdAsString();
+
+            // Strict pre-validation: 6 ASCII digits. Reject anything else with a single generic
+            // error so we don't help an attacker enumerate (e.g. "too short" vs "invalid code").
+            if (!LINK_CODE_FORMAT.matcher(code).matches()) {
+                event.getChannel().sendMessage("\u274c Invalid link code. Use `/link <6-digit code>`.");
+                return;
+            }
+
             String discordUsername = event.getMessageAuthor().getDisplayName();
             LinkedAccountsManager.LinkResult result = linkedAccountsManager.verifyAndLink(code, discordId, discordUsername);
-            event.getChannel().sendMessage(result.success ? "✅ " + result.message : "❌ " + result.message);
+            event.getChannel().sendMessage(result.success ? "\u2705 " + result.message : "\u274c " + result.message);
         } catch (Exception e) {
             Viscord.LOGGER.error("[Discord] Error handling /link command", e);
-            event.getChannel().sendMessage("❌ An error occurred while processing your link request.");
+            event.getChannel().sendMessage("\u274c An error occurred while processing your link request.");
         }
     }
 }
