@@ -94,6 +94,19 @@ public class ViscordConfigToml {
         public static final ConfigValue<Integer> CODE_EXPIRY = new ConfigValue<>("account_linking.code_expiry", 300);
     }
 
+    // ==================== DISCORD/FLUXER BOT-SIDE RATE LIMITING ====================
+    // Sliding 60-second windows. A value of 0 disables the corresponding bucket.
+    public static class DiscordRateLimit {
+        /** Per-Discord-user /link attempts per 60s. Default 3 — brute-forcing a 6-digit code at this rate is infeasible. */
+        public static final ConfigValue<Integer> LINK_PER_USER_PER_MIN  = new ConfigValue<>("discord_rate_limit.link_per_user_per_min", 3);
+        /** Channel-wide /link attempts per 60s across ALL users. Default 30 — caps coordinated brute force. */
+        public static final ConfigValue<Integer> LINK_GLOBAL_PER_MIN    = new ConfigValue<>("discord_rate_limit.link_global_per_min", 30);
+        /** Per-user !list invocations per 60s. Default 2. */
+        public static final ConfigValue<Integer> LIST_PER_USER_PER_MIN  = new ConfigValue<>("discord_rate_limit.list_per_user_per_min", 2);
+        /** Channel-wide !list invocations per 60s. Default 20. */
+        public static final ConfigValue<Integer> LIST_GLOBAL_PER_MIN    = new ConfigValue<>("discord_rate_limit.list_global_per_min", 20);
+    }
+
     // ==================== CONFIG VALUE HELPER CLASS ====================
     /**
      * Typed configuration value wrapper.

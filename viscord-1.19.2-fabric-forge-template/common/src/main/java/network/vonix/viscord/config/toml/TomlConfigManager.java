@@ -253,6 +253,12 @@ public class TomlConfigManager {
         spec.define("account_linking.enabled", true);
         spec.defineInRange("account_linking.code_expiry", 300, 60, 600);
 
+        // [discord_rate_limit] section (sliding 60-second windows, 0 = unlimited)
+        spec.defineInRange("discord_rate_limit.link_per_user_per_min", 3,  0, 1000);
+        spec.defineInRange("discord_rate_limit.link_global_per_min",   30, 0, 10000);
+        spec.defineInRange("discord_rate_limit.list_per_user_per_min", 2,  0, 1000);
+        spec.defineInRange("discord_rate_limit.list_global_per_min",   20, 0, 10000);
+
         // [advanced] section
         spec.defineInRange("advanced.queue_size", 100, 10, 1000);
         spec.defineInRange("advanced.rate_limit", 1000, 100, 5000);
@@ -327,6 +333,12 @@ public class TomlConfigManager {
         // [account_linking] section
         config.set("account_linking.enabled", true);
         config.set("account_linking.code_expiry", 300);
+
+        // [discord_rate_limit] section
+        config.set("discord_rate_limit.link_per_user_per_min", 3);
+        config.set("discord_rate_limit.link_global_per_min",   30);
+        config.set("discord_rate_limit.list_per_user_per_min", 2);
+        config.set("discord_rate_limit.list_global_per_min",   20);
 
         // [advanced] section
         config.set("advanced.queue_size", 100);
@@ -461,6 +473,16 @@ public class TomlConfigManager {
                 "Link Minecraft and Discord accounts");
         config.setComment("account_linking.enabled", "Enable Discord account linking system");
         config.setComment("account_linking.code_expiry", "How long link codes remain valid (seconds, range: 60-600)");
+
+        // [discord_rate_limit] comments
+        config.setComment("discord_rate_limit", "Bot-side text-trigger rate limiting (/link, !list)\n" +
+                "Defends against brute-force on the 6-digit account-link code\n" +
+                "and limits DoS surface on public chat triggers.\n" +
+                "All windows are 60 seconds. A value of 0 disables that bucket.");
+        config.setComment("discord_rate_limit.link_per_user_per_min", "Per-Discord-user /link attempts per minute (range: 0-1000, default 3)");
+        config.setComment("discord_rate_limit.link_global_per_min",   "Channel-wide /link attempts per minute across all users (range: 0-10000, default 30)");
+        config.setComment("discord_rate_limit.list_per_user_per_min", "Per-Discord-user !list invocations per minute (range: 0-1000, default 2)");
+        config.setComment("discord_rate_limit.list_global_per_min",   "Channel-wide !list invocations per minute (range: 0-10000, default 20)");
 
         // [advanced] comments
         config.setComment("advanced", "Advanced Settings\n" +
