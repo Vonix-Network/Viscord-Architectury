@@ -47,7 +47,7 @@ These are text-pattern triggers handled by `DiscordManager.onDiscordMessage`. Th
 
 | Trigger | Description |
 |---|---|
-| `!list` | Bot replies with the current player list embed. Player list is read on the server thread via `server.execute(...)` for thread safety (fixed in 4.1.7). |
-| `/link <code>` | Link a Discord account using the 6-digit code from `/viscord discord link`. The code expires after `account_linking.code_expiry` seconds (default 300, range 60–600). |
+| `!list` | Bot replies with the current player list embed. Player list is read on the server thread via `server.execute(...)` for thread safety (fixed in 4.1.7). Rate-limited (default 2 per user / 20 channel-wide per 60s). |
+| `/link <code>` | Link a Discord account using the 6-digit code from `/viscord discord link`. The code expires after `account_linking.code_expiry` seconds (default 300, range 60–600). Strict `^\d{6}$` pre-validation. Rate-limited (default 3 per user / 30 channel-wide per 60s, silent on hit). See [configuration.md `[discord_rate_limit]`](configuration.md). |
 
 > The `/link` trigger looks like a Discord slash command, but Viscord does not register it as one — it is matched on `message.startsWith("/link ")` in `DiscordManager`.

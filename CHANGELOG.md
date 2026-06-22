@@ -7,6 +7,24 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [4.2.1] - 2026-06-22
+
+This is a focused security release hardening the Discord/Fluxer bot-side text triggers (`/link`, `!list`). Drop-in compatible with 4.2.0 configs — the new `[discord_rate_limit]` keys are auto-injected on first start.
+
+### Security
+- **Brute-force protection on `/link`.** Anyone in the bridged Discord channel could previously spam `/link 000000`, `/link 000001`, … against the 1,000,000-key 6-digit code space. With pending codes valid for up to 5 minutes, a sustained brute-force attempt had a non-trivial chance of landing on an active code. Added a sliding-window rate limiter (`DiscordCommandRateLimiter`) with per-Discord-user and channel-wide buckets, configurable via the new `[discord_rate_limit]` TOML section. Default: 3 `/link` per user per 60s, 30 channel-wide per 60s. **Silent on hit** by design — replying would let an attacker measure the window and pace around it. Same protection applied to `!list` and Fluxer `!list` (all templates)
+- **Strict `/link` format pre-validation.** `handleLinkCommand` now rejects anything that doesn't match `^\d{6}$` with a single generic error before reaching `verifyAndLink`. No enumeration help — a 5-digit submission and a 7-digit submission produce identical errors (all templates)
+- **No bucket leakage from MC-side commands.** `/viscord reload` and `/viscord status` remain gated to op 4 (vanilla `requires(hasPermission(4))`); `/viscord discord link|unlink|messages|events|help` use `getPlayerOrException()` so console invocation is rejected. No Discord-side admin commands exist — privileged operations only run on the MC side, behind op 4.
+
+### Added
+- `[discord_rate_limit]` TOML section: `link_per_user_per_min`, `link_global_per_min`, `list_per_user_per_min`, `list_global_per_min`. Sliding 60-second windows, value `0` disables the bucket. Registered in `ConfigSpec` and `applyDefaults` so existing `viscord.toml` files get the keys auto-injected on first start after upgrade (all templates)
+- Documentation: `docs/configuration.md` gains a `[discord_rate_limit]` reference; `docs/account-linking.md` and `docs/security.md` updated with the new mitigations; `docs/troubleshooting.md` gains a section on the silent-rate-limit behaviour; `docs/commands.md` notes the per-command limits.
+
+### Changed
+- `DiscordManager.handleLinkCommand` checks rate limit before any other work, then format-validates the code with `LINK_CODE_FORMAT` before touching `LinkedAccountsManager` (all templates)
+- `DiscordManager.handleTextListCommand` checks rate limit at entry (all templates)
+- `DiscordManager.handleFluxerListCommand` checks rate limit at entry using a shared `"fluxer"` bucket key (Fluxer's current `onFluxerMessage` signature doesn't surface a stable per-user id; the global cap still applies) (all templates)
+
 ## [4.2.0] - 2026-06-15
 
 This is a stability and consolidation release. No new user-facing features, but a large number of latent thread-safety bugs are fixed, dead code is removed, and the four MC-version templates are brought back into parity. Drop-in compatible with 4.1.x configs.

@@ -61,6 +61,8 @@ The linking flow has been hardened over several releases:
 | Non-ASCII corruption on Windows | `FileWriter` / `FileReader` calls explicitly use `StandardCharsets.UTF_8`. | 4.1.7 |
 | Stale codes | `code_expiry` (60–600s, default 300). Expired codes are rejected on verify. | — |
 | I/O on tick thread | Snapshot is built under `synchronized(linkedAccounts)` on the caller, disk write is offloaded to `ASYNC_EXECUTOR`. | 4.2.0 |
+| Brute-force on 6-digit code | Sliding-window rate limiter (per-Discord-user + global). Silent on hit. See [configuration.md `[discord_rate_limit]`](configuration.md). | 4.2.1 |
+| Code format enumeration | Strict `^\d{6}$` pre-validation with a single generic error — no "too short" vs "invalid digits" distinction. | 4.2.1 |
 
 ## Operator notes
 

@@ -68,6 +68,10 @@ Check `messages.use_display_name`:
 
 The default-resolution chain was buggy in 4.1.9 / 4.1.10 — make sure you are on 4.2.0 or 4.1.10+. Pre-4.1.10 `getDisplayName()` returned the server nickname *or directly fell back to the plain username*, skipping the global display name (`global_name`).
 
+## `/link` works once then stops responding
+
+You're being rate-limited. The default `[discord_rate_limit]` caps are 3 `/link` attempts per Discord user per 60 seconds and 30 channel-wide per 60 seconds. Rate-limit hits are **silent by design** (no bot reply). Wait 60 seconds and retry, or raise the limits in `viscord.toml` and `/viscord reload`. With `general.debug = true` the server log shows which bucket fired.
+
 ## Account linking fails
 
 - **"Account linking is disabled"** — set `account_linking.enabled = true`.

@@ -20,6 +20,8 @@ Viscord does **not** read environment variables for tokens, and does not load a 
 
 Since **4.2.0**, both clients route every URL through `redactWebhookUrl()` which emits `…/webhooks/{id}/***`. The webhook ID is still logged (useful for diagnostics) but the token segment is gone.
 
+Bot-side text triggers (`/link`, `!list`) are protected by a sliding-window rate limiter — see [configuration.md `[discord_rate_limit]`](configuration.md) and [account-linking.md](account-linking.md). `/link` additionally enforces strict `^\d{6}$` regex pre-validation and is silent on rate-limit hits to deny an attacker timing-based feedback.
+
 Bot tokens are **not** logged by Viscord anywhere — they're held in memory in `BotClient.api` / `FluxerBotClient.token` and passed to the Javacord / Fluxer client without ever being printed.
 
 ## Account linking

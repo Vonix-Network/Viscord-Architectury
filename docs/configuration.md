@@ -122,6 +122,28 @@ Fluxer connects over **WebSocket Gateway** — **no port forwarding required**.
 
 See [account-linking.md](account-linking.md) for the full flow.
 
+## `[discord_rate_limit]`
+
+Sliding-window rate limits on the Discord/Fluxer bot-side text triggers (`/link`, `!list`). Defends the 6-digit account-link code space against brute force, and caps DoS surface on the public chat-side commands. All windows are 60 seconds; a value of `0` disables that bucket entirely.
+
+| Key | Type | Default | Range | Description |
+|---|---|---|---|---|
+| `link_per_user_per_min` | int | `3` | `0`–`1000` | Per-Discord-user `/link` attempts in a 60-second window. |
+| `link_global_per_min` | int | `30` | `0`–`10000` | Channel-wide `/link` attempts in a 60-second window across all users. |
+| `list_per_user_per_min` | int | `2` | `0`–`1000` | Per-Discord-user `!list` invocations per minute. |
+| `list_global_per_min` | int | `20` | `0`–`10000` | Channel-wide `!list` invocations per minute. |
+
+**Behaviour:**
+- Rate limit is checked **before** any other work in the handler, including the format check on the code.
+- A hit is **silent** — the bot does not reply when rate-limited. Replying would let an attacker pace around the window and would also spam the channel under attack. With `general.debug = true`, a single info log line is emitted noting the bucket that limited the call.
+- `/link` also enforces a strict `^\d{6}$` format check **after** the rate limit. Invalid format gets a generic `Invalid link code` error — no enumeration help (no "too short" vs "wrong digits" distinction).
+- Limits are read from config on **every call**, so `/viscord reload` takes effect immediately without restart.
+
+**Tuning:**
+- Default values are safe for a typical public server. With 3 attempts per user per minute against a 1-million-key space, an attacker would need ~278 years of sustained traffic to expect one hit on a 5-minute pending code window — and the global cap of 30/min holds against coordinated attempts.
+- Increase the per-user cap if you have a small private server where users genuinely retry codes during link flows.
+- Set any value to `0` to disable that bucket if you have an external WAF/anti-spam already covering this.
+
 ## `[advanced]`
 
 | Key | Type | Default | Range | Description |
