@@ -71,6 +71,14 @@ public class DiscordPlatform {
             if (messageListener != null) messageListener.onMessage(event);
         });
 
+        // Install Components V2 log filter BEFORE the bot connects so the first
+        // shadow.javacord packet is already filtered. See ComponentV2LogFilter
+        // javadoc for context (Otherworld 2026-06-24 stacktrace flood).
+        java.util.Set<String> watchedChannels = new java.util.HashSet<>();
+        if (channelId != null && !channelId.isEmpty()) watchedChannels.add(channelId);
+        if (this.eventChannelId != null && !this.eventChannelId.isEmpty()) watchedChannels.add(this.eventChannelId);
+        network.vonix.viscord.discord.ComponentV2LogFilter.install(watchedChannels);
+
         botClient.connect(botToken, channelId).thenRunAsync(() -> {
             if (isStatusOnly) {
                 Viscord.LOGGER.info("[Discord] Bot connected for status updates only.");
