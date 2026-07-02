@@ -7,6 +7,41 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [4.2.2] - 2026-06-24
+
+Focused console-noise + correctness release. Suppresses the Javacord 3.8.0 "Couldn't handle packet of type MESSAGE_UPDATE" / "Couldn't parse the component of type" stacktraces caused by Discord's **Components V2** (Container=17, TextDisplay=10, Section, Separator, Thumbnail, MediaGallery, File…) — which Javacord cannot parse — landing in *any* channel of the bot's guild, including channels Viscord isn't configured to watch.
+
+The path forward for **rendering** V2 content in watched channels is the planned Javacord→JDA migration (tracked separately); this release stops the bleeding so server logs stay readable in the meantime.
+
+### Fixed
+- **Components V2 console spam suppressed.** New `ComponentV2LogFilter` installs a Log4j 2 filter on the relocated `network.vonix.viscord.shadow.javacord.core.util.gateway.PacketHandler`, `…component.ActionRowImpl`, `…entity.message.MessageImpl`, and `…DiscordApiImpl` loggers. Channel-aware:
+  - **Unwatched channels** (giveaway bots, ticket bots, etc. in other guild channels): warning is silently dropped — no stacktrace, no log line at all.
+  - **Watched channels** (`discord.channel_id` + `discord.events.channel_id`): the raw stacktrace is still suppressed, but a single clean `DEBUG` line is emitted recording the dropped V2 message so operators can see *which* watched-channel content is being lost until JDA migration. Set the `viscord` logger to `DEBUG` to surface these.
+  - Filter is idempotent — re-installable after config reload to refresh the watched set.
+- Removed dead `Thread.setDefaultUncaughtExceptionHandler` band-aid in `BotClient.onConnected`. The exception was always caught and logged by Javacord's own `PacketHandler` try/catch, so it never reached the uncaught-exception path. Log4j filtering is the correct seam.
+
+### Internal
+- New file: `common/src/main/java/network/vonix/viscord/discord/ComponentV2LogFilter.java` (all four templates, byte-identical).
+- All four templates bumped to `4.2.2` in `gradle.properties`.
+
+## [4.2.1] - 2026-06-22
+
+This is a focused security release hardening the Discord/Fluxer bot-side text triggers (`/link`, `!list`). Drop-in compatible with 4.2.0 configs — the new `[discord_rate_limit]` keys are auto-injected on first start.
+
+### Security
+- **Brute-force protection on `/link`.** Anyone in the bridged Discord channel could previously spam `/link 000000`, `/link 000001`, … against the 1,000,000-key 6-digit code space. With pending codes valid for up to 5 minutes, a sustained brute-force attempt had a non-trivial chance of landing on an active code. Added a sliding-window rate limiter (`DiscordCommandRateLimiter`) with per-Discord-user and channel-wide buckets, configurable via the new `[discord_rate_limit]` TOML section. Default: 3 `/link` per user per 60s, 30 channel-wide per 60s. **Silent on hit** by design — replying would let an attacker measure the window and pace around it. Same protection applied to `!list` and Fluxer `!list` (all templates)
+- **Strict `/link` format pre-validation.** `handleLinkCommand` now rejects anything that doesn't match `^\d{6}$` with a single generic error before reaching `verifyAndLink`. No enumeration help — a 5-digit submission and a 7-digit submission produce identical errors (all templates)
+- **No bucket leakage from MC-side commands.** `/viscord reload` and `/viscord status` remain gated to op 4 (vanilla `requires(hasPermission(4))`); `/viscord discord link|unlink|messages|events|help` use `getPlayerOrException()` so console invocation is rejected. No Discord-side admin commands exist — privileged operations only run on the MC side, behind op 4.
+
+### Added
+- `[discord_rate_limit]` TOML section: `link_per_user_per_min`, `link_global_per_min`, `list_per_user_per_min`, `list_global_per_min`. Sliding 60-second windows, value `0` disables the bucket. Registered in `ConfigSpec` and `applyDefaults` so existing `viscord.toml` files get the keys auto-injected on first start after upgrade (all templates)
+- Documentation: `docs/configuration.md` gains a `[discord_rate_limit]` reference; `docs/account-linking.md` and `docs/security.md` updated with the new mitigations; `docs/troubleshooting.md` gains a section on the silent-rate-limit behaviour; `docs/commands.md` notes the per-command limits.
+
+### Changed
+- `DiscordManager.handleLinkCommand` checks rate limit before any other work, then format-validates the code with `LINK_CODE_FORMAT` before touching `LinkedAccountsManager` (all templates)
+- `DiscordManager.handleTextListCommand` checks rate limit at entry (all templates)
+- `DiscordManager.handleFluxerListCommand` checks rate limit at entry using a shared `"fluxer"` bucket key (Fluxer's current `onFluxerMessage` signature doesn't surface a stable per-user id; the global cap still applies) (all templates)
+
 ## [4.2.0] - 2026-06-15
 
 This is a stability and consolidation release. No new user-facing features, but a large number of latent thread-safety bugs are fixed, dead code is removed, and the four MC-version templates are brought back into parity. Drop-in compatible with 4.1.x configs.
@@ -64,6 +99,15 @@ This is a stability and consolidation release. No new user-facing features, but 
 ### Fixed
 - **Display name toggle not respected in all message paths** — `DiscordManager` had four code paths (tridirectional bridge author name, direct message author, embed fallback author, player-list embed author) that called `.getDisplayName()` directly without checking the `formats.use_display_name` config, so setting it to `false` had no effect on those paths. All four now go through a shared `resolveAuthorName()` helper that checks the config (1.20.1 template)
 - **New config keys missing from existing TOML on upgrade** — `TomlConfigManager.createConfigSpec()` and `applyDefaults()` were both missing `messages.use_display_name` and `filters.trusted_bot_ids`, so `ConfigSpec.correct()` never injected them into existing `viscord.toml` files on server start. Users upgrading from 4.1.5 would not see these options in their config. Both keys are now registered in the spec and defaults (1.20.1 template)
+
+## [4.1.8] - 2026-04-30
+
+### Fixed
+- **Echo loop prevention regardless of filter config** — Minecraft → Discord messages could be re-bridged back into game chat when any of `filters.ignore_bots`, `filters.ignore_webhooks`, or `filters.filter_by_prefix` were disabled (or when their checks misfired). Added `isSelfOriginated()` invoked **unconditionally at the very top of `onDiscordMessage`**, checking three independent signals: (1) webhook ID extracted from `discord.webhook_url`, (2) the bot's own user ID via `BotClient.getBotUserId()`, (3) author display-name prefix pattern. Any match drops the message. Self-origin filtering is now a hard guarantee rather than a side-effect of configurable filters. Exposes `getBotUserId()` on `BotClient` and `DiscordPlatform` so the manager can resolve the bot ID at runtime (all templates)
+- **Garbled `!list` output** — `handleTextListCommand` and `handleFluxerListCommand` contained literal newline characters embedded directly in Java string literals where `"\n"` escape sequences were intended, producing a single-line wall of names with no separators. Replaced with proper escapes (all templates)
+
+### Documentation
+- Backfills the `4.1.7` per-template `CHANGELOG.md` entries which were committed with empty bodies. (Top-level `CHANGELOG.md` already had the full 4.1.7 entry from commit `fd37659`.)
 
 ## [4.1.7] - 2026-04-29
 
@@ -250,6 +294,14 @@ This is a stability and consolidation release. No new user-facing features, but 
 - Added `GUILD_MESSAGES` intent (bit 9) to receive `MESSAGE_CREATE` events
 - Implemented immediate `online` presence during OP 2 Identify and on READY/RESUMED
 
+## [2.4.8] - 2026-03-24
+
+### Fixed
+- **Fluxer Bot compilation error** — `FluxerBotClient` declared a 5-argument override of `onDisconnected` that did not exist on the supertype, causing `method does not override or implement a method from a supertype` errors across all four version templates. Reverted to the standard 4-argument signature (all templates)
+
+### Changed
+- **Build tooling** — `build_menu.ps1` defaults bumped to 2.4.8 and Java 21 detection logic refined so legacy Minecraft versions (1.18.2 / 1.19.2 / 1.20.1) consistently pick a supported JDK toolchain on Windows
+
 ## [2.4.7] - 2026-03-24
 
 ### Fixed
@@ -280,6 +332,16 @@ This is a stability and consolidation release. No new user-facing features, but 
 ### Fixed
 - Startup embed double-sending in Fluxer mode
 - Tridirectional event embeds (advancements, death, server startup) not being bridged back to Discord
+
+## [2.4.2] - 2026-03-21
+
+### Fixed
+- **Fluxer event embeds not appearing** — join/leave/death/advancement notifications were never reaching Fluxer because of a routing gap in `FluxerPlatform` event handling. Embeds now render correctly via the Fluxer webhook path (all templates)
+- **Tridirectional bot init in Fluxer-only mode** — when `general.platform = "fluxer"` with tridirectional disabled, the Discord bot was still being partially initialized, holding open a Javacord client with no purpose. The bot is now skipped entirely in Fluxer-only mode (all templates)
+- **Bot status not updating in Fluxer mode** — `scheduleStatusUpdate` only pushed to the Discord client; Fluxer mode showed a stale presence. Status updates now flow through the active platform delegate, so Fluxer mode shows live `Online: X/Y` (all templates)
+
+### Changed
+- **`DiscordEventHandler` Brigadier registration** — minor cleanup to the command-registration paths to support the routing fixes above
 
 ## [2.4.1] - 2026-03-21
 

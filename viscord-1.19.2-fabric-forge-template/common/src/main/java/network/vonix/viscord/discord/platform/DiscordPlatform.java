@@ -5,6 +5,7 @@ import net.minecraft.server.MinecraftServer;
 import network.vonix.viscord.Viscord;
 import network.vonix.viscord.config.toml.ViscordConfigToml;
 import network.vonix.viscord.discord.BotClient;
+import network.vonix.viscord.discord.ComponentV2LogFilter;
 import network.vonix.viscord.discord.EmbedFactory;
 import network.vonix.viscord.discord.WebhookClient;
 import network.vonix.viscord.utils.DiscordFormatter;
@@ -70,6 +71,16 @@ public class DiscordPlatform {
         botClient.setMessageHandler(event -> {
             if (messageListener != null) messageListener.onMessage(event);
         });
+
+        // Install the Components V2 noise filter BEFORE connecting so the very first
+        // MESSAGE_UPDATE that hits the gateway is already filtered. Watched set is
+        // {chat channel, events channel} — these are the only channels Viscord
+        // actually reads from. Anything else (giveaway bots, ticket bots, etc. in
+        // unrelated guild channels) is silently dropped.
+        java.util.Set<String> watched = new java.util.HashSet<>();
+        if (channelId != null && !channelId.isEmpty()) watched.add(channelId);
+        if (eventChannelId != null && !eventChannelId.isEmpty()) watched.add(eventChannelId);
+        ComponentV2LogFilter.install(watched);
 
         botClient.connect(botToken, channelId).thenRunAsync(() -> {
             if (isStatusOnly) {
