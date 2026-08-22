@@ -1,0 +1,30 @@
+modLoader = "javafml"
+loaderVersion = "[11,)"
+license = "MIT"
+
+[[mods]]
+modId = "viscord"
+version = "${version}"
+displayName = "Viscord"
+authors = "Vonix Network"
+description = '''Server-side bidirectional chat integration for Discord and Fluxer.'''
+
+[[dependencies.viscord]]
+modId = "neoforge"
+type = "required"
+versionRange = "[26.1.2.93,)"
+ordering = "NONE"
+side = "SERVER"
+
+[[dependencies.viscord]]
+modId = "minecraft"
+type = "required"
+versionRange = "[26.1.2,26.2)"
+ordering = "NONE"
+side = "SERVER"
+
+[[mixins]]
+config = "viscord-platform.mixins.json"
+
+[modProperties]
+eventBus.excludedPackages = "network.vonix.viscord.shadow"

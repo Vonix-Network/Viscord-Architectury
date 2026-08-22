@@ -1,6 +1,6 @@
 # Viscord
 
-[![Minecraft](https://img.shields.io/badge/Minecraft-1.18.2%20%7C%201.19.2%20%7C%201.20.1%20%7C%201.21.1-brightgreen.svg)](https://minecraft.net)
+[![Minecraft](https://img.shields.io/badge/Minecraft-1.18.2%20%7C%201.19.2%20%7C%201.20.1%20%7C%201.21.1%20%7C%2026.1.2-brightgreen.svg)](https://minecraft.net)
 [![Fabric](https://img.shields.io/badge/Fabric-API-blue.svg)](https://fabricmc.net)
 [![Forge](https://img.shields.io/badge/Forge-orange.svg)](https://mcforge.net)
 [![NeoForge](https://img.shields.io/badge/NeoForge-purple.svg)](https://neoforged.net)
@@ -12,7 +12,7 @@
 ## ✨ Features
 
 - **Two platforms, four modes**: Discord-only, Fluxer-only, both at once, or tridirectional Discord ↔ Fluxer ↔ Minecraft bridging
-- **Four Minecraft versions, one codebase**: 1.18.2, 1.19.2, 1.20.1 (Fabric + Forge), and 1.21.1 (Fabric + NeoForge) — all four templates kept in parity
+- **Five Minecraft version lanes**: 1.18.2, 1.19.2, 1.20.1 (Fabric + Forge), 1.21.1 (Fabric + NeoForge), and 26.1.2 (NeoForge 26.1.2.93 / Java 25)
 - **Bidirectional chat** with rich formatting (`§` and `&` color codes, Discord markdown)
 - **Event notifications**: joins, leaves, deaths, advancements, server up/down
 - **Customizable formats** via `{username}`, `{message}`, `{prefix}` placeholders

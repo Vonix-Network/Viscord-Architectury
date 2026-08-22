@@ -1,0 +1,72 @@
+plugins {
+    id 'net.neoforged.moddev' version "${moddevgradle_version}"
+    id 'maven-publish'
+}
+
+group = maven_group
+version = mod_version
+
+base { archivesName = archives_name }
+
+java {
+    toolchain.languageVersion = JavaLanguageVersion.of(java_version as int)
+    withSourcesJar()
+}
+
+repositories {
+    mavenCentral()
+}
+
+neoForge {
+    version = neoforge_version
+    validateAccessTransformers = true
+
+    runs {
+        server {
+            server()
+            gameDirectory = project.file('run/server')
+            systemProperty 'terminal.ansi', 'true'
+        }
+    }
+
+    mods {
+        viscord { sourceSet sourceSets.main }
+    }
+}
+
+dependencies {
+    // Javacord is an aggregator: jarJar'ing only `javacord` does not embed
+    // the API/core artifacts that the active source imports at runtime.
+    jarJar(implementation('org.javacord:javacord-api:3.8.0')) {
+        version { strictly '[3.8, 3.9)' }
+        exclude group: 'org.apache.logging.log4j', module: 'log4j-api'
+        exclude group: 'org.slf4j', module: 'slf4j-api'
+    }
+    jarJar(implementation('org.javacord:javacord-core:3.8.0')) {
+        version { strictly '[3.8, 3.9)' }
+        exclude group: 'org.apache.logging.log4j', module: 'log4j-api'
+        exclude group: 'org.slf4j', module: 'slf4j-api'
+    }
+    jarJar(implementation('com.squareup.okhttp3:okhttp:4.12.0')) { version { strictly '[4.12, 4.13)' } }
+    jarJar(implementation('com.squareup.okhttp3:logging-interceptor:4.9.3')) { version { strictly '[4.9, 4.10)' } }
+
+    jarJar(implementation('com.squareup.okio:okio-jvm:3.9.0')) { version { strictly '[3.9, 3.10)' } }
+    jarJar(implementation('com.squareup.okio:okio:3.9.0')) { version { strictly '[3.9, 3.10)' } }
+    jarJar(implementation('com.fasterxml.jackson.core:jackson-databind:2.17.0')) { version { strictly '[2.17, 2.18)' } }
+    jarJar(implementation('com.fasterxml.jackson.core:jackson-core:2.17.0')) { version { strictly '[2.17, 2.18)' } }
+    jarJar(implementation('com.fasterxml.jackson.core:jackson-annotations:2.17.0')) { version { strictly '[2.17, 2.18)' } }
+    jarJar(implementation('io.vavr:vavr:0.10.4')) { version { strictly '[0.10.4, 0.11)' } }
+    jarJar(implementation('com.neovisionaries:nv-websocket-client:2.14')) { version { strictly '[2.14, 2.15)' } }
+    jarJar(implementation('com.codahale:xsalsa20poly1305:0.11.0')) { version { strictly '[0.11, 0.12)' } }
+    jarJar(implementation('org.bouncycastle:bcprov-jdk18on:1.78.1')) { version { strictly '[1.78, 1.79)' } }
+    jarJar(implementation('com.electronwill.night-config:toml:3.8.3')) { version { strictly '[3.8.3, 3.9)' } }
+    jarJar(implementation('com.electronwill.night-config:core:3.8.3')) { version { strictly '[3.8.3, 3.9)' } }
+}
+
+def generatedModVersion = project.version.toString()
+processResources {
+    inputs.property 'version', generatedModVersion
+    filesMatching('META-INF/neoforge.mods.toml') {
+        expand(version: generatedModVersion)
+    }
+}

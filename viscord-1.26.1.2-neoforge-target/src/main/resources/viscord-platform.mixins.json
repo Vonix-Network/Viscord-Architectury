@@ -1,0 +1,12 @@
+{
+  "required": true,
+  "package": "network.vonix.viscord.neoforge.mixin",
+  "compatibilityLevel": "JAVA_25",
+  "minVersion": "0.8",
+  "mixins": [
+    "PlayerAdvancementsMixin"
+  ],
+  "injectors": {
+    "defaultRequire": 1
+  }
+}

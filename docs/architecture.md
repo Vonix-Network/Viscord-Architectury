@@ -2,7 +2,7 @@
 
 Viscord is built on [**Architectury**](https://github.com/architectury/architectury-api) — a cross-loader abstraction that lets one common source tree target Fabric, Forge, and NeoForge from a single Gradle multi-project build.
 
-The repo currently ships **four parallel templates**, one per Minecraft version. Each template is a self-contained Architectury project.
+The repo currently ships **four parallel Architectury templates** plus a standalone NeoForge lane for Minecraft 26.1.2.
 
 ## Top-level layout
 
@@ -17,10 +17,11 @@ Viscord-Architectury/
 ├── viscord-1.18.2-fabric-forge-template/
 ├── viscord-1.19.2-fabric-forge-template/
 ├── viscord-1.20.1-fabric-forge-template/
-└── viscord-1.21.1-fabric-neoforge-template/
+├── viscord-1.21.1-fabric-neoforge-template/
+└── viscord-1.26.1.2-neoforge-target/
 ```
 
-> The four template directories share the same package structure and most of the same source files in `common/`. **All four are kept in parity** on the common tree — the only legitimate divergence is unavoidable Mojang-API rename adapters (see *Cross-version drift* below).
+> The four template directories share the same package structure and most of the same source files in `common/`. **Those four remain in parity** on the common tree. The 26.1.2 lane is standalone because its NeoForge/Java 25 toolchain is a separate compatibility cell.
 
 ## Inside a template
 
@@ -73,7 +74,8 @@ viscord-1.21.1-fabric-neoforge-template/
 | `common/` | Source-of-truth code. Platform-agnostic. | All of `discord/`, `config/`, `chat/`, `utils/`, plus the cross-platform `Viscord.java` lifecycle. |
 | `fabric/` | Fabric mod entrypoint. Registers MC lifecycle listeners via Fabric API. | `fabric.mod.json`, `ViscordFabric.java` |
 | `forge/` (1.18.2 / 1.19.2 / 1.20.1) | Forge mod entrypoint. | `mods.toml`, `ViscordForge.java`, event bus bridge |
-| `neoforge/` (1.21.1) | NeoForge mod entrypoint. | `mods.toml`, `ViscordNeoForge.java` |
+| `neoforge/` (1.21.1) | NeoForge loader entrypoints. | `neoforge.mods.toml`, `ViscordNeoForge.java` |
+| `viscord-1.26.1.2-neoforge-target/` | Standalone NeoForge 26.1.2 / Java 25 lane. | `neoforge.mods.toml`, `ViscordNeoForge.java`, `ChatForwarder.java` |
 
 > Since 4.1.11 the mod declares `side = "SERVER"` in every `mods.toml` and removed the client entrypoint from every `fabric.mod.json`. Viscord is **strictly server-side** — players never need to install it.
 

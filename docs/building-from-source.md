@@ -1,10 +1,10 @@
 # Building From Source
 
-Each of the four Viscord templates is a self-contained Architectury Gradle project. You build them independently.
+Each of the four Viscord templates is a self-contained Architectury Gradle project. The 26.1.2 NeoForge lane is a standalone Gradle project and is built independently as well.
 
 ## Prerequisites
 
-- **JDK 17+** (recommended for all four templates; 1.21.1 strongly prefers 21 — see `gradle.properties` in each template).
+- **JDK 17+** (the 26.1.2 NeoForge lane requires Java 25; see `gradle.properties` in each lane).
 - The Gradle wrapper (`./gradlew`) — no system Gradle install needed.
 - ~4 GB of free RAM (the Gradle JVM heap is set to **4G**, raised in 4.2.0 to avoid OOM on Architectury's transformation passes; `.gitignore` covers `*.hprof` heap dumps from earlier OOMs).
 
@@ -26,9 +26,16 @@ neoforge/build/libs/viscord-neoforge-<version>.jar
 
 (Older templates: `forge/build/libs/viscord-forge-<version>.jar` instead of `neoforge/`.)
 
-The `<version>` value comes from `mod_version` in `gradle.properties`. All four templates are at **4.2.0** as of the current `HEAD`.
+The `<version>` value comes from `mod_version` in `gradle.properties`. The 26.1.2 lane writes `build/libs/viscord-<version>.jar`.
 
-## Build all four templates
+For Minecraft 26.1.2 / NeoForge 26.1.2.93:
+
+```bash
+cd viscord-1.26.1.2-neoforge-target/
+./gradlew build
+```
+
+## Build all version lanes
 
 You can shell-loop:
 
@@ -43,7 +50,7 @@ done
 
 ## `build_menu.py`
 
-A modern terminal UI for the four-template build matrix lives at the top of the repo:
+A modern terminal UI for the four Architectury-template build matrix lives at the top of the repo. Build the standalone 26.1.2 lane with its own wrapper command above.
 
 ```bash
 python3 build_menu.py
@@ -76,9 +83,9 @@ If you're adding a new helper script, name it something other than `fix*.py` or 
 
 There is no GitHub Actions / CI workflow in the repo at present. The current release flow is:
 
-1. Bump `mod_version` in **all four** `gradle.properties` files.
+1. Bump `mod_version` in the intended version-lane `gradle.properties` files.
 2. Add a `## [X.Y.Z] - YYYY-MM-DD` block to `CHANGELOG.md`.
-3. Build all four templates (`build_menu.py` or the shell loop above).
+3. Build all intended version lanes (`build_menu.py`, the shell loop above, or the standalone 26.1.2 command).
 4. Tag the commit and attach the eight `.jar` artifacts to the release.
 
-When you bump versions, please confirm the four templates are still in parity on the `common/` tree (see [architecture.md](architecture.md) — *Cross-version drift*).
+When you bump versions, confirm the four Architectury templates are still in parity on the `common/` tree (see [architecture.md](architecture.md) — *Cross-version drift*). The standalone 26.1.2 lane has its own active source tree.
