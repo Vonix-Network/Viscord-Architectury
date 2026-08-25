@@ -1,0 +1,31 @@
+plugins {
+    id 'dev.architectury.loom' version '1.11-SNAPSHOT' apply false
+    id 'architectury-plugin' version '3.4-SNAPSHOT'
+    id 'com.gradleup.shadow' version '8.3.6' apply false
+}
+
+architectury { minecraft = project.minecraft_version }
+
+allprojects {
+    group = rootProject.maven_group
+    version = rootProject.mod_version
+}
+
+configure(subprojects.findAll { it.name != 'core' }) {
+    apply plugin: 'dev.architectury.loom'
+    apply plugin: 'architectury-plugin'
+    apply plugin: 'maven-publish'
+    base { archivesName = "$rootProject.archives_name-$project.name" }
+    repositories { }
+    loom { silentMojangMappingsLicense() }
+    dependencies {
+        minecraft "net.minecraft:minecraft:$rootProject.minecraft_version"
+        mappings loom.officialMojangMappings()
+    }
+    java {
+        withSourcesJar()
+        sourceCompatibility = JavaVersion.VERSION_21
+        targetCompatibility = JavaVersion.VERSION_21
+    }
+    tasks.withType(JavaCompile).configureEach { options.release = 21 }
+}

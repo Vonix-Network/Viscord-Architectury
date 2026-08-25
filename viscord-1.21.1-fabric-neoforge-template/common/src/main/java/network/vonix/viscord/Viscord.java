@@ -7,6 +7,7 @@ import network.vonix.viscord.discord.DiscordManager;
 import network.vonix.viscord.discord.DiscordEventHandler;
 import org.apache.logging.log4j.LogManager;
 import org.apache.logging.log4j.Logger;
+import java.nio.file.Files;
 import java.nio.file.Path;
 import java.util.concurrent.LinkedBlockingQueue;
 import java.util.concurrent.ScheduledExecutorService;
@@ -89,7 +90,18 @@ public final class Viscord {
         // Load TOML config (with auto-migration from JSON if needed)
         TomlConfigManager.load(configDir);
         
-        if (tomlConfigPath.toFile().exists()) {
+        boolean configExists = Files.exists(tomlConfigPath);
+        for (int attempt = 0; !configExists && attempt < 20; attempt++) {
+            try {
+                Thread.sleep(25L);
+            } catch (InterruptedException interrupted) {
+                Thread.currentThread().interrupt();
+                break;
+            }
+            configExists = Files.exists(tomlConfigPath);
+        }
+
+        if (configExists) {
             LOGGER.info("[{}] TOML config loaded successfully", MOD_ID);
         } else {
             LOGGER.error("[{}] TOML config file still does not exist after load attempt!", MOD_ID);

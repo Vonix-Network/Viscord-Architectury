@@ -1,0 +1,18 @@
+pluginManagement {
+    repositories {
+        maven { url = 'https://maven.fabricmc.net/' }
+        maven { url = 'https://maven.architectury.dev/' }
+        maven { url = 'https://files.minecraftforge.net/maven/' }
+        gradlePluginPortal()
+    }
+}
+
+plugins {
+    id 'org.gradle.toolchains.foojay-resolver-convention' version '0.8.0'
+}
+
+rootProject.name = 'viscord-r3-pilot'
+include 'core', 'common', 'fabric', 'neoforge'
+project(':common').projectDir = file('viscord-1.21.1-fabric-neoforge-template/common')
+project(':fabric').projectDir = file('viscord-1.21.1-fabric-neoforge-template/fabric')
+project(':neoforge').projectDir = file('viscord-1.21.1-fabric-neoforge-template/neoforge')

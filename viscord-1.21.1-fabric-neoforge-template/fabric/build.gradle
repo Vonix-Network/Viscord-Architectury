@@ -35,6 +35,7 @@ dependencies {
 
     common(project(path: ':common', configuration: 'namedElements')) { transitive = false }
     shadowBundle project(path: ':common', configuration: 'transformProductionFabric')
+    shadowBundle project(path: ':core')
 
     // Discord Integration
     shadowBundle('org.javacord:javacord:3.8.0') {

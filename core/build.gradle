@@ -1,0 +1,15 @@
+plugins { id 'java-library' }
+
+java {
+    toolchain { languageVersion = JavaLanguageVersion.of(17) }
+    withSourcesJar()
+}
+
+tasks.withType(JavaCompile).configureEach { options.release = 17 }
+
+tasks.register('coreContractTest', JavaExec) {
+    group = 'verification'
+    classpath = sourceSets.test.runtimeClasspath
+    mainClass = 'network.vonix.viscord.utils.DiscordFormatterTest'
+}
+tasks.named('check') { dependsOn 'coreContractTest' }
