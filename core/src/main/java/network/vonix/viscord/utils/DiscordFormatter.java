@@ -8,7 +8,7 @@ public final class DiscordFormatter {
     private static final String[] DISCORD_COLORS = {
         "⚫", "🟦", "🟩", "🟨", "🟥", "🟪", "🟧", "⚪", "⚫", "🔵", "🟢", "🔷", "🔴", "🟠", "🟡", "⚪"
     };
-    private DiscordFormatter() {}
+    public DiscordFormatter() {}
 
     public static String convertToDiscordFormatting(String message) {
         if (message == null || message.isEmpty()) return message;
