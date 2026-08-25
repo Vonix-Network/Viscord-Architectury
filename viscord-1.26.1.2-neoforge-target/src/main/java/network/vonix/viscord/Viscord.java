@@ -143,7 +143,10 @@ public final class Viscord {
             java.util.concurrent.CompletableFuture
                 .runAsync(() -> {
                     try {
-                        if (current.discordEnabled || DiscordManager.getInstance().isRunning()) {
+                        // Do not construct DiscordManager during shutdown when the
+                        // integration never initialized; construction creates OkHttp
+                        // clients and can trigger packaged dependency linkage failures.
+                        if (current.discordEnabled) {
                             DiscordManager.getInstance().shutdown();
                         }
                         current.discordEnabled = false;
