@@ -9,6 +9,7 @@ import network.vonix.viscord.Viscord;
 @Mod(Viscord.MOD_ID)
 public final class ViscordForge {
     public ViscordForge() {
+        network.vonix.viscord.platform.PlatformEvents.Holder.install(new ViscordPlatformEvents());
         // Submit our event bus to let Architectury API register our content on the right time.
         EventBuses.registerModEventBus(Viscord.MOD_ID, FMLJavaModLoadingContext.get().getModEventBus());
 
