@@ -1,10 +1,6 @@
 package network.vonix.viscord.discord;
 
 import com.mojang.brigadier.CommandDispatcher;
-import dev.architectury.event.EventResult;
-import dev.architectury.event.events.common.CommandRegistrationEvent;
-import dev.architectury.event.events.common.EntityEvent;
-import dev.architectury.event.events.common.PlayerEvent;
 import net.minecraft.ChatFormatting;
 import net.minecraft.commands.CommandSourceStack;
 import net.minecraft.commands.Commands;
@@ -24,23 +20,21 @@ import java.nio.file.Path;
 public class DiscordEventHandler {
 
     public static void register() {
-        CommandRegistrationEvent.EVENT.register((dispatcher, registry, selection) -> {
-            registerCommands(dispatcher);
-        });
+    }
 
-        PlayerEvent.PLAYER_JOIN.register(player -> {
+    public static void onPlayerJoin(ServerPlayer player) {
             if (DiscordManager.getInstance().isRunning()) {
                 DiscordManager.getInstance().sendJoinEmbed(player.getName().getString(), player.getUUID().toString());
             }
-        });
+    }
 
-        PlayerEvent.PLAYER_QUIT.register(player -> {
+    public static void onPlayerQuit(ServerPlayer player) {
             if (DiscordManager.getInstance().isRunning()) {
                 DiscordManager.getInstance().sendLeaveEmbed(player.getName().getString(), player.getUUID().toString());
             }
-        });
+    }
 
-        EntityEvent.LIVING_DEATH.register((entity, source) -> {
+    public static void onLivingDeath(net.minecraft.world.entity.LivingEntity entity, net.minecraft.world.damagesource.DamageSource source) {
             if (entity instanceof ServerPlayer) {
                 ServerPlayer player = (ServerPlayer) entity;
                 if (ViscordConfigToml.Messages.Events.DEATH.get()) {
@@ -48,14 +42,9 @@ public class DiscordEventHandler {
                     DiscordManager.getInstance().sendDeathEmbed(deathMessage);
                 }
             }
-            return EventResult.pass();
-        });
-
-        // Chat event is handled via ChatFormatter or Mixin to ensure compatibility
-        // Advancement event requires Mixin into PlayerAdvancements
     }
 
-    private static void registerCommands(CommandDispatcher<CommandSourceStack> dispatcher) {
+    public static void registerCommands(CommandDispatcher<CommandSourceStack> dispatcher) {
         // /discord command - show invite link and manage preferences
         dispatcher.register(
                 Commands.literal("discord")
@@ -169,7 +158,7 @@ public class DiscordEventHandler {
                                             DiscordManager.resetInstance();
 
                                             // Reload config
-                                            Path configPath = dev.architectury.platform.Platform.getConfigFolder()
+                                            Path configPath = network.vonix.viscord.platform.PlatformEvents.Holder.get().configDirectory()
                                                     .resolve("viscord");
                                             TomlConfigManager.load(configPath);
 

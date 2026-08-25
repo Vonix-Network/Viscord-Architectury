@@ -1,10 +1,10 @@
 package network.vonix.viscord;
 
-import dev.architectury.event.events.common.LifecycleEvent;
 import network.vonix.viscord.config.toml.TomlConfigManager;
 import network.vonix.viscord.config.toml.ViscordConfigToml;
 import network.vonix.viscord.discord.DiscordManager;
 import network.vonix.viscord.discord.DiscordEventHandler;
+import network.vonix.viscord.platform.PlatformEvents;
 import org.apache.logging.log4j.LogManager;
 import org.apache.logging.log4j.Logger;
 import java.nio.file.Files;
@@ -76,7 +76,7 @@ public final class Viscord {
         LOGGER.info("[{}] Initializing Viscord (Standalone Discord Integration)", MOD_ID);
 
         // Load TOML config from config/viscord/ subdirectory
-        Path configDir = dev.architectury.platform.Platform.getConfigFolder().resolve("viscord");
+        Path configDir = PlatformEvents.Holder.get().configDirectory().resolve("viscord");
         Path tomlConfigPath = configDir.resolve("viscord.toml");
         
         // Ensure config directory exists
@@ -108,9 +108,12 @@ public final class Viscord {
         }
 
         // Register Discord events
-        DiscordEventHandler.register();
+        PlatformEvents.Holder.get().register(new PlatformEvents.Callbacks(
+                DiscordEventHandler::registerCommands, this::onServerStarted, this::onServerStopping,
+                DiscordEventHandler::onPlayerJoin, DiscordEventHandler::onPlayerQuit, DiscordEventHandler::onLivingDeath));
+    }
 
-        LifecycleEvent.SERVER_STARTED.register(server -> {
+    private void onServerStarted(net.minecraft.server.MinecraftServer server) {
             if (ViscordConfigToml.General.ENABLED.get()) {
                 // Non-blocking async initialization
                 java.util.concurrent.CompletableFuture.runAsync(() -> {
@@ -124,9 +127,9 @@ public final class Viscord {
                 }, ASYNC_EXECUTOR);
                 LOGGER.info("[{}] Discord initialization started asynchronously", MOD_ID);
             }
-        });
+    }
 
-        LifecycleEvent.SERVER_STOPPING.register(server -> {
+    private void onServerStopping(net.minecraft.server.MinecraftServer server) {
             // Run shutdown off the server-stopping thread so the tick loop is
             // not blocked while network futures complete. We give it up to
             // 5 seconds total (Discord + Fluxer + webhook clients) before
@@ -156,6 +159,5 @@ public final class Viscord {
                         Thread.currentThread().interrupt();
                     }
                 });
-        });
     }
 }

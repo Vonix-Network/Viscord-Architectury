@@ -8,6 +8,7 @@ import network.vonix.viscord.Viscord;
 @Mod(Viscord.MOD_ID)
 public final class ViscordNeoForge {
     public ViscordNeoForge(IEventBus modBus) {
+        network.vonix.viscord.platform.PlatformEvents.Holder.install(new ViscordPlatformEvents());
         System.out.println("[Viscord] NeoForge entry point called!");
         // Run our common setup.
         Viscord.init();

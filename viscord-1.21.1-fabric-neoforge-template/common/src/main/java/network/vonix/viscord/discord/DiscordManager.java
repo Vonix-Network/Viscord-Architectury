@@ -146,7 +146,7 @@ public class DiscordManager {
     }
 
     private void initSubSystems() {
-        Path configDir = dev.architectury.platform.Platform.getConfigFolder().resolve("viscord");
+        Path configDir = network.vonix.viscord.platform.PlatformEvents.Holder.get().configDirectory().resolve("viscord");
         if (!configDir.toFile().exists()) configDir.toFile().mkdirs();
         try {
             if (playerPreferences == null)
