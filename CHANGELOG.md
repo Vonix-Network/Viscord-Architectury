@@ -7,7 +7,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [5.0.0] - 2026-08-28
 
-Common-generation repository release. This stable release starts the shared repository/layout and embedded version line at `2.0.0` without rewriting Viscord's historical tags.
+Common-generation repository release. This stable release starts the shared repository/layout lineage at `2.0.0`; Viscord's independent embedded/project release is `5.0.0`. Historical Viscord tags remain unchanged.
 
 ### Added
 - Added the Minecraft **26.1.2 / NeoForge 26.1.2.93** lane to the single-repository version matrix.
