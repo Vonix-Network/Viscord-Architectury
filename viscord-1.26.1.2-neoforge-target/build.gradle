@@ -31,6 +31,10 @@ sourceSets {
     }
 }
 
+tasks.named('sourcesJar') {
+    duplicatesStrategy = DuplicatesStrategy.EXCLUDE
+}
+
 repositories {
     mavenCentral()
 }

@@ -15,6 +15,8 @@ Common-generation repository release. This prerelease starts the shared reposito
 
 ### Verification boundary
 - The tag-triggered CI workflow is the source of build/package evidence for this release. Earlier R14 static evidence is not reused after the embedded version metadata change.
+- Corrected the 1.21.1 common project wiring and removed the duplicate 26.1.2 formatter source so the five-lane tree builds without vendored common-code collisions.
+- CI runs the 1.18.2–1.21.1 Loom lanes under Java 21 and the 26.1.2 ModDevGradle lane under Java 25/Gradle 9.2.0.
 - All nine primary artifacts use the exact embedded version `2.0.0-common.1`.
 
 ## [Unreleased]

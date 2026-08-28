@@ -17,12 +17,12 @@ jobs:
       fail-fast: false
       matrix:
         include:
-          - { project: 'viscord-1.18.2-fabric-forge-template', loader: 'fabric', jdk: '17', gradle: '8.14', asset_name: 'viscord-1.18.2-fabric', pattern: 'viscord-fabric-*.jar' }
-          - { project: 'viscord-1.18.2-fabric-forge-template', loader: 'forge', jdk: '17', gradle: '8.14', asset_name: 'viscord-1.18.2-forge', pattern: 'viscord-forge-*.jar' }
-          - { project: 'viscord-1.19.2-fabric-forge-template', loader: 'fabric', jdk: '17', gradle: '8.14', asset_name: 'viscord-1.19.2-fabric', pattern: 'viscord-fabric-*.jar' }
-          - { project: 'viscord-1.19.2-fabric-forge-template', loader: 'forge', jdk: '17', gradle: '8.14', asset_name: 'viscord-1.19.2-forge', pattern: 'viscord-forge-*.jar' }
-          - { project: 'viscord-1.20.1-fabric-forge-template', loader: 'fabric', jdk: '17', gradle: '8.14', asset_name: 'viscord-1.20.1-fabric', pattern: 'viscord-fabric-*.jar' }
-          - { project: 'viscord-1.20.1-fabric-forge-template', loader: 'forge', jdk: '17', gradle: '8.14', asset_name: 'viscord-1.20.1-forge', pattern: 'viscord-forge-*.jar' }
+          - { project: 'viscord-1.18.2-fabric-forge-template', loader: 'fabric', jdk: '21', gradle: '8.14', asset_name: 'viscord-1.18.2-fabric', pattern: 'viscord-fabric-*.jar' }
+          - { project: 'viscord-1.18.2-fabric-forge-template', loader: 'forge', jdk: '21', gradle: '8.14', asset_name: 'viscord-1.18.2-forge', pattern: 'viscord-forge-*.jar' }
+          - { project: 'viscord-1.19.2-fabric-forge-template', loader: 'fabric', jdk: '21', gradle: '8.14', asset_name: 'viscord-1.19.2-fabric', pattern: 'viscord-fabric-*.jar' }
+          - { project: 'viscord-1.19.2-fabric-forge-template', loader: 'forge', jdk: '21', gradle: '8.14', asset_name: 'viscord-1.19.2-forge', pattern: 'viscord-forge-*.jar' }
+          - { project: 'viscord-1.20.1-fabric-forge-template', loader: 'fabric', jdk: '21', gradle: '8.14', asset_name: 'viscord-1.20.1-fabric', pattern: 'viscord-fabric-*.jar' }
+          - { project: 'viscord-1.20.1-fabric-forge-template', loader: 'forge', jdk: '21', gradle: '8.14', asset_name: 'viscord-1.20.1-forge', pattern: 'viscord-forge-*.jar' }
           - { project: 'viscord-1.21.1-fabric-neoforge-template', loader: 'fabric', jdk: '21', gradle: '8.14', asset_name: 'viscord-1.21.1-fabric', pattern: 'viscord-fabric-*.jar' }
           - { project: 'viscord-1.21.1-fabric-neoforge-template', loader: 'neoforge', jdk: '21', gradle: '8.14', asset_name: 'viscord-1.21.1-neoforge', pattern: 'viscord-neoforge-*.jar' }
           - { project: 'viscord-1.26.1.2-neoforge-target', loader: 'neoforge', jdk: '25', gradle: '9.2.0', asset_name: 'viscord-26.1.2-neoforge', pattern: 'viscord-*.jar' }
