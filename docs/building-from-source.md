@@ -65,6 +65,6 @@ If you're adding a new helper script, name it something other than `fix*.py` or 
 
 ## CI / release expectations
 
-`.github/workflows/release.yml` runs the nine-lane matrix when a `v*` tag is pushed, selects one matching jar per lane, computes `SHA256SUMS`, and creates a GitHub stable release. Workflow dispatch can run the build jobs without creating a release. No server activation, gateway connection, deployment, or credential use is performed by the workflow.
+`.github/workflows/release.yml` runs the nine-lane matrix when a `v*` tag is pushed, selects one matching jar per lane, computes `SHA256SUMS`, and creates a GitHub stable release. Workflow dispatch can run the build jobs without publishing a release.
 
 When you bump versions, confirm the four Architectury templates remain in parity on the `common/` tree and separately verify the standalone 26.1.2 target against its own API/toolchain contract (see [architecture.md](architecture.md) — *Cross-version drift*).

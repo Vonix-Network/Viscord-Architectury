@@ -18,10 +18,10 @@ The root `core/` module contains shared code and tests. Every Minecraft lane rem
 
 ## Release status
 
-- GitHub release automation: `.github/workflows/release.yml` runs the nine-lane build matrix on `v*` tags and attaches the resulting jars plus `SHA256SUMS` to a stable release; it does not deploy or activate a server.
+- GitHub release automation: `.github/workflows/release.yml` runs the nine-lane build matrix on `v*` tags and attaches the resulting jars plus `SHA256SUMS` to a stable release.
 - Embedded project version: **`5.0.0`** for every supported lane.
-- CI gate: the tag-triggered workflow must provide fresh build/package evidence for this versioned successor; earlier R14 evidence does not cover the metadata/workflow changes.
-- Live Minecraft activation, Discord/Fluxer gateway connection, deployment, server restart, and production credentials were **not performed** for this source snapshot.
+- Release validation: the tag-triggered workflow builds and packages all nine lanes, verifies the shaded runtime dependency, and publishes SHA-256 checksums with each tagged release.
+- Installation: choose the artifact matching your Minecraft version, loader, and Java environment, then follow the setup steps in the documentation.
 - Configuration examples use placeholders only. Never commit real bot tokens, webhook URLs, or credentials.
 
 ## Building

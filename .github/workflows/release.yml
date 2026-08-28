@@ -100,9 +100,9 @@ jobs:
             echo
             echo "The release contains one matching jar for each supported lane: 1.18.2 Fabric/Forge, 1.19.2 Fabric/Forge, 1.20.1 Fabric/Forge, 1.21.1 Fabric/NeoForge, and 26.1.2 NeoForge."
             echo
-            echo "### Verification boundary"
+            echo "### Included with this release"
             echo
-            echo "Build and package results are supplied by the required CI matrix. No Minecraft server activation, Discord/Fluxer gateway connection, deployment, or credential use is performed by this workflow. SHA-256 values are in SHA256SUMS."
+            echo "The release includes the CI-built jars for all nine supported lanes and a SHA-256 checksum file named SHA256SUMS."
           } > release/RELEASE-NOTES.md
       - uses: softprops/action-gh-release@v2
         with:
