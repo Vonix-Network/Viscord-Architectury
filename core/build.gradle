@@ -28,5 +28,8 @@ tasks.register('coreContractTest', JavaExec) {
 }
 tasks.named('check') {
     dependsOn 'coreContractTest'
-    dependsOn rootProject.tasks.named('verifyNativeIncludeGraph')
+    def includeGraphTask = rootProject.tasks.findByName('verifyNativeIncludeGraph')
+    if (includeGraphTask != null) {
+        dependsOn includeGraphTask
+    }
 }

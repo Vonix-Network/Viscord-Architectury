@@ -51,7 +51,7 @@ jobs:
           JAR_PATTERN: ${{ matrix.pattern }}
         run: |
           set -euo pipefail
-          JAR="$(find build/libs -maxdepth 1 -type f -name "$JAR_PATTERN" ! -name '*sources*' ! -name '*dev*' ! -name '*shadow*' ! -name '*slim*' | head -n 1)"
+          JAR="$(find . -type f -path '*/build/libs/*.jar' -name "$JAR_PATTERN" ! -name '*sources*' ! -name '*dev*' ! -name '*shadow*' ! -name '*slim*' | head -n 1)"
           test -n "$JAR"
           if [ "${{ matrix.project }}" != "viscord-1.26.1.2-neoforge-target" ]; then
             if ! jar tf "$JAR" | grep -Fxq 'network/vonix/viscord/shadow/javacord/api/entity/message/MessageBuilderBase.class'; then

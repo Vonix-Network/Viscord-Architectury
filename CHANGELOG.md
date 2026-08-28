@@ -15,6 +15,7 @@ Common-generation repository release. This stable release starts the shared repo
 
 ### Verification boundary
 - The tag-triggered CI workflow is the source of build/package evidence for this release. Earlier R14 static evidence is not reused after the embedded version metadata change.
+- Corrected the conditional core include-graph check so standalone version templates do not require the repository-root verification task.
 - Corrected the historical shaded-Javacord regression gate: every 1.18.2–1.21.1 release jar must contain relocated `MessageBuilderBase.class`; the standalone 26.1.2 core-contract lane is checked separately.
 - CI runs the 1.18.2–1.21.1 Loom lanes under Java 21 and the 26.1.2 ModDevGradle lane under Java 25/Gradle 9.2.0.
 - All nine primary artifacts use the exact embedded version `5.0.0`.
