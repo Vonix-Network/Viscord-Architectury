@@ -12,3 +12,5 @@ rootProject.name = 'viscord'
 include 'common'
 include 'fabric'
 include 'neoforge'
+include 'core'
+project(':core').projectDir = file('../core')
