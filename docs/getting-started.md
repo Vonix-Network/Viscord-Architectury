@@ -4,8 +4,8 @@ This guide takes you from a fresh server to a bridged Minecraft ↔ Discord chat
 
 ## Prerequisites
 
-- A Minecraft server running **1.18.2**, **1.19.2**, **1.20.1**, or **1.21.1** on Fabric, Forge, or NeoForge (loader support matches the template — see the [README](../README.md)).
-- **Java 17+** (recommended; matches the templates' toolchain).
+- A Minecraft server running **1.18.2**, **1.19.2**, **1.20.1**, **1.21.1**, or **26.1.2** on the matching Fabric, Forge, or NeoForge lane (see the [README](../README.md)).
+- **Java 17+** for the older lanes; the **26.1.2 NeoForge** lane requires Java 25.
 - A Discord server you have **Manage Webhooks** + **Manage Channels** permissions in (for the Discord path), or a Fluxer bot token (for the Fluxer path).
 - Server-side only — players do **not** need to install anything.
 
