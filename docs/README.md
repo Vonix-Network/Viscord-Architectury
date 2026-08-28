@@ -12,7 +12,7 @@ The mod is built on [Architectury](https://github.com/architectury/architectury-
 | `viscord-1.21.1-fabric-neoforge-template/` | 1.21.1 | Fabric, NeoForge |
 | `viscord-1.26.1.2-neoforge-target/` | 26.1.2 | NeoForge |
 
-Current embedded version: **`2.0.0-common.1`** (prerelease). Common repository line: **`2.0.0`**. See [the common-generation repository contract](COMMON-V2-REPOSITORY.md).
+Current embedded version: **`5.0.0`** (stable release). Common repository line: **`2.0.0`**. See [the common-generation repository contract](COMMON-V2-REPOSITORY.md).
 
 ---
 

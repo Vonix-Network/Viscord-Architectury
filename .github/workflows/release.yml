@@ -53,6 +53,12 @@ jobs:
           set -euo pipefail
           JAR="$(find build/libs -maxdepth 1 -type f -name "$JAR_PATTERN" ! -name '*sources*' ! -name '*dev*' ! -name '*shadow*' ! -name '*slim*' | head -n 1)"
           test -n "$JAR"
+          if [ "${{ matrix.project }}" != "viscord-1.26.1.2-neoforge-target" ]; then
+            if ! jar tf "$JAR" | grep -Fxq 'network/vonix/viscord/shadow/javacord/api/entity/message/MessageBuilderBase.class'; then
+              echo "Required relocated Javacord MessageBuilderBase.class is missing from $JAR"
+              exit 1
+            fi
+          fi
           mkdir -p "$RUNNER_TEMP/release"
           cp "$JAR" "$RUNNER_TEMP/release/${{ matrix.asset_name }}.jar"
           echo "path=$RUNNER_TEMP/release/${{ matrix.asset_name }}.jar" >> "$GITHUB_OUTPUT"
@@ -88,7 +94,7 @@ jobs:
           {
             echo "## Viscord ${GITHUB_REF_NAME}"
             echo
-            echo "Common-generation prerelease beginning at 2.0.0. All nine supported Minecraft/loader lanes are built by GitHub Actions from this tag."
+            echo "Common-generation stable release 5.0.0. All nine supported Minecraft/loader lanes are built by GitHub Actions from this tag."
             echo
             echo "### Artifact matrix"
             echo
@@ -107,4 +113,4 @@ jobs:
             release/*.jar
             release/SHA256SUMS
           draft: false
-          prerelease: true
+          prerelease: false

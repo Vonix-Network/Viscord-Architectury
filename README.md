@@ -7,7 +7,7 @@
 
 **Viscord** is a server-side bidirectional chat-integration mod that bridges your Minecraft server to Discord, Fluxer, or both at once. Players do **not** need to install the mod.
 
-> **Current embedded mod version:** `2.0.0-common.1` (prerelease) · **Common repository line:** `2.0.0`. Viscord's historical `v2.0.0` release remains unchanged.
+> **Current embedded mod version:** `5.0.0` (stable release) · **Common repository line:** `2.0.0`. Viscord's historical `v2.0.0` release remains unchanged.
 >
 > 📖 **Full documentation:** see [`docs/`](docs/README.md) for navigable guides — getting started, configuration reference, platform setup, account linking, multi-server, performance/threading internals, security model, troubleshooting, architecture, build instructions, and the [`2.0.0` common-generation repository contract](docs/COMMON-V2-REPOSITORY.md).
 

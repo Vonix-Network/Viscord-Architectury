@@ -5,9 +5,9 @@ All notable changes to Viscord will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
-## [2.0.0-common.1] - 2026-08-28
+## [5.0.0] - 2026-08-28
 
-Common-generation repository release. This prerelease starts the shared repository/layout and embedded version line at `2.0.0` without rewriting Viscord's historical tags.
+Common-generation repository release. This stable release starts the shared repository/layout and embedded version line at `2.0.0` without rewriting Viscord's historical tags.
 
 ### Added
 - Added the Minecraft **26.1.2 / NeoForge 26.1.2.93** lane to the single-repository version matrix.
@@ -15,9 +15,9 @@ Common-generation repository release. This prerelease starts the shared reposito
 
 ### Verification boundary
 - The tag-triggered CI workflow is the source of build/package evidence for this release. Earlier R14 static evidence is not reused after the embedded version metadata change.
-- Corrected the 1.21.1 common project wiring and removed the duplicate 26.1.2 formatter source so the five-lane tree builds without vendored common-code collisions.
+- Corrected the historical shaded-Javacord regression gate: every 1.18.2–1.21.1 release jar must contain relocated `MessageBuilderBase.class`; the standalone 26.1.2 core-contract lane is checked separately.
 - CI runs the 1.18.2–1.21.1 Loom lanes under Java 21 and the 26.1.2 ModDevGradle lane under Java 25/Gradle 9.2.0.
-- All nine primary artifacts use the exact embedded version `2.0.0-common.1`.
+- All nine primary artifacts use the exact embedded version `5.0.0`.
 
 ## [Unreleased]
 
