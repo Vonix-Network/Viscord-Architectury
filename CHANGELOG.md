@@ -13,8 +13,8 @@ Common-generation repository release. This stable release starts the shared repo
 - Added the Minecraft **26.1.2 / NeoForge 26.1.2.93** lane to the single-repository version matrix.
 - Documented the five-lane repository structure and release boundary in `docs/COMMON-V2-REPOSITORY.md`.
 
-### Verification boundary
-- The tag-triggered CI workflow is the source of build/package evidence for this release. Earlier R14 static evidence is not reused after the embedded version metadata change.
+### Release notes
+- Built and packaged across all nine supported lanes by the tag-triggered GitHub Actions workflow; SHA-256 checksums are included with the release.
 - Corrected the conditional core include-graph check so standalone version templates do not require the repository-root verification task.
 - Corrected the historical shaded-Javacord regression gate: every 1.18.2–1.21.1 release jar must contain relocated `MessageBuilderBase.class`; the standalone 26.1.2 core-contract lane is checked separately.
 - CI runs the 1.18.2–1.21.1 Loom lanes under Java 21 and the 26.1.2 ModDevGradle lane under Java 25/Gradle 9.2.0.
