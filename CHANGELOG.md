@@ -5,6 +5,17 @@ All notable changes to Viscord will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [2.0.0-common.1] - 2026-08-28
+
+Common-generation repository snapshot. This prerelease starts the shared repository/layout line at `2.0.0` without rewriting Viscord's embedded `4.2.2` version or historical tags.
+
+### Added
+- Added the Minecraft **26.1.2 / NeoForge 26.1.2.93** lane to the single-repository version matrix.
+- Documented the five-lane repository structure and release boundary in `docs/COMMON-V2-REPOSITORY.md`.
+
+### Verification boundary
+- Static build/package/parity evidence passed for the accepted source snapshot. Live Minecraft activation, Discord/Fluxer gateway connection, deployment, and credential use were not performed.
+
 ## [Unreleased]
 
 ## [4.2.2] - 2026-06-24

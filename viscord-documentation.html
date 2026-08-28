@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Viscord 4.2.0 - Complete Documentation</title>
+    <title>Viscord 4.2.2 - Complete Documentation</title>
     <link href="https://fonts.googleapis.com/css2?family=Outfit:wght@300;400;500;600;700;800&display=swap" rel="stylesheet">
     <link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css" rel="stylesheet">
     <style>
@@ -535,7 +535,7 @@
     <div class="container">
         <header>
             <div class="logo">Viscord</div>
-            <div class="version"><i class="fas fa-code-branch" style="margin-right: 8px;"></i> Version 4.2.0</div>
+            The generated reference below describes the 4.2.2 embedded project version. The current repository layout and 26.1.2 lane are documented in `docs/COMMON-V2-REPOSITORY.md`; this HTML page is supplementary and does not replace the Markdown build/release contract.
             <p style="font-size: 1.3rem; color: var(--text-primary); margin-bottom: 20px; font-weight: 300;">
                 The Ultimate Cross-Platform Minecraft Chat Solution
             </p>
@@ -557,8 +557,8 @@
         <!-- Overview Tab -->
         <div id="overview" class="tab-content active">
             <div class="card">
-                <h2><i class="fas fa-rocket"></i> Welcome to Viscord 4.2.0 <span class="badge">LATEST</span></h2>
-                <p>Viscord is a server-side Minecraft chat-integration mod that bridges Minecraft, Discord, and Fluxer. Players do not need to install the mod. Version 4.2.0 is a stability and consolidation release: webhook tokens are no longer leaked in logs, the async executor is bounded, advancement/echo caches are bounded LRU + TTL, shutdown no longer blocks the server-stopping thread, and all four MC-version templates are brought back into parity (the <code>FluxerBotClient</code> ID-based self-filter and <code>DiscordManager.resetInstance()</code> are now present on 1.18.2 / 1.19.2 / 1.20.1 in addition to 1.21.1). See <code>CHANGELOG.md</code> for the full list.</p>
+                <h2><i class="fas fa-rocket"></i> Welcome to Viscord 4.2.2 <span class="badge">LATEST</span></h2>
+                <p>Viscord is a server-side Minecraft chat-integration mod that bridges Minecraft, Discord, and Fluxer. Players do not need to install the mod. Version 4.2.0 is a stability and consolidation release: webhook tokens are no longer leaked in logs, the async executor is bounded, advancement/echo caches are bounded LRU + TTL, shutdown no longer blocks the server-stopping thread, and the four Architectury templates are brought back into parity (the `FluxerBotClient` ID-based self-filter and `DiscordManager.resetInstance()` are now present on 1.18.2 / 1.19.2 / 1.20.1 in addition to 1.21.1); the 26.1.2 NeoForge lane is maintained separately. See <code>CHANGELOG.md</code> for the full list.</p>
                 
                 <div class="feature-grid">
                     <div class="feature-card">
@@ -628,7 +628,7 @@
                         <div class="code-block">
                             <pre>server/
 ├── mods/
-│   └── viscord-1.21.1-neoforge-4.2.0.jar
+│   └── viscord-1.21.1-neoforge-4.2.2.jar
 └── ...</pre>
                             <button class="copy-btn" onclick="copyCode(this)"><i class="fas fa-copy"></i></button>
                         </div>

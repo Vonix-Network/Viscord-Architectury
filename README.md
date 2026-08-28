@@ -7,12 +7,14 @@
 
 **Viscord** is a server-side bidirectional chat-integration mod that bridges your Minecraft server to Discord, Fluxer, or both at once. Players do **not** need to install the mod.
 
-> 📖 **Full documentation:** see [`docs/`](docs/README.md) for navigable guides — getting started, configuration reference, platform setup, account linking, multi-server, performance/threading internals, security model, troubleshooting, architecture, and build instructions.
+> **Current embedded mod version:** 4.2.2 · **Common repository line:** `2.0.0-common.1` (prerelease). Viscord's historical `v2.0.0` release remains unchanged.
+>
+> 📖 **Full documentation:** see [`docs/`](docs/README.md) for navigable guides — getting started, configuration reference, platform setup, account linking, multi-server, performance/threading internals, security model, troubleshooting, architecture, build instructions, and the [`2.0.0` common-generation repository contract](docs/COMMON-V2-REPOSITORY.md).
 
 ## ✨ Features
 
 - **Two platforms, four modes**: Discord-only, Fluxer-only, both at once, or tridirectional Discord ↔ Fluxer ↔ Minecraft bridging
-- **Four Minecraft versions, one codebase**: 1.18.2, 1.19.2, 1.20.1 (Fabric + Forge), and 1.21.1 (Fabric + NeoForge) — all four templates kept in parity
+- **Five Minecraft versions, one repository**: 1.18.2, 1.19.2, 1.20.1 (Fabric + Forge), 1.21.1 (Fabric + NeoForge), and 26.1.2 (NeoForge) — all supported lanes are kept together with shared common code
 - **Bidirectional chat** with rich formatting (`§` and `&` color codes, Discord markdown)
 - **Event notifications**: joins, leaves, deaths, advancements, server up/down
 - **Customizable formats** via `{username}`, `{message}`, `{prefix}` placeholders

@@ -101,7 +101,7 @@ Since 4.2.0 the `ActionRowImpl` patch lives in the fabric / forge / neoforge sou
 
 ## Cross-version drift
 
-The four templates' `common/` trees are **in parity on every file** except for unavoidable Mojang-API renames:
+The four Architectury templates' `common/` trees remain in parity on their shared files except for unavoidable Mojang-API renames. The 26.1.2 NeoForge target is a standalone ModDevGradle lane and is verified against its own target-specific source and packaging contract.
 
 | API change | Pre / Post |
 |---|---|
@@ -109,7 +109,7 @@ The four templates' `common/` trees are **in parity on every file** except for u
 | Player system message | `sendMessage(msg, NIL_UUID)` (1.18.2 / 1.19.2) → `sendSystemMessage(msg, false)` (1.20.1+) |
 | Brigadier success builder | `sendSuccess(Component, ...)` → `sendSuccess(Supplier<Component>, ...)` (1.20+) |
 
-Before 4.2.0 the 1.21.1 template held a number of bug fixes the older templates had drifted away from — most notably `FluxerBotClient.selfId` ID-based self-message filtering (older templates fell back to broken prefix matching) and `DiscordManager.resetInstance()`. **The 4.2.0 release brought all four templates back into parity.**
+Before 4.2.0 the 1.21.1 template held a number of bug fixes the older templates had drifted away from — most notably `FluxerBotClient.selfId` ID-based self-message filtering (older templates fell back to broken prefix matching) and `DiscordManager.resetInstance()`. **The 4.2.0 release brought the four Architectury templates back into parity; the 26.1.2 target is maintained as a separate NeoForge lane.**
 
 ## Where to look first when reading the code
 
