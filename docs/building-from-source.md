@@ -1,6 +1,6 @@
 # Building From Source
 
-Each of the four Viscord templates is a self-contained Architectury Gradle project. You build them independently.
+Each of the five Viscord lanes is a self-contained Architectury or ModDevGradle Gradle project. You build them independently; the four Architectury lanes share the common source contract and the 26.1.2 lane is standalone.
 
 ## Prerequisites
 
@@ -65,11 +65,6 @@ If you're adding a new helper script, name it something other than `fix*.py` or 
 
 ## CI / release expectations
 
-There is no GitHub Actions / CI workflow in the repo at present. The current release flow is:
-
-1. Bump `mod_version` in the established template `gradle.properties` files; keep the 26.1.2 target's standalone build metadata aligned.
-2. Add a `## [X.Y.Z] - YYYY-MM-DD` block to `CHANGELOG.md`.
-3. Build all five version lanes (`build_menu.py` or the documented narrow commands).
-4. Tag the commit and attach the nine primary `.jar` artifacts to the release.
+`.github/workflows/release.yml` runs the nine-lane matrix when a `v*` tag is pushed, selects one matching jar per lane, computes `SHA256SUMS`, and creates a GitHub prerelease. Workflow dispatch can run the build jobs without creating a release. No server activation, gateway connection, deployment, or credential use is performed by the workflow.
 
 When you bump versions, confirm the four Architectury templates remain in parity on the `common/` tree and separately verify the standalone 26.1.2 target against its own API/toolchain contract (see [architecture.md](architecture.md) — *Cross-version drift*).
