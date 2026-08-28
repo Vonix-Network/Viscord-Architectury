@@ -3,15 +3,15 @@
   "id": "viscord",
   "version": "${version}",
   "name": "Viscord",
-  "description": "A standalone Discord integration for Minecraft servers, porting the Discord capabilities from VonixCore.",
+  "description": "Server-side bidirectional chat integration for Discord and Fluxer.",
   "authors": [
-    "Me!"
+    "Vonix Network"
   ],
   "contact": {
-    "homepage": "https://fabricmc.net/",
-    "sources": "https://github.com/FabricMC/fabric-example-mod"
+    "homepage": "https://github.com/Vonix-Network/Viscord-Architectury",
+    "sources": "https://github.com/Vonix-Network/Viscord-Architectury"
   },
-  "license": "CC0-1.0",
+  "license": "MIT",
   "icon": "assets/viscord/icon.png",
   "environment": "server",
   "entrypoints": {
@@ -29,8 +29,5 @@
     "java": ">=21",
     "architectury": ">=13.0.8",
     "fabric-api": "*"
-  },
-  "suggests": {
-    "another-mod": "*"
   }
 }

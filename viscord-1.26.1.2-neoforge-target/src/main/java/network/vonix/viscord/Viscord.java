@@ -100,9 +100,8 @@ public final class Viscord {
         // Load TOML config (with auto-migration from JSON if needed)
         TomlConfigManager.load(configDir);
 
-        // TomlConfigManager.load() completes both first-run creation and existing-file loading.
-        // Do not immediately re-check the path here: NightConfig may flush an autosave-backed
-        // file after returning while the in-memory config is already valid and used below.
+        // TomlConfigManager.load() completes both first-run creation and existing-file loading
+        // synchronously. Do not wait on the path here.
         LOGGER.info("[{}] TOML config initialization completed", MOD_ID);
 
         // NeoForge owns lifecycle/event registration in the platform entry point.

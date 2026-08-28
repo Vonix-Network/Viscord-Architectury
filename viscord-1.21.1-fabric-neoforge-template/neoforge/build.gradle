@@ -39,7 +39,16 @@ dependencies {
 
     common(project(path: ':common', configuration: 'namedElements')) { transitive = false }
     shadowBundle project(path: ':common', configuration: 'transformProductionNeoForge')
+    // Loader adapters import ChatPrefixFilter directly; namedElements of :common is
+    // non-transitive, so :core must be on the compile classpath as well as nested.
+    implementation project(':core')
     shadowBundle project(path: ':core')
+
+    // NightConfig is not a transitive of the remapped common JAR; nest the same
+    // 3.8.3 pair that 26.1.2 jarJars. Kotlin stdlib remains a transitive of
+    // okio-jvm here rather than an explicit 26.1.2-style jarJar pin.
+    shadowBundle 'com.electronwill.night-config:toml:3.8.3'
+    shadowBundle 'com.electronwill.night-config:core:3.8.3'
 
     // Discord Integration
     shadowBundle('org.javacord:javacord:3.8.0') {
@@ -63,6 +72,8 @@ dependencies {
     // Crypto
     shadowBundle 'com.codahale:xsalsa20poly1305:0.11.0'
     shadowBundle 'org.bouncycastle:bcprov-jdk18on:1.78.1'
+
+    testImplementation 'org.junit.jupiter:junit-jupiter:5.10.0'
 }
 
 processResources {
@@ -122,6 +133,10 @@ shadowJar {
     relocate 'com.neovisionaries', 'network.vonix.viscord.shadow.neovisionaries'
     relocate 'com.codahale', 'network.vonix.viscord.shadow.codahale'
     relocate 'org.bouncycastle', 'network.vonix.viscord.shadow.bouncycastle'
+    // Nested 3.8.3 must not export com.electronwill.nightconfig.* from the viscord
+    // automatic module; NeoForge already ships com.electronwill.nightconfig.core
+    // (including serde), and a split package fails JPMS resolution with architectury.
+    relocate 'com.electronwill.nightconfig', 'network.vonix.viscord.shadow.nightconfig'
 
     mergeServiceFiles()
 }
@@ -129,3 +144,72 @@ shadowJar {
 remapJar {
     inputFile.set shadowJar.archiveFile
 }
+
+sourceSets {
+    test {
+        java {
+            srcDir 'src/test/java'
+        }
+    }
+}
+
+def verifyNightConfigPackaging = tasks.register('verifyNightConfigPackaging') {
+    group = 'verification'
+    description = 'Fails if the packaged 1.21.1 NeoForge jar still exports unrelocated NightConfig packages.'
+    dependsOn remapJar
+    def packagedJar = remapJar.archiveFile
+    inputs.file packagedJar
+    doLast {
+        def jar = packagedJar.get().asFile
+        def unrelocated = []
+        def names = [] as Set
+        byte[] managerBytes = null
+        new java.util.zip.ZipFile(jar).withCloseable { z ->
+            z.entries().each { e ->
+                names.add(e.name)
+                if (e.name.startsWith('com/electronwill/nightconfig/') && e.name.endsWith('.class')) {
+                    unrelocated.add(e.name)
+                }
+            }
+            def managerEntry = z.getEntry('network/vonix/viscord/config/toml/TomlConfigManager.class')
+            if (managerEntry != null) {
+                managerBytes = z.getInputStream(managerEntry).bytes
+            }
+        }
+        if (!unrelocated.isEmpty()) {
+            throw new GradleException("unrelocated NightConfig class files remain (${unrelocated.size()}): ${unrelocated.take(8)}")
+        }
+        def required = [
+            'network/vonix/viscord/shadow/nightconfig/core/Config.class',
+            'network/vonix/viscord/shadow/nightconfig/core/file/CommentedFileConfig.class',
+            'network/vonix/viscord/shadow/nightconfig/core/serde/ObjectSerializer.class',
+            'network/vonix/viscord/shadow/nightconfig/toml/TomlFormat.class',
+            'network/vonix/viscord/config/toml/TomlConfigManager.class'
+        ]
+        def missing = required.findAll { !names.contains(it) }
+        if (!missing.isEmpty()) {
+            throw new GradleException("relocated NightConfig/functionality missing: ${missing}")
+        }
+        if (managerBytes == null) {
+            throw new GradleException('TomlConfigManager.class missing from packaged NeoForge jar')
+        }
+        def latin1 = new String(managerBytes, 'ISO-8859-1')
+        if (latin1.contains('com/electronwill/nightconfig') || latin1.contains('com.electronwill.nightconfig')) {
+            throw new GradleException('TomlConfigManager still references unrelocated NightConfig')
+        }
+        if (!latin1.contains('network/vonix/viscord/shadow/nightconfig')) {
+            throw new GradleException('TomlConfigManager does not reference relocated NightConfig')
+        }
+        logger.lifecycle "verifyNightConfigPackaging: PASS ${jar.name} (${jar.length()} bytes)"
+    }
+}
+
+test {
+    useJUnitPlatform()
+    dependsOn remapJar, verifyNightConfigPackaging
+    systemProperty 'viscord.neoforge.packagedJar', remapJar.archiveFile.get().asFile.absolutePath
+    testClassesDirs = sourceSets.test.output.classesDirs
+    classpath = sourceSets.test.runtimeClasspath
+}
+
+remapJar.finalizedBy verifyNightConfigPackaging

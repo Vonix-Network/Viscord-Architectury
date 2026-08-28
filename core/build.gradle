@@ -1,5 +1,9 @@
 plugins { id 'java-library' }
 
+repositories {
+    mavenCentral()
+}
+
 java {
     toolchain { languageVersion = JavaLanguageVersion.of(17) }
     withSourcesJar()
@@ -7,9 +11,22 @@ java {
 
 tasks.withType(JavaCompile).configureEach { options.release = 17 }
 
+dependencies {
+    testImplementation 'org.junit.jupiter:junit-jupiter:5.10.2'
+    testImplementation 'org.junit.jupiter:junit-jupiter-params:5.10.2'
+    testRuntimeOnly 'org.junit.platform:junit-platform-launcher'
+}
+
+test {
+    useJUnitPlatform()
+}
+
 tasks.register('coreContractTest', JavaExec) {
     group = 'verification'
     classpath = sourceSets.test.runtimeClasspath
     mainClass = 'network.vonix.viscord.utils.DiscordFormatterTest'
 }
-tasks.named('check') { dependsOn 'coreContractTest' }
+tasks.named('check') {
+    dependsOn 'coreContractTest'
+    dependsOn rootProject.tasks.named('verifyNativeIncludeGraph')
+}

@@ -1,16 +1,14 @@
 modLoader = "javafml"
 loaderVersion = "[4,)"
 #issueTrackerURL = ""
-license = "Insert License Here"
+license = "MIT"
 
 [[mods]]
 modId = "viscord"
 version = "${version}"
 displayName = "Viscord"
-authors = "Me!"
-description = '''
-A standalone Discord integration for Minecraft servers, porting the Discord capabilities from VonixCore.
-'''
+authors = "Vonix Network"
+description = '''Server-side bidirectional chat integration for Discord and Fluxer.'''
 #logoFile = ""
 
 [[dependencies.viscord]]

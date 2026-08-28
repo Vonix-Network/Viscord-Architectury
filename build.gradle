@@ -11,7 +11,8 @@ allprojects {
     version = rootProject.mod_version
 }
 
-configure(subprojects.findAll { it.name != 'core' }) {
+def architecturyCells = ['common', 'fabric', 'neoforge'] as Set
+configure(subprojects.findAll { architecturyCells.contains(it.name) }) {
     apply plugin: 'dev.architectury.loom'
     apply plugin: 'architectury-plugin'
     apply plugin: 'maven-publish'
@@ -28,4 +29,49 @@ configure(subprojects.findAll { it.name != 'core' }) {
         targetCompatibility = JavaVersion.VERSION_21
     }
     tasks.withType(JavaCompile).configureEach { options.release = 21 }
+}
+
+tasks.register('verifyNativeIncludeGraph') {
+    group = 'verification'
+    description = 'Resolves the S0 native include graph for requested Viscord cells.'
+    doLast {
+        def graph = gradle.ext.nativeIncludeGraph
+        graph.each { nativeName, spec ->
+            def dir = rootProject.file(spec.dir)
+            if (!dir.directory) {
+                throw new GradleException("native cell ${nativeName} directory missing: ${dir}")
+            }
+            if (spec.includedInRoot) {
+                def projectRef = rootProject.findProject(spec.gradlePath)
+                def coreOnly = providers.gradleProperty('buildProfile').getOrElse('all') == 'coreonly'
+                if (projectRef == null) {
+                    if (coreOnly && spec.gradlePath != ':core') {
+                        return
+                    }
+                    throw new GradleException("native cell ${nativeName} does not resolve as ${spec.gradlePath}")
+                }
+                if (projectRef.projectDir.canonicalFile != dir.canonicalFile) {
+                    throw new GradleException("native cell ${nativeName} projectDir mismatch: ${projectRef.projectDir} vs ${dir}")
+                }
+            } else {
+                def settingsFile = new File(dir, 'settings.gradle')
+                if (!settingsFile.file) {
+                    throw new GradleException("independent cell ${nativeName} missing settings.gradle in ${dir}")
+                }
+                if (rootProject.findProject(':mc-26.1.2:neoforge') != null) {
+                    throw new GradleException('26.1.2 must remain an independent Gradle build, not an Architectury subproject')
+                }
+            }
+        }
+        def required = [':core']
+        if (providers.gradleProperty('buildProfile').getOrElse('all') != 'coreonly') {
+            required.addAll([':common', ':fabric', ':neoforge'])
+        }
+        required.each { path ->
+            if (rootProject.findProject(path) == null) {
+                throw new GradleException("required project ${path} did not resolve")
+            }
+        }
+        logger.lifecycle 'verifyNativeIncludeGraph: PASS'
+    }
 }

@@ -13,6 +13,24 @@ java {
     withSourcesJar()
 }
 
+sourceSets {
+    main {
+        java {
+            // Independent ModDevGradle cell compiles core contracts (ChatPrefixFilter,
+            // DiscordFormatter, LinkCodeFormat, CommandNames) instead of vendoring them.
+            // Path is sibling core/ from this cell, not ../../core (candidates-r4k/core).
+            def coreSources = rootProject.file('../core/src/main/java')
+            if (!coreSources.directory) {
+                throw new GradleException("26.1.2 must compile core contracts from ${coreSources}")
+            }
+            srcDir coreSources
+        }
+    }
+    test {
+        java.srcDir 'src/test/java'
+    }
+}
+
 repositories {
     mavenCentral()
 }
@@ -53,6 +71,7 @@ dependencies {
     jarJar(implementation('com.squareup.okio:okio-jvm:3.9.0')) { version { strictly '[3.9, 3.10)' } }
     jarJar(implementation('com.squareup.okio:okio:3.9.0')) { version { strictly '[3.9, 3.10)' } }
     // okio-jvm is Kotlin-compiled and requires kotlin.jvm.internal.Intrinsics at shutdown.
+    // Nested only because okio-jvm is nested; 1.21.1 Architectury shadow must not copy this pin.
     jarJar(implementation('org.jetbrains.kotlin:kotlin-stdlib:1.9.25')) { version { strictly '[1.9, 1.10)' } }
     jarJar(implementation('com.fasterxml.jackson.core:jackson-databind:2.17.0')) { version { strictly '[2.17, 2.18)' } }
     jarJar(implementation('com.fasterxml.jackson.core:jackson-core:2.17.0')) { version { strictly '[2.17, 2.18)' } }
@@ -63,6 +82,14 @@ dependencies {
     jarJar(implementation('org.bouncycastle:bcprov-jdk18on:1.78.1')) { version { strictly '[1.78, 1.79)' } }
     jarJar(implementation('com.electronwill.night-config:toml:3.8.3')) { version { strictly '[3.8.3, 3.9)' } }
     jarJar(implementation('com.electronwill.night-config:core:3.8.3')) { version { strictly '[3.8.3, 3.9)' } }
+
+    testImplementation 'org.junit.jupiter:junit-jupiter:5.10.2'
+    testRuntimeOnly 'org.junit.platform:junit-platform-launcher'
+    testImplementation 'org.apache.logging.log4j:log4j-core:2.24.1'
+}
+
+tasks.named('test') {
+    useJUnitPlatform()
 }
 
 def generatedModVersion = project.version.toString()

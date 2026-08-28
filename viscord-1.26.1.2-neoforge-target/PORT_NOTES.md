@@ -26,4 +26,12 @@ This target is a development source snapshot and is not a release or acceptance 
 
 The active source set has completed the NeoForge adapter pass: lifecycle, chat, player, death, command, and advancement paths are wired through NeoForge events/mixins. Historical `src/port-pending/java` data remains outside this source snapshot and is not compiled.
 
-External libraries are declared through ModDevGradle `jarJar(implementation(...))`. Javacord API/core, OkHttp logging-interceptor, and other required libraries are declared explicitly because they are required by the active bytecode and are not supplied by Minecraft/NeoForge. Kotlin stdlib is intentionally not bundled to avoid conflict with the Better Minecraft 6 Kotlin runtime.
+External libraries are declared through ModDevGradle `jarJar(implementation(...))`. Javacord API/core, OkHttp logging-interceptor, and other required libraries are declared explicitly because they are required by the active bytecode and are not supplied by Minecraft/NeoForge.
+
+Jar-in-Jar ownership on this cell:
+- `okio-jvm` 3.9.0 is nested because OkHttp needs it.
+- `kotlin-stdlib` 1.9.25 is nested **only because** `okio-jvm` is nested; okio-jvm calls `kotlin.jvm.internal.Intrinsics` at shutdown. JarJar does not pull that transitive automatically.
+- NightConfig `toml`/`core` 3.8.3 is nested because TOML config is not provided by NeoForge.
+- Do not copy this jarJar set onto the 1.21.1 Architectury shadow. 1.21.1 nests NightConfig 3.8.3 explicitly and lets kotlin-stdlib arrive as a shadow transitive of okio-jvm.
+
+Core contracts (`ChatPrefixFilter`, `DiscordFormatter`, `LinkCodeFormat`, `CommandNames`) are compiled from `core/src/main/java` rather than vendored here.

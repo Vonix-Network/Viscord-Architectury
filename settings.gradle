@@ -12,7 +12,27 @@ plugins {
 }
 
 rootProject.name = 'viscord-r3-pilot'
-include 'core', 'common', 'fabric', 'neoforge'
-project(':common').projectDir = file('viscord-1.21.1-fabric-neoforge-template/common')
-project(':fabric').projectDir = file('viscord-1.21.1-fabric-neoforge-template/fabric')
-project(':neoforge').projectDir = file('viscord-1.21.1-fabric-neoforge-template/neoforge')
+
+// Native include graph for requested cells:
+//   core
+//   mc-1.21.1/{common,fabric,neoforge}
+//   mc-26.1.2/neoforge  (independent ModDevGradle build; not a subproject here)
+//
+// Historical Architectury project names :common/:fabric/:neoforge are kept
+// because 1.21.1 loader build.gradle files still resolve those paths.
+def buildProfile = providers.gradleProperty('buildProfile').getOrElse('all')
+include 'core'
+if (buildProfile != 'coreonly') {
+    include 'common', 'fabric', 'neoforge'
+    project(':common').projectDir = file('viscord-1.21.1-fabric-neoforge-template/common')
+    project(':fabric').projectDir = file('viscord-1.21.1-fabric-neoforge-template/fabric')
+    project(':neoforge').projectDir = file('viscord-1.21.1-fabric-neoforge-template/neoforge')
+}
+
+gradle.ext.nativeIncludeGraph = [
+    'core'                 : [dir: 'core', gradlePath: ':core', includedInRoot: true],
+    'mc-1.21.1:common'     : [dir: 'viscord-1.21.1-fabric-neoforge-template/common', gradlePath: ':common', includedInRoot: true],
+    'mc-1.21.1:fabric'     : [dir: 'viscord-1.21.1-fabric-neoforge-template/fabric', gradlePath: ':fabric', includedInRoot: true],
+    'mc-1.21.1:neoforge'   : [dir: 'viscord-1.21.1-fabric-neoforge-template/neoforge', gradlePath: ':neoforge', includedInRoot: true],
+    'mc-26.1.2:neoforge'   : [dir: 'viscord-1.26.1.2-neoforge-target', gradlePath: '', includedInRoot: false],
+]

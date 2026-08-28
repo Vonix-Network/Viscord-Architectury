@@ -35,7 +35,15 @@ dependencies {
 
     common(project(path: ':common', configuration: 'namedElements')) { transitive = false }
     shadowBundle project(path: ':common', configuration: 'transformProductionFabric')
+    // Loader mixins import ChatPrefixFilter directly; namedElements of :common is
+    // non-transitive, so :core must be on the compile classpath as well as nested.
+    implementation project(':core')
     shadowBundle project(path: ':core')
+
+    // NightConfig is not a transitive of the remapped common JAR; nest the same
+    // 3.8.3 pair that 26.1.2 jarJars. Do not copy the 26.1.2 kotlin jarJar pin.
+    shadowBundle 'com.electronwill.night-config:toml:3.8.3'
+    shadowBundle 'com.electronwill.night-config:core:3.8.3'
 
     // Discord Integration
     shadowBundle('org.javacord:javacord:3.8.0') {

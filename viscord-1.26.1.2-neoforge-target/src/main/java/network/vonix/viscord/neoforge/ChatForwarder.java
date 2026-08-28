@@ -1,7 +1,7 @@
 package network.vonix.viscord.neoforge;
 
 import net.minecraft.server.level.ServerPlayer;
-import network.vonix.viscord.Viscord;
+import network.vonix.viscord.chat.ChatPrefixFilter;
 import network.vonix.viscord.config.toml.ViscordConfigToml;
 import network.vonix.viscord.discord.DiscordManager;
 
@@ -10,7 +10,9 @@ import network.vonix.viscord.discord.DiscordManager;
  *
  * This helper intentionally lives outside the Mixin-owned package. NeoForge's
  * Mixin classloader rejects direct references to classes under a configured
- * Mixin package, even when those classes are not listed as mixins.
+ * Mixin package, even when those classes are not listed as mixins. Prefix
+ * filtering is {@link ChatPrefixFilter#shouldForward}; do not add the 1.21.1
+ * chat mixin here.
  */
 public final class ChatForwarder {
     private ChatForwarder() {
@@ -38,11 +40,9 @@ public final class ChatForwarder {
      * filter. This is deliberately side-effect free.
      */
     public static boolean shouldForward(String rawMessage) {
-        if (!ViscordConfigToml.Filters.Chat.ENABLED.get()) {
-            return true;
-        }
-
-        String filterPrefix = ViscordConfigToml.Filters.Chat.PREFIX.get();
-        return filterPrefix == null || filterPrefix.isEmpty() || !rawMessage.startsWith(filterPrefix);
+        return ChatPrefixFilter.shouldForward(
+                ViscordConfigToml.Filters.Chat.ENABLED.get(),
+                ViscordConfigToml.Filters.Chat.PREFIX.get(),
+                rawMessage);
     }
 }

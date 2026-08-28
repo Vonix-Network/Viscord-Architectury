@@ -1,14 +1,13 @@
 package network.vonix.viscord.config.toml;
 
-import com.electronwill.nightconfig.core.CommentedConfig;
 import com.electronwill.nightconfig.core.ConfigSpec;
 import com.electronwill.nightconfig.core.file.CommentedFileConfig;
-import com.electronwill.nightconfig.core.file.FileConfig;
-import network.vonix.viscord.Viscord;
+import org.apache.logging.log4j.LogManager;
+import org.apache.logging.log4j.Logger;
 
 import java.io.File;
+import java.nio.file.Files;
 import java.nio.file.Path;
-import java.nio.file.Paths;
 
 /**
  * TOML Configuration Manager with automatic JSON migration.
@@ -16,13 +15,16 @@ import java.nio.file.Paths;
  */
 public class TomlConfigManager {
 
+    private static final Logger LOGGER = LogManager.getLogger("viscord");
     private static CommentedFileConfig config;
     private static ConfigSpec spec;
 
     /**
      * Load or create the TOML config, migrating from JSON if necessary.
+     * A missing viscord.toml is materialized before this method returns.
      */
     public static void load(Path configDir) {
+        close();
         Path tomlPath = configDir.resolve("viscord.toml");
         Path jsonPath = configDir.resolve("viscord.json");
 
@@ -31,20 +33,20 @@ public class TomlConfigManager {
 
         // Check if TOML already exists
         if (tomlPath.toFile().exists()) {
-            Viscord.LOGGER.info("[Config] Loading TOML config from: {}", tomlPath);
+            LOGGER.info("[Config] Loading TOML config from: {}", tomlPath);
             loadToml(tomlPath);
             return;
         }
 
         // Check for legacy JSON to migrate
         if (jsonPath.toFile().exists()) {
-            Viscord.LOGGER.info("[Config] Found legacy JSON config, migrating to TOML...");
+            LOGGER.info("[Config] Found legacy JSON config, migrating to TOML...");
             migrateFromJson(jsonPath, tomlPath);
             return;
         }
 
         // No config exists, create new default
-        Viscord.LOGGER.info("[Config] Creating new TOML config at: {}", tomlPath);
+        LOGGER.info("[Config] Creating new TOML config at: {}", tomlPath);
         createDefaultConfig(tomlPath);
     }
 
@@ -54,7 +56,7 @@ public class TomlConfigManager {
     public static void save() {
         if (config != null) {
             config.save();
-            Viscord.LOGGER.info("[Config] Saved TOML config");
+            LOGGER.info("[Config] Saved TOML config");
         }
     }
 
@@ -63,6 +65,20 @@ public class TomlConfigManager {
      */
     public static CommentedFileConfig getConfig() {
         return config;
+    }
+
+    /**
+     * Close the in-memory file config. Safe for reload and tests.
+     */
+    public static void close() {
+        if (config != null) {
+            try {
+                config.close();
+            } catch (Exception ignored) {
+                // NightConfig close is best-effort; the next load() rebuilds the handle.
+            }
+            config = null;
+        }
     }
 
     /**
@@ -97,10 +113,10 @@ public class TomlConfigManager {
      * Load existing TOML config.
      */
     private static void loadToml(Path path) {
-        // Build without autosave first to allow spec correction
-        config = CommentedFileConfig.builder(path)
-                .defaultResource("/viscord-default.toml")
-                .build();
+        // Build without autosave first to allow spec correction. Do not use
+        // defaultResource: viscord-default.toml is not shipped as a classpath
+        // resource, and this path only runs when the on-disk file already exists.
+        config = CommentedFileConfig.builder(path).sync().build();
 
         config.load();
 
@@ -111,76 +127,62 @@ public class TomlConfigManager {
             spec.correct(config);
             config.save();
         } catch (UnsupportedOperationException e) {
-            Viscord.LOGGER.warn("[Config] Could not correct config (unsupported operation), continuing with loaded values");
+            LOGGER.warn("[Config] Could not correct config (unsupported operation), continuing with loaded values");
         }
 
-        // Close and rebuild with autosave enabled
-        config.close();
-        config = CommentedFileConfig.builder(path)
-                .defaultResource("/viscord-default.toml")
-                .autosave()
-                .build();
-        config.load();
-
-        Viscord.LOGGER.info("[Config] Loaded TOML config successfully");
+        persistThenReopenWithAutosave(path);
+        LOGGER.info("[Config] Loaded TOML config successfully");
     }
 
     /**
      * Create a new default config.
      */
     private static void createDefaultConfig(Path path) {
-        config = CommentedFileConfig.builder(path)
-                .autosave()
-                .build();
-
-        // Set default values based on spec
+        // NightConfig's default writer and autosave wrapper can flush off-thread.
+        // Use a synchronous writer for the first save, then reopen with autosave.
+        config = CommentedFileConfig.builder(path).sync().build();
         applyDefaults();
-
-        // Add comments
         addComments();
-
-        config.save();
-        Viscord.LOGGER.info("[Config] Created default TOML config");
+        persistThenReopenWithAutosave(path);
+        LOGGER.info("[Config] Created default TOML config");
     }
 
     /**
      * Migrate from legacy JSON format to TOML.
      */
     private static void migrateFromJson(Path jsonPath, Path tomlPath) {
-        // First load the legacy JSON using the old manager
-        Path legacySpecPath = Paths.get(jsonPath.toString().replace("viscord.toml", "viscord.json"));
-
         try {
-            // Load legacy values from the old config system
-            Viscord.LOGGER.info("[Config] Reading legacy JSON values...");
+            LOGGER.info("[Config] Reading legacy JSON values...");
 
-            // Create new TOML config
-            config = CommentedFileConfig.builder(tomlPath)
-                    .autosave()
-                    .build();
-
-            // Apply defaults first
+            config = CommentedFileConfig.builder(tomlPath).sync().build();
             applyDefaults();
-
-            // Read and migrate old values
             migrateOldValues(jsonPath);
-
-            // Add comments
             addComments();
+            persistThenReopenWithAutosave(tomlPath);
 
-            // Save new TOML
-            config.save();
-
-            // Backup old JSON
             File backupFile = new File(jsonPath.toString() + ".backup");
             jsonPath.toFile().renameTo(backupFile);
 
-            Viscord.LOGGER.info("[Config] Migration complete! JSON backed up to: {}", backupFile.getName());
+            LOGGER.info("[Config] Migration complete! JSON backed up to: {}", backupFile.getName());
         } catch (Exception e) {
-            Viscord.LOGGER.error("[Config] Migration failed: {}", e.getMessage());
-            Viscord.LOGGER.error("[Config] Creating default TOML config instead");
+            LOGGER.error("[Config] Migration failed: {}", e.getMessage());
+            LOGGER.error("[Config] Creating default TOML config instead");
+            close();
             createDefaultConfig(tomlPath);
         }
+    }
+
+    /**
+     * Save the current config so the file exists, then reopen with autosave.
+     */
+    private static void persistThenReopenWithAutosave(Path path) {
+        config.save();
+        if (!Files.isRegularFile(path)) {
+            throw new IllegalStateException("[Config] NightConfig did not materialize " + path);
+        }
+        config.close();
+        config = CommentedFileConfig.builder(path).sync().autosave().build();
+        config.load();
     }
 
     /**
@@ -570,9 +572,9 @@ public class TomlConfigManager {
             migrateValue(flatData, "advanced.queue_size", "advanced.queue_size");
             migrateValue(flatData, "advanced.rate_limit", "advanced.rate_limit");
 
-            Viscord.LOGGER.info("[Config] Migrated {} values from JSON", flatData.size());
+            LOGGER.info("[Config] Migrated {} values from JSON", flatData.size());
         } catch (Exception e) {
-            Viscord.LOGGER.error("[Config] Error reading legacy JSON: {}", e.getMessage());
+            LOGGER.error("[Config] Error reading legacy JSON: {}", e.getMessage());
         }
     }
 
@@ -598,7 +600,7 @@ public class TomlConfigManager {
         if (data.containsKey(oldKey)) {
             Object value = data.get(oldKey);
             config.set(newKey, value);
-            Viscord.LOGGER.debug("[Config] Migrated: {} -> {} = {}", oldKey, newKey, value);
+            LOGGER.debug("[Config] Migrated: {} -> {} = {}", oldKey, newKey, value);
         }
     }
 }

@@ -31,7 +31,8 @@ dependencies {
     implementation 'com.squareup.okio:okio-jvm:3.9.0'
     implementation 'com.squareup.okio:okio:3.9.0'
 
-    // Kotlin stdlib (compileOnly as it's usually provided)
+    // Kotlin stdlib stays compileOnly on 1.21.1. Loader shadow nests it only
+    // as a transitive of okio-jvm; do not copy the 26.1.2 jarJar kotlin pin.
     compileOnly 'org.jetbrains.kotlin:kotlin-stdlib:1.9.22'
     compileOnly 'org.jetbrains.kotlin:kotlin-stdlib-jdk8:1.9.22'
 
@@ -51,14 +52,15 @@ dependencies {
     // LuckPerms API
     compileOnly 'net.luckperms:api:5.4'
 
-    // TOML Configuration (night-config)
-    implementation 'com.electronwill.night-config:toml:3.6.7'
-    implementation 'com.electronwill.night-config:core:3.6.7'
+    // TOML Configuration (night-config). Same version as 26.1.2 jarJar.
+    implementation 'com.electronwill.night-config:toml:3.8.3'
+    implementation 'com.electronwill.night-config:core:3.8.3'
 
     // Test dependencies
     testImplementation 'org.junit.jupiter:junit-jupiter:5.10.0'
     testImplementation 'org.mockito:mockito-core:5.8.0'
     testImplementation 'net.jqwik:jqwik:1.8.2'
+    testImplementation 'org.apache.logging.log4j:log4j-core:2.24.1'
 }
 
 test {
