@@ -80,6 +80,6 @@ class NightConfigPackagingTest {
         if (prop != null && !prop.isBlank()) {
             return Path.of(prop);
         }
-        return Path.of("build/libs/viscord-neoforge-4.2.2.jar");
+        return Path.of("build/libs/viscord-neoforge-2.0.0-common.1.jar");
     }
 }

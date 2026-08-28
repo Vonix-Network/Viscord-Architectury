@@ -26,7 +26,7 @@ neoforge/build/libs/viscord-neoforge-<version>.jar
 
 (Older templates: `forge/build/libs/viscord-forge-<version>.jar` instead of `neoforge/`.)
 
-The `<version>` value comes from `mod_version` in `gradle.properties`. The established lanes are at embedded version **4.2.2**. The 26.1.2 lane uses the same embedded version while its target-specific build remains a separate ModDevGradle project.
+The `<version>` value comes from `mod_version` in `gradle.properties`. The `2.0.0-common.1` prerelease uses the same embedded version in all five lanes, including the standalone 26.1.2 ModDevGradle project.
 
 ## Build all five version lanes
 

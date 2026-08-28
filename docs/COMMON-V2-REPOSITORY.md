@@ -2,7 +2,7 @@
 
 This repository is the single source tree for the Viscord common-generation line. The common line starts at **2.0.0** and is published as the distinct prerelease label **`2.0.0-common.1`**.
 
-`2.0.0-common.1` identifies the repository/layout generation. It does **not** relabel Viscord's existing embedded project version: the accepted source currently builds as Viscord **4.2.2**. Viscord's historical `v2.0.0` tag remains immutable and is not reused for this common-generation snapshot.
+`2.0.0-common.1` is the embedded prerelease version for every supported lane and identifies the first common-generation release line beginning at `2.0.0`. Viscord's historical `v2.0.0` tag remains immutable and is not overwritten.
 
 ## One repository, all supported Minecraft lanes
 
@@ -19,7 +19,7 @@ The root `core/` module contains shared code and tests. Every Minecraft lane rem
 ## Release status
 
 - GitHub release label: **`2.0.0-common.1`** (prerelease).
-- Embedded project version: **4.2.2**.
+- Embedded project version: **`2.0.0-common.1`** for every supported lane.
 - Static evidence: the accepted candidate passed the parent build/package matrix and source/artifact parity checks for the requested lanes.
 - Live Minecraft activation, Discord/Fluxer gateway connection, deployment, server restart, and production credentials were **not performed** for this source snapshot.
 - Configuration examples use placeholders only. Never commit real bot tokens, webhook URLs, or credentials.
@@ -37,4 +37,4 @@ Use the version-specific instructions in [`docs/building-from-source.md`](buildi
 
 ## Release naming
 
-The common-generation label is kept separate from embedded project SemVer. This preserves Viscord's historical releases, including its existing `v2.0.0`, and avoids claiming that the current 4.2.2 implementation is a historical 2.0.0 artifact. A stable major-version change requires a separate compatibility and migration review.
+This prerelease starts the common-generation SemVer line at `2.0.0`; Viscord's historical releases, including its existing `v2.0.0`, remain immutable. It must not be described as a stable compatibility guarantee until the corresponding runtime and migration review is complete.
