@@ -84,33 +84,63 @@ jobs:
       - name: Stage assets and checksums
         run: |
           set -euo pipefail
+          rm -rf release
           mkdir -p release
-          find dist -type f -name '*.jar' -exec cp {} release/ \;
-          test "$(find release -maxdepth 1 -name '*.jar' | wc -l)" -eq 9
+          if [ "${GITHUB_REF_NAME}" = "v5.0.0-hf" ]; then
+            hotfix_jar="$(find dist -type f -name 'viscord-26.1.2-neoforge.jar' | head -n 1)"
+            test -n "$hotfix_jar"
+            cp "$hotfix_jar" release/viscord-26.1.2-neoforge-5.0.0-hf.jar
+            test "$(find release -maxdepth 1 -name '*.jar' | wc -l)" -eq 1
+          else
+            find dist -type f -name '*.jar' -exec cp {} release/ \;
+            test "$(find release -maxdepth 1 -name '*.jar' | wc -l)" -eq 9
+          fi
           (cd release && sha256sum *.jar > SHA256SUMS)
       - name: Write release notes
         run: |
           set -euo pipefail
-          {
-            echo "## Viscord ${GITHUB_REF_NAME}"
-            echo
-            echo "Common-generation stable release 5.0.0. All nine supported Minecraft/loader lanes are built by GitHub Actions from this tag."
-            echo
-            echo "### Artifact matrix"
-            echo
-            echo "The release contains one matching jar for each supported lane: 1.18.2 Fabric/Forge, 1.19.2 Fabric/Forge, 1.20.1 Fabric/Forge, 1.21.1 Fabric/NeoForge, and 26.1.2 NeoForge."
-            echo
-            echo "### Included with this release"
-            echo
-            echo "The release includes the CI-built jars for all nine supported lanes and a SHA-256 checksum file named SHA256SUMS."
-          } > release/RELEASE-NOTES.md
+          if [ "${GITHUB_REF_NAME}" = "v5.0.0-hf" ]; then
+            {
+              echo "## Viscord 5.0.0-hf"
+              echo
+              echo "Compatibility hotfix for the Minecraft 26.1.2 / NeoForge 26.1.2.93 lane."
+              echo
+              echo "The 5.0.0 26.1.2 artifact exposed kotlin-stdlib as a second Jar-in-Jar module. On server packs that already provide Kotlin-for-Forge, that duplicate visible module could make NeoForge reject the mod set during dependency resolution before Viscord loaded."
+              echo
+              echo "This hotfix removes that conflicting nested Kotlin declaration and leaves the remaining dependency closure unchanged."
+              echo
+              echo "### Included artifact"
+              echo
+              echo "- viscord-26.1.2-neoforge-5.0.0-hf.jar"
+              echo "- Minecraft 26.1.2 / NeoForge 26.1.2.93"
+              echo "- Server-side installation; the server pack must provide its compatible Kotlin runtime."
+              echo
+              echo "The other eight 5.0.0 lane artifacts are unchanged and are not included in this hotfix release. Unrelated missing modpack dependencies remain pack-specific."
+              echo
+              echo "A SHA-256 checksum file named SHA256SUMS is included."
+            } > release/RELEASE-NOTES.md
+          else
+            {
+              echo "## Viscord ${GITHUB_REF_NAME}"
+              echo
+              echo "Common-generation stable release 5.0.0. All nine supported Minecraft/loader lanes are built by GitHub Actions from this tag."
+              echo
+              echo "### Artifact matrix"
+              echo
+              echo "The release contains one matching jar for each supported lane: 1.18.2 Fabric/Forge, 1.19.2 Fabric/Forge, 1.20.1 Fabric/Forge, 1.21.1 Fabric/NeoForge, and 26.1.2 NeoForge."
+              echo
+              echo "### Included with this release"
+              echo
+              echo "The release includes the CI-built jars for all nine supported lanes and a SHA-256 checksum file named SHA256SUMS."
+            } > release/RELEASE-NOTES.md
+          fi
       - uses: softprops/action-gh-release@v2
         with:
           tag_name: ${{ github.ref_name }}
-          name: ${{ github.ref_name }}
+          name: ${{ github.ref_name == 'v5.0.0-hf' && 'Viscord 5.0.0-hf — NeoForge 26.1.2 Compatibility Hotfix' || github.ref_name }}
           body_path: release/RELEASE-NOTES.md
           files: |
             release/*.jar
             release/SHA256SUMS
           draft: false
-          prerelease: false
+          prerelease: ${{ github.ref_name == 'v5.0.0-hf' }}

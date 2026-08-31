@@ -30,7 +30,7 @@ External libraries are declared through ModDevGradle `jarJar(implementation(...)
 
 Jar-in-Jar ownership on this cell:
 - `okio-jvm` 3.9.0 is nested because OkHttp needs it.
-- `kotlin-stdlib` 1.9.25 is nested **only because** `okio-jvm` is nested; okio-jvm calls `kotlin.jvm.internal.Intrinsics` at shutdown. JarJar does not pull that transitive automatically.
+- `kotlin-stdlib` is intentionally **not** nested. Packs using this 26.1.2 lane are expected to provide Kotlin-for-Forge as the shared Kotlin runtime; exposing a second Kotlin Jar-in-Jar module causes NeoForge dependency resolution failures before Viscord loads.
 - NightConfig `toml`/`core` 3.8.3 is nested because TOML config is not provided by NeoForge.
 - Do not copy this jarJar set onto the 1.21.1 Architectury shadow. 1.21.1 nests NightConfig 3.8.3 explicitly and lets kotlin-stdlib arrive as a shadow transitive of okio-jvm.
 

@@ -74,9 +74,11 @@ dependencies {
 
     jarJar(implementation('com.squareup.okio:okio-jvm:3.9.0')) { version { strictly '[3.9, 3.10)' } }
     jarJar(implementation('com.squareup.okio:okio:3.9.0')) { version { strictly '[3.9, 3.10)' } }
-    // okio-jvm is Kotlin-compiled and requires kotlin.jvm.internal.Intrinsics at shutdown.
-    // Nested only because okio-jvm is nested; 1.21.1 Architectury shadow must not copy this pin.
-    jarJar(implementation('org.jetbrains.kotlin:kotlin-stdlib:1.9.25')) { version { strictly '[1.9, 1.10)' } }
+    // Do not JarJar kotlin-stdlib on this NeoForge 26.1.2 lane. Server packs that
+    // already provide Kotlin-for-Forge expose Kotlin as a shared runtime; advertising
+    // a second visible Kotlin module makes NeoForge reject the mod set during
+    // dependency resolution. The target therefore uses the pack's Kotlin provider;
+    // the 1.21.1 Architectury shadow remains independent.
     jarJar(implementation('com.fasterxml.jackson.core:jackson-databind:2.17.0')) { version { strictly '[2.17, 2.18)' } }
     jarJar(implementation('com.fasterxml.jackson.core:jackson-core:2.17.0')) { version { strictly '[2.17, 2.18)' } }
     jarJar(implementation('com.fasterxml.jackson.core:jackson-annotations:2.17.0')) { version { strictly '[2.17, 2.18)' } }

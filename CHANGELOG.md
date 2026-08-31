@@ -5,6 +5,18 @@ All notable changes to Viscord will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [5.0.0-hf] - 2026-08-31
+
+Compatibility hotfix for the Minecraft **26.1.2 / NeoForge 26.1.2.93** lane.
+
+### Fixed
+- Fixed Viscord's contribution to the NeoForge missing-dependencies failure seen when a server pack already provides Kotlin-for-Forge. The original 5.0.0 26.1.2 artifact exposed `kotlin-stdlib` as a second Jar-in-Jar module, so NeoForge could reject the mod set before Viscord loaded.
+- Removed only the 26.1.2 lane's nested Kotlin stdlib declaration. The remaining Jar-in-Jar dependency closure is unchanged, and the 1.18.2–1.21.1 artifacts remain unchanged at `5.0.0`.
+
+### Release scope
+- The hotfix artifact is `viscord-26.1.2-neoforge-5.0.0-hf.jar` for server-side Minecraft `26.1.2` with NeoForge `26.1.2.93`.
+- This release does not claim to repair unrelated missing dependencies in a modpack; those remain pack-specific.
+
 ## [5.0.0] - 2026-08-28
 
 Common-generation repository release. This stable release starts the shared repository/layout lineage at `2.0.0`; Viscord's independent embedded/project release is `5.0.0`. Historical Viscord tags remain unchanged.
