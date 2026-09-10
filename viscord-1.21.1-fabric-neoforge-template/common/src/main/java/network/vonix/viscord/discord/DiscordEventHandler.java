@@ -29,9 +29,13 @@ public class DiscordEventHandler {
     }
 
     public static void onPlayerQuit(ServerPlayer player) {
-            if (DiscordManager.getInstance().isRunning()) {
-                DiscordManager.getInstance().sendLeaveEmbed(player.getName().getString(), player.getUUID().toString());
-            }
+        if (Viscord.isShuttingDown()) {
+            Viscord.LOGGER.debug("[Viscord] Skipping player leave embed during server shutdown");
+            return;
+        }
+        if (DiscordManager.getInstance().isRunning()) {
+            DiscordManager.getInstance().sendLeaveEmbed(player.getName().getString(), player.getUUID().toString());
+        }
     }
 
     public static void onLivingDeath(net.minecraft.world.entity.LivingEntity entity, net.minecraft.world.damagesource.DamageSource source) {

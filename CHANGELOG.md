@@ -5,6 +5,27 @@ All notable changes to Viscord will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [5.0.1] - 2026-09-10
+
+Critical hotfix for a server crash during shutdown. All nine lanes are rebuilt with this fix; the previous `5.0.0-hf` (26.1.2 Kotlin-only) is superseded.
+
+### Fixed
+- **Server crash on player quit during shutdown (`RejectedExecutionException`).** When the Minecraft server stopped, Viscord called `discord.disconnect()` synchronously, which tore down Javacord's internal rate-limit executor immediately. Player-quit events that fired after this point attempted to send leave embeds through the dead executor, throwing `RejectedExecutionException` from Javacord's shaded `RatelimitManager` and crashing the server tick loop. Three-layer fix applied across all five version templates:
+  - A `volatile boolean shuttingDown` flag is now set *before* any disconnect work begins, providing a fast, thread-safe signal to all event handlers.
+  - Discord disconnect is delayed by a 2.5-second grace period via `scheduleAsync()`, allowing in-flight player-quit and death events to complete before Javacord's executor terminates.
+  - `BotClient.sendEmbed` catches `RejectedExecutionException` and drops the send gracefully during shutdown instead of propagating the exception.
+  - `DiscordEventHandler.onPlayerQuit` checks `Viscord.isShuttingDown()` and skips leave embeds entirely when the server is stopping.
+- Expanded the minified 1.18.2 and 1.19.2 `Viscord.java` source files to full readable form. No behavioral change — purely a maintainability improvement.
+
+### Changed
+- `Viscord.onServerStopping` no longer calls `DiscordManager.shutdown()` synchronously. The shutdown sequence is now: set `shuttingDown = true` → schedule delayed disconnect → executor shutdown after grace period.
+- New public static method `Viscord.isShuttingDown()` for safe cross-class shutdown state queries.
+
+### Release scope
+- All nine loader cells (1.18.2 Fabric/Forge, 1.19.2 Fabric/Forge, 1.20.1 Fabric/Forge, 1.21.1 Fabric/NeoForge, 26.1.2 NeoForge) are rebuilt with this fix.
+- Drop-in replacement for 5.0.0 and 5.0.0-hf. No config changes required.
+- The 26.1.2 Kotlin-for-Forge JarInJar fix from 5.0.0-hf is included in this release's 26.1.2 artifact.
+
 ## [5.0.0-hf] - 2026-08-31
 
 Compatibility hotfix for the Minecraft **26.1.2 / NeoForge 26.1.2.93** lane.

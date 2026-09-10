@@ -21,6 +21,9 @@ public final class Viscord {
     public static final Logger LOGGER = LogManager.getLogger(MOD_ID);
     private static Viscord instance;
     private volatile boolean discordEnabled = false;
+    private volatile boolean shuttingDown = false;
+
+    private static final long SHUTDOWN_GRACE_MS = 2500L;
 
     /**
      * Bounded, daemon-threaded executor for all Viscord background work.
@@ -71,6 +74,11 @@ public final class Viscord {
         return instance;
     }
 
+    public static boolean isShuttingDown() {
+        Viscord current = instance;
+        return current != null && current.shuttingDown;
+    }
+
     private void onInitialize() {
         LOGGER.info("[{}] Initializing Viscord (Standalone Discord Integration)", MOD_ID);
 
@@ -100,50 +108,40 @@ public final class Viscord {
     }
 
     private void onServerStarted(net.minecraft.server.MinecraftServer server) {
-            if (ViscordConfigToml.General.ENABLED.get()) {
-                // Non-blocking async initialization
-                java.util.concurrent.CompletableFuture.runAsync(() -> {
-                    try {
-                        DiscordManager.getInstance().initialize(server);
-                        discordEnabled = true;
-                        LOGGER.info("[{}] Discord module enabled", MOD_ID);
-                    } catch (Exception e) {
-                        LOGGER.error("[{}] Failed to initialize Discord: {}", MOD_ID, e.getMessage());
-                    }
-                }, ASYNC_EXECUTOR);
-                LOGGER.info("[{}] Discord initialization started asynchronously", MOD_ID);
-            }
+        shuttingDown = false;
+        if (ViscordConfigToml.General.ENABLED.get()) {
+            // Non-blocking async initialization
+            java.util.concurrent.CompletableFuture.runAsync(() -> {
+                try {
+                    DiscordManager.getInstance().initialize(server);
+                    discordEnabled = true;
+                    LOGGER.info("[{}] Discord module enabled", MOD_ID);
+                } catch (Exception e) {
+                    LOGGER.error("[{}] Failed to initialize Discord: {}", MOD_ID, e.getMessage());
+                }
+            }, ASYNC_EXECUTOR);
+            LOGGER.info("[{}] Discord initialization started asynchronously", MOD_ID);
+        }
     }
 
     private void onServerStopping(net.minecraft.server.MinecraftServer server) {
-            // Run shutdown off the server-stopping thread so the tick loop is
-            // not blocked while network futures complete. We give it up to
-            // 5 seconds total (Discord + Fluxer + webhook clients) before
-            // forcibly tearing down the executor.
-            if (!discordEnabled) {
+        shuttingDown = true;
+        if (!discordEnabled) {
+            ASYNC_EXECUTOR.shutdown();
+            return;
+        }
+
+        LOGGER.info("[{}] Server stopping; delaying Discord disconnect by {} ms", MOD_ID, SHUTDOWN_GRACE_MS);
+        scheduleAsync(() -> {
+            try {
+                DiscordManager.getInstance().shutdown();
+                LOGGER.debug("[{}] Discord shutdown complete", MOD_ID);
+            } catch (Exception e) {
+                LOGGER.error("[{}] Error during delayed Discord shutdown", MOD_ID, e);
+            } finally {
+                discordEnabled = false;
                 ASYNC_EXECUTOR.shutdown();
-                return;
             }
-            java.util.concurrent.CompletableFuture
-                .runAsync(() -> {
-                    try {
-                        DiscordManager.getInstance().shutdown();
-                        LOGGER.debug("[{}] Discord shutdown complete", MOD_ID);
-                    } catch (Exception e) {
-                        LOGGER.error("[{}] Error during Discord shutdown", MOD_ID, e);
-                    }
-                }, ASYNC_EXECUTOR)
-                .orTimeout(5, TimeUnit.SECONDS)
-                .whenComplete((v, t) -> {
-                    if (t != null) LOGGER.warn("[{}] Shutdown timed out: {}", MOD_ID, t.getMessage());
-                    ASYNC_EXECUTOR.shutdown();
-                    try {
-                        if (!ASYNC_EXECUTOR.awaitTermination(2, TimeUnit.SECONDS)) {
-                            ASYNC_EXECUTOR.shutdownNow();
-                        }
-                    } catch (InterruptedException ignored) {
-                        Thread.currentThread().interrupt();
-                    }
-                });
+        }, SHUTDOWN_GRACE_MS);
     }
 }

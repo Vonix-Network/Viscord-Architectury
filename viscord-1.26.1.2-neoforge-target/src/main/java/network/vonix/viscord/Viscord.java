@@ -6,6 +6,7 @@ import net.neoforged.fml.loading.FMLPaths;
 import net.neoforged.neoforge.event.entity.living.LivingDeathEvent;
 import network.vonix.viscord.config.toml.TomlConfigManager;
 import network.vonix.viscord.config.toml.ViscordConfigToml;
+import network.vonix.viscord.discord.DiscordEventHandler;
 import network.vonix.viscord.discord.DiscordManager;
 import org.apache.logging.log4j.LogManager;
 import org.apache.logging.log4j.Logger;
@@ -21,6 +22,9 @@ public final class Viscord {
     public static final Logger LOGGER = LogManager.getLogger(MOD_ID);
     private static Viscord instance;
     private volatile boolean discordEnabled = false;
+    private volatile boolean shuttingDown = false;
+
+    private static final long SHUTDOWN_GRACE_MS = 2500L;
 
     /**
      * Bounded, daemon-threaded executor for all Viscord background work.
@@ -75,6 +79,11 @@ public final class Viscord {
         return instance;
     }
 
+    public static boolean isShuttingDown() {
+        Viscord current = instance;
+        return current != null && current.shuttingDown;
+    }
+
     /**
      * Returns Viscord's config directory under the NeoForge game config path.
      */
@@ -108,13 +117,14 @@ public final class Viscord {
     }
 
     public static void onServerStarted(MinecraftServer server) {
-        if (!ViscordConfigToml.General.ENABLED.get()) {
-            LOGGER.info("[{}] Discord integration disabled in config", MOD_ID);
-            return;
-        }
         Viscord current = Viscord.getInstance();
         if (current == null) {
             LOGGER.error("[{}] Server started before Viscord initialization", MOD_ID);
+            return;
+        }
+        current.shuttingDown = false;
+        if (!ViscordConfigToml.General.ENABLED.get()) {
+            LOGGER.info("[{}] Discord integration disabled in config", MOD_ID);
             return;
         }
         ASYNC_EXECUTOR.execute(() -> {
@@ -130,42 +140,35 @@ public final class Viscord {
     }
 
     public static void onServerStopping() {
-            // Run shutdown off the server-stopping thread so the tick loop is
-            // not blocked while network futures complete. We give it up to
-            // 5 seconds total (Discord + Fluxer + webhook clients) before
-            // forcibly tearing down the executor.
-            Viscord current = Viscord.getInstance();
-            if (current == null) {
+        Viscord current = Viscord.getInstance();
+        if (current == null) {
+            ASYNC_EXECUTOR.shutdown();
+            return;
+        }
+
+        current.shuttingDown = true;
+        if (!current.discordEnabled) {
+            ASYNC_EXECUTOR.shutdown();
+            return;
+        }
+
+        LOGGER.info("[{}] Server stopping; delaying Discord disconnect by {} ms", MOD_ID, SHUTDOWN_GRACE_MS);
+        scheduleAsync(() -> {
+            try {
+                // Do not construct DiscordManager during shutdown when the
+                // integration never initialized; construction creates OkHttp
+                // clients and can trigger packaged dependency linkage failures.
+                if (current.discordEnabled) {
+                    DiscordManager.getInstance().shutdown();
+                }
+                LOGGER.debug("[{}] Discord shutdown complete", MOD_ID);
+            } catch (Exception e) {
+                LOGGER.error("[{}] Error during delayed Discord shutdown", MOD_ID, e);
+            } finally {
+                current.discordEnabled = false;
                 ASYNC_EXECUTOR.shutdown();
-                return;
             }
-            java.util.concurrent.CompletableFuture
-                .runAsync(() -> {
-                    try {
-                        // Do not construct DiscordManager during shutdown when the
-                        // integration never initialized; construction creates OkHttp
-                        // clients and can trigger packaged dependency linkage failures.
-                        if (current.discordEnabled) {
-                            DiscordManager.getInstance().shutdown();
-                        }
-                        current.discordEnabled = false;
-                        LOGGER.debug("[{}] Discord shutdown complete", MOD_ID);
-                    } catch (Exception e) {
-                        LOGGER.error("[{}] Error during Discord shutdown", MOD_ID, e);
-                    }
-                }, ASYNC_EXECUTOR)
-                .orTimeout(5, TimeUnit.SECONDS)
-                .whenComplete((v, t) -> {
-                    if (t != null) LOGGER.warn("[{}] Shutdown timed out: {}", MOD_ID, t.getMessage());
-                    ASYNC_EXECUTOR.shutdown();
-                    try {
-                        if (!ASYNC_EXECUTOR.awaitTermination(2, TimeUnit.SECONDS)) {
-                            ASYNC_EXECUTOR.shutdownNow();
-                        }
-                    } catch (InterruptedException ignored) {
-                        Thread.currentThread().interrupt();
-                    }
-                });
+        }, SHUTDOWN_GRACE_MS);
     }
 
     public static void onPlayerJoin(Entity entity) {
@@ -177,11 +180,7 @@ public final class Viscord {
     }
 
     public static void onPlayerQuit(Entity entity) {
-        if (entity instanceof net.minecraft.server.level.ServerPlayer player
-                && DiscordManager.getInstance().isRunning()
-                && ViscordConfigToml.Messages.Events.LEAVE.get()) {
-            DiscordManager.getInstance().sendLeaveEmbed(player.getName().getString(), player.getUUID().toString());
-        }
+        DiscordEventHandler.onPlayerQuit(entity);
     }
 
     public static void onLivingDeath(LivingDeathEvent event) {

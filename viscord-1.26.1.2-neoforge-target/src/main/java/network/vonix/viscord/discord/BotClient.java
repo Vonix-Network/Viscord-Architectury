@@ -8,6 +8,7 @@ import org.javacord.api.entity.intent.Intent;
 import org.javacord.api.event.message.MessageCreateEvent;
 
 import java.util.concurrent.CompletableFuture;
+import java.util.concurrent.RejectedExecutionException;
 import java.util.function.Consumer;
 
 /**
@@ -145,7 +146,15 @@ public class BotClient {
             // Set timestamp to now
             embed.setTimestampToNow();
 
-            return channel.sendMessage(embed);
+            try {
+                return channel.sendMessage(embed);
+            } catch (RejectedExecutionException e) {
+                if (Viscord.isShuttingDown()) {
+                    Viscord.LOGGER.warn("[Discord] Dropping embed because the Discord executor rejected it during server shutdown");
+                    return CompletableFuture.<org.javacord.api.entity.message.Message>completedFuture(null);
+                }
+                throw e;
+            }
         }).orElse(CompletableFuture.completedFuture(null));
     }
 

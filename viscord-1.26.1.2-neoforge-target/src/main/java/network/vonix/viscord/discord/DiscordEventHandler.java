@@ -20,6 +20,20 @@ import java.nio.file.Path;
  */
 public class DiscordEventHandler {
 
+    public static void onPlayerQuit(net.minecraft.world.entity.Entity entity) {
+        if (!(entity instanceof ServerPlayer player)) {
+            return;
+        }
+        if (Viscord.isShuttingDown()) {
+            Viscord.LOGGER.debug("[Viscord] Skipping player leave embed during server shutdown");
+            return;
+        }
+        if (DiscordManager.getInstance().isRunning()
+                && ViscordConfigToml.Messages.Events.LEAVE.get()) {
+            DiscordManager.getInstance().sendLeaveEmbed(player.getName().getString(), player.getUUID().toString());
+        }
+    }
+
     public static void registerCommands(CommandDispatcher<CommandSourceStack> dispatcher) {
         // /discord command - show invite link and manage preferences
         dispatcher.register(
