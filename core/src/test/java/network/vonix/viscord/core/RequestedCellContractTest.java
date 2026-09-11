@@ -73,11 +73,12 @@ class RequestedCellContractTest {
         assertFalse(neo.contains("kotlin-stdlib:1.9.25"),
                 "do not copy the 26.1.2 jarJar kotlin pin onto 1.21.1 NeoForge shadow");
         assertTrue(neo261.contains("okio-jvm:3.9.0"));
-        assertTrue(neo261.contains("kotlin-stdlib:1.9.25"),
-                "26.1.2 jarJar must nest kotlin-stdlib because okio-jvm needs Intrinsics");
+        assertFalse(neo261.contains("kotlin-stdlib:1.9.25"),
+                "26.1.2 must NOT nest kotlin-stdlib; packs provide Kotlin-for-Forge as shared runtime");
         assertTrue(notes.contains("kotlin-stdlib") && notes.toLowerCase().contains("okio"),
-                "PORT_NOTES must document why kotlin-stdlib is nested on 26.1.2");
-        assertFalse(notes.contains("Kotlin stdlib is intentionally not bundled"));
+                "PORT_NOTES must document why kotlin-stdlib is not nested on 26.1.2");
+        assertTrue(notes.toLowerCase().contains("not") && notes.toLowerCase().contains("nested"),
+                "PORT_NOTES must state kotlin-stdlib is intentionally not nested");
     }
 
     @Test

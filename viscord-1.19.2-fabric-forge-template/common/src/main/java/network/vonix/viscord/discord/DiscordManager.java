@@ -737,8 +737,20 @@ public class DiscordManager {
     // =========================================================================
 
     private String buildAvatarUrl(String username, String uuidNoDashes) {
-        String identifier = (uuidNoDashes != null && !uuidNoDashes.isEmpty()) ? uuidNoDashes : username;
-        return "https://minotar.net/armor/bust/" + identifier + "/100.png";
+        String template = ViscordConfigToml.Server.AVATAR_URL.get();
+        if (template == null || template.isEmpty()) {
+            // Fallback to minotar if config is empty (backward compat)
+            String identifier = (uuidNoDashes != null && !uuidNoDashes.isEmpty()) ? uuidNoDashes : username;
+            return "https://minotar.net/armor/bust/" + identifier + "/100.png";
+        }
+        String result = template;
+        if (uuidNoDashes != null && !uuidNoDashes.isEmpty()) {
+            result = result.replace("{uuid}", uuidNoDashes);
+        } else {
+            result = result.replace("{uuid}", username);
+        }
+        result = result.replace("{username}", username);
+        return result;
     }
 
     private boolean isOtherServerUsername(String username) {

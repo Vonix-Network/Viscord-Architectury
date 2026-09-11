@@ -5,6 +5,19 @@ All notable changes to Viscord will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [5.0.2] - 2026-09-11
+
+### Added
+- **Configurable player avatar URL template.** The `server.avatar_url` config key now controls the avatar/head image used in Discord embeds and chat bridge messages. Supports `{uuid}` (no dashes) and `{username}` placeholders so it works with any avatar service. Default remains Minotar armor bust (`https://minotar.net/armor/bust/{uuid}/100.png`). Examples included in the generated config comment: Crafatar, Ashcon, or any custom endpoint.
+
+### Changed
+- `DiscordManager.buildAvatarUrl()` now reads the config template and substitutes placeholders instead of using a hardcoded Minotar URL. Falls back to the original Minotar behavior if the config value is empty (backward compatible with existing configs that had `avatar_url = ""`).
+- Config comment for `server.avatar_url` updated to document placeholders and provide alternative service examples.
+
+### Release scope
+- All nine loader cells rebuilt. Drop-in replacement for 5.0.0/5.0.1/5.0.0-hf. No config migration required — existing servers keep their current avatar behavior; new installs get the documented default.
+- Server-side only.
+
 ## [5.0.1] - 2026-09-10
 
 Critical hotfix for a server crash during shutdown. All nine lanes are rebuilt with this fix; the previous `5.0.0-hf` (26.1.2 Kotlin-only) is superseded.

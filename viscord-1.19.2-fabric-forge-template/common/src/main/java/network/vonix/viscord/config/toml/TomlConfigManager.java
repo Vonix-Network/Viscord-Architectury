@@ -220,7 +220,7 @@ public class TomlConfigManager {
         // [server] section
         spec.define("server.prefix", "[MC]");
         spec.define("server.name", "Minecraft Server");
-        spec.define("server.avatar_url", "");
+        spec.define("server.avatar_url", "https://minotar.net/armor/bust/{uuid}/100.png");
 
         // [messages] section
         spec.define("messages.discord_to_minecraft", "[Discord] {username}: {message}");
@@ -301,7 +301,7 @@ public class TomlConfigManager {
         // [server] section
         config.set("server.prefix", "[MC]");
         config.set("server.name", "Minecraft Server");
-        config.set("server.avatar_url", "");
+        config.set("server.avatar_url", "https://minotar.net/armor/bust/{uuid}/100.png");
 
         // [messages] section
         config.set("messages.discord_to_minecraft", "[Discord] {username}: {message}");
@@ -419,7 +419,7 @@ public class TomlConfigManager {
                 "How your server appears in bridged messages");
         config.setComment("server.prefix", "Server prefix shown in messages (e.g., [Survival], [Creative], [SMP])");
         config.setComment("server.name", "Server name for bot status and embeds");
-        config.setComment("server.avatar_url", "Server avatar URL for event messages (leave empty for default)");
+        config.setComment("server.avatar_url", "Player avatar URL template. Placeholders: {uuid} (no dashes), {username}. Default: Minotar armor bust. Examples: https://crafatar.com/avatars/{uuid}?size=100, https://api.ashcon.app/mojang/v2/user/{uuid}/avatar");
 
         // [messages] comments
         config.setComment("messages", "Message Formats\n" +

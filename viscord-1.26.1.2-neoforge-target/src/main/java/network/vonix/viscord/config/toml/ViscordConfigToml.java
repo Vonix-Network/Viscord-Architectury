@@ -50,7 +50,7 @@ public class ViscordConfigToml {
     public static class Server {
         public static final ConfigValue<String> PREFIX = new ConfigValue<>("server.prefix", "[MC]");
         public static final ConfigValue<String> NAME = new ConfigValue<>("server.name", "Minecraft Server");
-        public static final ConfigValue<String> AVATAR_URL = new ConfigValue<>("server.avatar_url", "");
+        public static final ConfigValue<String> AVATAR_URL = new ConfigValue<>("server.avatar_url", "https://minotar.net/armor/bust/{uuid}/100.png");
     }
 
     // ==================== MESSAGES SECTION ====================
