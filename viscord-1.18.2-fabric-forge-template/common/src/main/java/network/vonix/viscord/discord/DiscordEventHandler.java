@@ -207,7 +207,16 @@ public class DiscordEventHandler {
                                             }
 
                                             ServerPlayer player = context.getSource().getPlayerOrException();
-                                            String code = DiscordManager.getInstance().generateLinkCode(player);
+                                            DiscordManager discordManager = DiscordManager.getInstance();
+                                            LinkedAccountsManager.LinkedAccount existing = discordManager.getLinkedAccount(player.getUUID());
+                                            if (existing != null) {
+                                                context.getSource().sendFailure(
+                                                        new TextComponent("§cAlready linked to " + existing.discordUsername
+                                                                + " <@" + existing.discordId + ">"));
+                                                return 0;
+                                            }
+
+                                            String code = discordManager.generateLinkCode(player);
 
                                             if (code != null) {
                                                 int expiryMinutes = ViscordConfigToml.AccountLinking.CODE_EXPIRY.get() / 60;
@@ -220,7 +229,6 @@ public class DiscordEventHandler {
                                                 return 1;
                                             } else {
                                                 // Provide more specific error messages
-                                                DiscordManager discordManager = DiscordManager.getInstance();
                                                 if (!discordManager.isRunning()) {
                                                     context.getSource().sendFailure(
                                                             new TextComponent("§cDiscord bot is not connected. Please contact an administrator."));

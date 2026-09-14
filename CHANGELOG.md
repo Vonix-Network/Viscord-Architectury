@@ -5,6 +5,18 @@ All notable changes to Viscord will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [5.1.1] - 2026-09-14
+
+### Fixed
+- **Already-linked players cannot generate a new Discord link code.** `/viscord discord link` now short-circuits when the Minecraft UUID is already bound, returning a clear `already linked to <discord> <@id>` message instead of a useless 6-digit code. `DiscordManager.generateLinkCode()` also returns null in this case. Existing disabled and Discord-bot-not-running error branches are unchanged. `linkedAccountsManager == null` remains guarded.
+- **Link-code uniqueness under concurrency.** `LinkedAccountsManager.generateLinkCode` now inserts the pending code with `ConcurrentHashMap.putIfAbsent` so two players cannot be handed the same code. The atomic TOCTOU-protected `verifyAndLink` path is unchanged.
+
+### Tests
+- Added `LinkedAccountsManager` unit tests in the 1.21.1 common module covering generate→verify→unlink, code expiry, already-MC-linked rejection, same-Discord-already-linked rejection, and malformed/nonexistent codes.
+
+### Release scope
+- All nine loader cells rebuilt at `5.1.1`. No config migration; rate-limit and account-linking keys unchanged.
+
 ## [5.1.0] - 2026-09-14
 
 ### Added

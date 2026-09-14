@@ -46,15 +46,16 @@ public class LinkedAccountsManager {
         // Clean up expired pending links
         cleanupExpiredCodes();
 
-        // Generate unique 6-digit code
+        // Generate unique 6-digit code. putIfAbsent is the compare-and-set so two
+        // concurrent generateLinkCode callers cannot be handed the same code.
         String code;
+        PendingLink pending = new PendingLink(
+                minecraftUUID,
+                minecraftUsername,
+                System.currentTimeMillis() + (ViscordConfigToml.AccountLinking.CODE_EXPIRY.get() * 1000L));
         do {
             code = String.format("%06d", SECURE_RANDOM.nextInt(1000000));
-        } while (pendingLinks.containsKey(code));
-
-        // Store pending link
-        long expiryTime = System.currentTimeMillis() + (ViscordConfigToml.AccountLinking.CODE_EXPIRY.get() * 1000L);
-        pendingLinks.put(code, new PendingLink(minecraftUUID, minecraftUsername, expiryTime));
+        } while (pendingLinks.putIfAbsent(code, pending) != null);
 
         Viscord.LOGGER.info("Generated link code {} for player {} ({})", code, minecraftUsername, minecraftUUID);
         return code;

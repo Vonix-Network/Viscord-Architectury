@@ -725,7 +725,12 @@ public class DiscordManager {
 
     public String generateLinkCode(ServerPlayer player) {
         if (linkedAccountsManager == null || !ViscordConfigToml.AccountLinking.ENABLED.get() || !running) return null;
+        if (linkedAccountsManager.isLinked(player.getUUID())) return null;
         return linkedAccountsManager.generateLinkCode(player.getUUID(), player.getName().getString());
+    }
+
+    public LinkedAccountsManager.LinkedAccount getLinkedAccount(UUID uuid) {
+        return linkedAccountsManager == null ? null : linkedAccountsManager.getByMinecraft(uuid);
     }
 
     public boolean unlinkAccount(UUID uuid) {
