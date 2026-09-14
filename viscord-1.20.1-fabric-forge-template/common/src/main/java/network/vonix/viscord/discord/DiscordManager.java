@@ -737,6 +737,11 @@ public class DiscordManager {
     // =========================================================================
 
     private String buildAvatarUrl(String username, String uuidNoDashes) {
+        String skinRestorerAvatarUrl = SkinRestorerAvatarResolver.resolve(uuidNoDashes);
+        if (skinRestorerAvatarUrl != null) {
+            return skinRestorerAvatarUrl;
+        }
+
         String template = ViscordConfigToml.Server.AVATAR_URL.get();
         if (template == null || template.isEmpty()) {
             // Fallback to minotar if config is empty (backward compat)

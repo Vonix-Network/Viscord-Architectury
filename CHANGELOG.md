@@ -5,6 +5,19 @@ All notable changes to Viscord will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [5.1.0] - 2026-09-14
+
+### Added
+- **SkinRestorer-aware player avatars.** When SkinRestorer is present and a player has a saved custom skin, Viscord extracts the Mojang texture hash and uses `https://mc-heads.net/avatar/<hash>/100.png` for Discord/Fluxer player avatars.
+
+### Changed
+- SkinRestorer remains a soft dependency: Viscord uses guarded reflection and preserves the configured `server.avatar_url` template and Minotar fallback when the mod or saved skin is unavailable.
+- The resolver is replicated across all nine loader cells. Live SkinRestorer API support is verified for the 26.1.2 NeoForge lane; older lanes remain safe and unchanged when SkinRestorer is absent or unavailable for their Minecraft version.
+- All nine lane versions are aligned to `5.1.0`.
+
+### Release scope
+- Server-side only; no client installation or SkinRestorer JAR bundling is required.
+
 ## [5.0.2] - 2026-09-11
 
 ### Added
