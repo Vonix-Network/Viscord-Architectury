@@ -7,7 +7,9 @@ Releases/
 node_modules/
 .DS_Store
 *.log
+**/logs/*.log.gz
 *.hprof
+*.jqwik-database
 
 # Release folders (uploaded separately)
 2.2.0/

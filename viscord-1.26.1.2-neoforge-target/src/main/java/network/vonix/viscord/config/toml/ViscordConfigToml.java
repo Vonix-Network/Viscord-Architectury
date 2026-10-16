@@ -105,6 +105,10 @@ public class ViscordConfigToml {
         public static final ConfigValue<Integer> LIST_PER_USER_PER_MIN  = new ConfigValue<>("discord_rate_limit.list_per_user_per_min", 2);
         /** Channel-wide !list invocations per 60s. Default 20. */
         public static final ConfigValue<Integer> LIST_GLOBAL_PER_MIN    = new ConfigValue<>("discord_rate_limit.list_global_per_min", 20);
+        /** Per-user native /home executions per 60s. Default 4. */
+        public static final ConfigValue<Integer> HOME_PER_USER_PER_MIN   = new ConfigValue<>("discord_rate_limit.home_per_user_per_min", 4);
+        /** Channel-wide native /home executions per 60s. Default 20. */
+        public static final ConfigValue<Integer> HOME_GLOBAL_PER_MIN     = new ConfigValue<>("discord_rate_limit.home_global_per_min", 20);
     }
 
     // ==================== CONFIG VALUE HELPER CLASS ====================

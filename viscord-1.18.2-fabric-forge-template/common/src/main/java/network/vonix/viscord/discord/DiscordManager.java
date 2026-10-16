@@ -2,6 +2,7 @@ package network.vonix.viscord.discord;
 
 import com.google.gson.JsonObject;
 import net.minecraft.ChatFormatting;
+import net.minecraft.commands.CommandSourceStack;
 import net.minecraft.network.chat.ClickEvent;
 import net.minecraft.network.chat.Component;
 import net.minecraft.network.chat.HoverEvent;
@@ -18,7 +19,13 @@ import network.vonix.viscord.discord.platform.TridirectionalBridge;
 import network.vonix.viscord.utils.DiscordFormatter;
 import network.vonix.viscord.discord.MessageConverter;
 import org.javacord.api.entity.message.Message;
+import org.javacord.api.entity.message.MessageFlag;
 import org.javacord.api.entity.message.embed.Embed;
+import org.javacord.api.entity.permission.PermissionType;
+import org.javacord.api.event.interaction.SlashCommandCreateEvent;
+import org.javacord.api.event.message.MessageCreateEvent;
+import org.javacord.api.interaction.SlashCommandInteraction;
+import org.javacord.api.interaction.callback.InteractionOriginalResponseUpdater;
 
 import java.io.IOException;
 import java.nio.file.Path;
@@ -27,7 +34,6 @@ import java.util.concurrent.CompletableFuture;
 import java.util.concurrent.TimeUnit;
 import java.util.regex.Matcher;
 import java.util.regex.Pattern;
-import org.javacord.api.event.message.MessageCreateEvent;
 
 /**
  * Thin coordinator for all platform integrations.
@@ -55,8 +61,11 @@ public class DiscordManager {
     private static final Pattern DISCORD_MARKDOWN_LINK =
         Pattern.compile("\\[([^\\]]+)]\\((https?://[^)]+)\\)");
 
-    /** Strict format for /link &lt;code&gt;: exactly 6 ASCII digits. Anything else is rejected pre-lookup. */
+    /** Strict format for /link <code>: exactly 6 ASCII digits. Anything else is rejected pre-lookup. */
     private static final Pattern LINK_CODE_FORMAT = Pattern.compile("\\d{6}");
+
+    /** Home names are passed to one fixed Minecraft command and never accept command syntax. */
+    private static final Pattern HOME_NAME_FORMAT = Pattern.compile("[A-Za-z0-9_-]{1,32}");
 
     /** Bot-side text-trigger rate limiter (/link, !list). Lazily initialized on first use. */
     private final DiscordCommandRateLimiter rateLimiter = new DiscordCommandRateLimiter();
@@ -110,6 +119,7 @@ public class DiscordManager {
         this.running = true;
 
         discordPlatform.setServer(server);
+        discordPlatform.setSlashCommandListener(this::onDiscordSlashCommand);
         fluxerPlatform.setServer(server);
 
         initSubSystems();
@@ -191,6 +201,224 @@ public class DiscordManager {
     private void continueShutdown() {
         discordPlatform.shutdown();
         fluxerPlatform.shutdown();
+    }
+
+    // =========================================================================
+    // Native Discord application commands
+    // =========================================================================
+
+    private void onDiscordSlashCommand(SlashCommandCreateEvent event) {
+        SlashCommandInteraction interaction = event.getSlashCommandInteraction();
+        String command = interaction.getCommandName();
+
+        if (server == null || !running) {
+            respondEphemeral(interaction, "❌ Minecraft server integration is not ready.");
+            return;
+        }
+        if (!isAllowedSlashCommandChannel(interaction)) {
+            respondEphemeral(interaction, "❌ Viscord commands are only available in the configured server channel.");
+            return;
+        }
+
+        try {
+            switch (command) {
+                case DiscordSlashCommandDefinitions.LINK -> handleSlashLink(interaction);
+                case DiscordSlashCommandDefinitions.LIST -> handleSlashList(interaction);
+                case DiscordSlashCommandDefinitions.HOME -> handleSlashHome(interaction);
+                case DiscordSlashCommandDefinitions.HELP -> respondEphemeral(interaction,
+                        "**Viscord commands**\n" +
+                                "`/link code` — link your Minecraft account\n" +
+                                "`/list` — show online players\n" +
+                                "`/home name` — run the safe linked-player home action\n" +
+                                "`/status` — administrator-only server status");
+                case DiscordSlashCommandDefinitions.STATUS -> handleSlashStatus(interaction);
+                default -> respondEphemeral(interaction, "❌ Unknown Viscord command.");
+            }
+        } catch (Exception e) {
+            Viscord.LOGGER.error("[Discord] Error handling native /{} command", command, e);
+            respondEphemeral(interaction, "❌ Viscord could not process that command.");
+        }
+    }
+
+    private boolean isAllowedSlashCommandChannel(SlashCommandInteraction interaction) {
+        return interaction.getChannel()
+                .map(channel -> isInChannelList(ViscordConfigToml.Discord.CHANNEL_ID.get(), channel.getIdAsString()))
+                .orElse(false);
+    }
+
+    private void handleSlashLink(SlashCommandInteraction interaction) {
+        if (!ViscordConfigToml.AccountLinking.ENABLED.get() || linkedAccountsManager == null) {
+            respondEphemeral(interaction, "❌ Account linking is disabled or unavailable.");
+            return;
+        }
+        String discordId = interaction.getUser().getIdAsString();
+        if (!rateLimiter.tryConsume(DiscordCommandRateLimiter.Command.LINK, discordId)) {
+            respondEphemeral(interaction, "❌ Too many link attempts. Please wait before trying again.");
+            return;
+        }
+
+        String code = interaction.getArgumentStringValueByName("code").orElse("").trim();
+        if (!LINK_CODE_FORMAT.matcher(code).matches()) {
+            respondEphemeral(interaction, "❌ Invalid link code. Use the six-digit code from `/viscord discord link`.");
+            return;
+        }
+
+        String discordUsername = interaction.getServer()
+                .map(guild -> interaction.getUser().getDisplayName(guild))
+                .orElse(interaction.getUser().getName());
+        LinkedAccountsManager.LinkResult result = linkedAccountsManager.verifyAndLink(
+                code,
+                discordId,
+                discordUsername);
+        respondEphemeral(interaction, result.success ? "✅ " + result.message : "❌ " + result.message);
+    }
+
+    private void handleSlashList(SlashCommandInteraction interaction) {
+        if (!rateLimiter.tryConsume(DiscordCommandRateLimiter.Command.LIST,
+                interaction.getUser().getIdAsString())) {
+            respondEphemeral(interaction, "❌ Please wait before requesting another player list.");
+            return;
+        }
+        interaction.respondLater(true).thenAccept(updater -> {
+            MinecraftServer current = server;
+            if (current == null) {
+                updateInteraction(updater, "❌ Minecraft server integration is not ready.");
+                return;
+            }
+            current.execute(() -> {
+                try {
+                    java.util.List<ServerPlayer> players = current.getPlayerList().getPlayers();
+                    int online = players.size();
+                    int max = current.getPlayerList().getMaxPlayers();
+                    StringBuilder message = new StringBuilder("**")
+                            .append(ViscordConfigToml.Server.NAME.get())
+                            .append("** — players ").append(online).append('/').append(max);
+                    if (players.isEmpty()) {
+                        message.append("\nNo players are currently online.");
+                    } else {
+                        for (ServerPlayer player : players) {
+                            message.append("\n• ").append(player.getName().getString());
+                        }
+                    }
+                    updateInteraction(updater, message.toString());
+                } catch (Exception e) {
+                    Viscord.LOGGER.error("[Discord] Error handling native /list command", e);
+                    updateInteraction(updater, "❌ Could not read the online player list.");
+                }
+            });
+        }).exceptionally(error -> {
+            Viscord.LOGGER.error("[Discord] Failed to defer native /list response", error);
+            return null;
+        });
+    }
+
+    private void handleSlashHome(SlashCommandInteraction interaction) {
+        if (!ViscordConfigToml.AccountLinking.ENABLED.get() || linkedAccountsManager == null) {
+            respondEphemeral(interaction, "❌ Account linking is disabled or unavailable.");
+            return;
+        }
+
+        String homeName = interaction.getArgumentStringValueByName("name").orElse("").trim();
+        if (!HOME_NAME_FORMAT.matcher(homeName).matches()) {
+            respondEphemeral(interaction, "❌ Invalid home name. Use 1–32 letters, numbers, `_`, or `-`.");
+            return;
+        }
+        if (!rateLimiter.tryConsume(DiscordCommandRateLimiter.Command.HOME,
+                interaction.getUser().getIdAsString())) {
+            respondEphemeral(interaction, "❌ Too many home requests. Please wait before trying again.");
+            return;
+        }
+
+        LinkedAccountsManager.LinkedAccount linked = linkedAccountsManager
+                .getByDiscord(interaction.getUser().getIdAsString());
+        if (linked == null) {
+            respondEphemeral(interaction, "❌ Link your Minecraft account first with `/link code`.");
+            return;
+        }
+
+        MinecraftServer current = server;
+        if (current == null) {
+            respondEphemeral(interaction, "❌ Minecraft server integration is not ready.");
+            return;
+        }
+
+        interaction.respondLater(true).thenAccept(updater -> current.execute(() -> {
+            try {
+                // Resolve and dispatch on the Minecraft server thread. The command root is fixed to
+                // "home" and the argument is strictly validated above.
+                ServerPlayer player = current.getPlayerList().getPlayer(linked.minecraftUUID);
+                if (player == null) {
+                    updateInteraction(updater, "❌ Your linked Minecraft player is not currently online.");
+                    return;
+                }
+                // Permission level 0 prevents Discord from becoming a console/op command bridge.
+                CommandSourceStack source = current.createCommandSourceStack()
+                        .withEntity(player)
+                        .withPosition(player.position())
+                        .withPermission(0)
+                        .withSuppressedOutput();
+                int result = current.getCommands().performCommand(source, "home " + homeName);
+                if (result > 0) {
+                    updateInteraction(updater, "✅ Sent **" + player.getName().getString() + "** to home `" + homeName + "`.");
+                } else {
+                    updateInteraction(updater, "❌ The server rejected `/home " + homeName + "`. Check that the home exists and the player has access.");
+                }
+            } catch (Exception e) {
+                Viscord.LOGGER.error("[Discord] Error executing safe native /home command", e);
+                updateInteraction(updater, "❌ The safe home action failed; no arbitrary command was executed.");
+            }
+        })).exceptionally(error -> {
+            Viscord.LOGGER.error("[Discord] Failed to defer native /home response", error);
+            return null;
+        });
+    }
+
+    private void handleSlashStatus(SlashCommandInteraction interaction) {
+        boolean administrator = interaction.getServer()
+                .map(guild -> guild.hasPermission(interaction.getUser(), PermissionType.ADMINISTRATOR))
+                .orElse(false);
+        if (!administrator) {
+            respondEphemeral(interaction, "❌ Administrator permission is required for `/status`.");
+            return;
+        }
+
+        MinecraftServer current = server;
+        if (current == null) {
+            respondEphemeral(interaction, "❌ Minecraft server integration is not ready.");
+            return;
+        }
+        interaction.respondLater(true).thenAccept(updater -> current.execute(() -> updateInteraction(
+                updater,
+                "**Viscord status**\n" +
+                        "Integration: `" + (running ? "running" : "stopped") + "`\n" +
+                        "Discord: `" + (discordPlatform.isConnected() ? "connected" : "disconnected") + "`\n" +
+                        "Minecraft players: `" + current.getPlayerList().getPlayerCount() + "/" +
+                        current.getPlayerList().getMaxPlayers() + "`"))).exceptionally(error -> {
+            Viscord.LOGGER.error("[Discord] Failed to defer native /status response", error);
+            return null;
+        });
+    }
+
+    private void respondEphemeral(SlashCommandInteraction interaction, String content) {
+        try {
+            interaction.createImmediateResponder()
+                    .setContent(content)
+                    .setFlags(MessageFlag.EPHEMERAL)
+                    .respond()
+                    .exceptionally(error -> {
+                        Viscord.LOGGER.error("[Discord] Failed to respond to native /{} command", interaction.getCommandName(), error);
+                        return null;
+                    });
+        } catch (Exception e) {
+            Viscord.LOGGER.error("[Discord] Could not create native /{} response", interaction.getCommandName(), e);
+        }
+    }
+
+    private void updateInteraction(InteractionOriginalResponseUpdater updater, String content) {
+        updater.setContent(content).update().exceptionally(error -> {
+            Viscord.LOGGER.error("[Discord] Failed to update native command response", error);
+            return null;
+        });
     }
 
     // =========================================================================

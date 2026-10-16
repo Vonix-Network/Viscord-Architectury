@@ -7,6 +7,9 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Fixed
+- **Javacord message-cache retention on Forge/Fabric 1.20.1.** Viscord now sets Javacord's message-cache capacity and storage window to zero and explicitly keeps automatic cleanup enabled, because Viscord consumes gateway events directly and does not read historical cached messages. This removes the unused default 50-message / 12-hour historical retention path.
+
 ## [4.2.2] - 2026-06-24
 
 Focused console-noise + correctness release. Suppresses the Javacord 3.8.0 "Couldn't handle packet of type MESSAGE_UPDATE" / "Couldn't parse the component of type" stacktraces caused by Discord's **Components V2** (Container=17, TextDisplay=10, Section, Separator, Thumbnail, MediaGallery, File…) — which Javacord cannot parse — landing in *any* channel of the bot's guild, including channels Viscord isn't configured to watch.

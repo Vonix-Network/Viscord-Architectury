@@ -124,7 +124,7 @@ See [account-linking.md](account-linking.md) for the full flow.
 
 ## `[discord_rate_limit]`
 
-Sliding-window rate limits on the Discord/Fluxer bot-side text triggers (`/link`, `!list`). Defends the 6-digit account-link code space against brute force, and caps DoS surface on the public chat-side commands. All windows are 60 seconds; a value of `0` disables that bucket entirely.
+Sliding-window rate limits on the Discord/Fluxer bot-side commands (`/link`, `!list`, and native `/home`). Defends the 6-digit account-link code space against brute force, and caps DoS or repeated-teleport surface. All windows are 60 seconds; a value of `0` disables that bucket entirely.
 
 | Key | Type | Default | Range | Description |
 |---|---|---|---|---|
@@ -132,6 +132,8 @@ Sliding-window rate limits on the Discord/Fluxer bot-side text triggers (`/link`
 | `link_global_per_min` | int | `30` | `0`–`10000` | Channel-wide `/link` attempts in a 60-second window across all users. |
 | `list_per_user_per_min` | int | `2` | `0`–`1000` | Per-Discord-user `!list` invocations per minute. |
 | `list_global_per_min` | int | `20` | `0`–`10000` | Channel-wide `!list` invocations per minute. |
+| `home_per_user_per_min` | int | `4` | `0`–`1000` | Per-Discord-user native `/home` executions per minute. |
+| `home_global_per_min` | int | `20` | `0`–`10000` | Channel-wide native `/home` executions per minute. |
 
 **Behaviour:**
 - Rate limit is checked **before** any other work in the handler, including the format check on the code.

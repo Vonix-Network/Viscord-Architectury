@@ -1,0 +1,105 @@
+plugins {
+    id 'net.fabricmc.fabric-loom' version "${fabric_loom_version}"
+    id 'com.gradleup.shadow' version '9.2.2'
+    id 'maven-publish'
+}
+
+group = maven_group
+version = mod_version
+base { archivesName = archives_name }
+
+java {
+    toolchain.languageVersion = JavaLanguageVersion.of(java_version as int)
+    withSourcesJar()
+}
+
+configurations {
+    shadowBundle {
+        canBeResolved = true
+        canBeConsumed = false
+    }
+    compileClasspath.extendsFrom shadowBundle
+    runtimeClasspath.extendsFrom shadowBundle
+    testCompileClasspath.extendsFrom shadowBundle
+    testRuntimeClasspath.extendsFrom shadowBundle
+}
+
+sourceSets {
+    main {
+        java.srcDirs = [
+            rootProject.file('../viscord-26x-src/src/main/java'),
+            rootProject.file('../core/src/main/java'),
+            project.file('src/main/java')
+        ]
+    }
+    test { java.srcDir rootProject.file('../viscord-26x-src/src/test/java') }
+}
+
+repositories { mavenCentral() }
+
+dependencies {
+    minecraft "com.mojang:minecraft:${minecraft_version}"
+    implementation "net.fabricmc:fabric-loader:${fabric_loader_version}"
+    implementation "net.fabricmc.fabric-api:fabric-api:${fabric_api_version}"
+
+    shadowBundle('org.javacord:javacord:3.8.0') {
+        exclude group: 'org.apache.logging.log4j', module: 'log4j-api'
+        exclude group: 'org.slf4j', module: 'slf4j-api'
+    }
+    shadowBundle 'com.squareup.okhttp3:okhttp:4.12.0'
+    shadowBundle 'com.squareup.okio:okio-jvm:3.9.0'
+    shadowBundle 'com.squareup.okio:okio:3.9.0'
+    shadowBundle 'com.fasterxml.jackson.core:jackson-databind:2.17.0'
+    shadowBundle 'com.fasterxml.jackson.core:jackson-core:2.17.0'
+    shadowBundle 'com.fasterxml.jackson.core:jackson-annotations:2.17.0'
+    shadowBundle 'io.vavr:vavr:0.10.4'
+    shadowBundle 'com.neovisionaries:nv-websocket-client:2.14'
+    shadowBundle 'com.codahale:xsalsa20poly1305:0.11.0'
+    shadowBundle 'org.bouncycastle:bcprov-jdk18on:1.78.1'
+    shadowBundle 'com.electronwill.night-config:toml:3.8.3'
+    shadowBundle 'com.electronwill.night-config:core:3.8.3'
+
+    testImplementation 'org.junit.jupiter:junit-jupiter:5.10.2'
+    testImplementation 'org.mockito:mockito-core:5.8.0'
+    testRuntimeOnly 'org.junit.platform:junit-platform-launcher'
+}
+
+processResources {
+    def generatedModVersion = project.version.toString()
+    inputs.property 'version', generatedModVersion
+    filesMatching('fabric.mod.json') { expand(version: generatedModVersion) }
+}
+
+shadowJar {
+    configurations = [project.configurations.shadowBundle]
+    archiveClassifier = ''
+    exclude 'org/slf4j/**'
+    exclude 'org/apache/logging/**'
+    exclude 'javax/annotation/**'
+    exclude '**/module-info.class'
+    exclude 'META-INF/versions/**'
+    exclude 'META-INF/proguard/**'
+    exclude 'META-INF/maven/**'
+    exclude 'META-INF/LICENSE*'
+    exclude 'META-INF/NOTICE*'
+    exclude 'META-INF/*.SF'
+    exclude 'META-INF/*.DSA'
+    exclude 'META-INF/*.RSA'
+    relocate 'kotlin', 'network.vonix.viscord.shadow.kotlin'
+    relocate 'kotlinx', 'network.vonix.viscord.shadow.kotlinx'
+    relocate 'org.jetbrains', 'network.vonix.viscord.shadow.jetbrains'
+    relocate 'org.intellij', 'network.vonix.viscord.shadow.intellij'
+    relocate 'org.javacord', 'network.vonix.viscord.shadow.javacord'
+    relocate 'okhttp3', 'network.vonix.viscord.shadow.okhttp3'
+    relocate 'okio', 'network.vonix.viscord.shadow.okio'
+    relocate 'com.fasterxml.jackson', 'network.vonix.viscord.shadow.jackson'
+    relocate 'io.vavr', 'network.vonix.viscord.shadow.vavr'
+    relocate 'com.neovisionaries', 'network.vonix.viscord.shadow.neovisionaries'
+    relocate 'com.codahale', 'network.vonix.viscord.shadow.codahale'
+    relocate 'org.bouncycastle', 'network.vonix.viscord.shadow.bouncycastle'
+    mergeServiceFiles()
+}
+
+tasks.named('jar') { enabled = false }
+tasks.named('build') { dependsOn tasks.named('shadowJar') }
+tasks.named('test') { useJUnitPlatform() }

@@ -10,10 +10,10 @@ import java.util.Iterator;
 import java.util.Map;
 
 /**
- * Sliding-window rate limiter for Discord/Fluxer-side text triggers.
+ * Sliding-window rate limiter for Discord/Fluxer-side commands.
  *
- * Provides per-author and global limits for {@code /link} and {@code !list}
- * triggers (and any future bot-side commands) to prevent brute-force attacks
+ * Provides per-author and global limits for {@code /link}, {@code !list}, and
+ * native {@code /home} triggers (and any future bot-side commands) to prevent brute-force attacks
  * against the 6-digit account-link code space and to limit denial-of-service
  * potential on the public chat surface.
  *
@@ -40,7 +40,7 @@ public final class DiscordCommandRateLimiter {
     /** Sliding window. */
     private static final long WINDOW_MS = 60_000L;
 
-    public enum Command { LINK, LIST }
+    public enum Command { LINK, LIST, HOME }
 
     private static final class Bucket {
         final Map<String, Deque<Long>> perAuthor = new HashMap<>();
@@ -49,6 +49,7 @@ public final class DiscordCommandRateLimiter {
 
     private final Bucket link = new Bucket();
     private final Bucket list = new Bucket();
+    private final Bucket home = new Bucket();
 
     /**
      * Test whether the given author may invoke the command right now, and if so
@@ -116,7 +117,7 @@ public final class DiscordCommandRateLimiter {
     /** Periodic sweep: drop empty per-author deques and ones with no fresh entries. */
     public synchronized void sweep() {
         long cutoff = System.currentTimeMillis() - WINDOW_MS;
-        for (Bucket b : new Bucket[]{link, list}) {
+        for (Bucket b : new Bucket[]{link, list, home}) {
             evict(b.global, cutoff);
             Iterator<Map.Entry<String, Deque<Long>>> it = b.perAuthor.entrySet().iterator();
             while (it.hasNext()) {
@@ -128,18 +129,20 @@ public final class DiscordCommandRateLimiter {
     }
 
     private Bucket bucketFor(Command cmd) {
-        return cmd == Command.LINK ? link : list;
+        if (cmd == Command.LINK) return link;
+        if (cmd == Command.HOME) return home;
+        return list;
     }
 
     private static int perUserLimit(Command cmd) {
-        return cmd == Command.LINK
-                ? ViscordConfigToml.DiscordRateLimit.LINK_PER_USER_PER_MIN.get()
-                : ViscordConfigToml.DiscordRateLimit.LIST_PER_USER_PER_MIN.get();
+        if (cmd == Command.LINK) return ViscordConfigToml.DiscordRateLimit.LINK_PER_USER_PER_MIN.get();
+        if (cmd == Command.HOME) return ViscordConfigToml.DiscordRateLimit.HOME_PER_USER_PER_MIN.get();
+        return ViscordConfigToml.DiscordRateLimit.LIST_PER_USER_PER_MIN.get();
     }
 
     private static int globalLimit(Command cmd) {
-        return cmd == Command.LINK
-                ? ViscordConfigToml.DiscordRateLimit.LINK_GLOBAL_PER_MIN.get()
-                : ViscordConfigToml.DiscordRateLimit.LIST_GLOBAL_PER_MIN.get();
+        if (cmd == Command.LINK) return ViscordConfigToml.DiscordRateLimit.LINK_GLOBAL_PER_MIN.get();
+        if (cmd == Command.HOME) return ViscordConfigToml.DiscordRateLimit.HOME_GLOBAL_PER_MIN.get();
+        return ViscordConfigToml.DiscordRateLimit.LIST_GLOBAL_PER_MIN.get();
     }
 }

@@ -10,6 +10,7 @@ import network.vonix.viscord.discord.EmbedFactory;
 import network.vonix.viscord.discord.WebhookClient;
 import network.vonix.viscord.utils.DiscordFormatter;
 import org.javacord.api.entity.message.Message;
+import org.javacord.api.event.interaction.SlashCommandCreateEvent;
 import org.javacord.api.event.message.MessageCreateEvent;
 
 import java.io.IOException;
@@ -31,11 +32,16 @@ public class DiscordPlatform {
         void onMessage(MessageCreateEvent event);
     }
 
+    public interface SlashCommandListener {
+        void onCommand(SlashCommandCreateEvent event);
+    }
+
     private final BotClient botClient = new BotClient();
     private final WebhookClient webhookClient = new WebhookClient();
 
     private MinecraftServer server;
     private MessageListener messageListener;
+    private SlashCommandListener slashCommandListener;
     private String eventChannelId;
     private boolean initialized = false;
 
@@ -45,6 +51,10 @@ public class DiscordPlatform {
 
     public void setMessageListener(MessageListener listener) {
         this.messageListener = listener;
+    }
+
+    public void setSlashCommandListener(SlashCommandListener listener) {
+        this.slashCommandListener = listener;
     }
 
     /**
@@ -70,6 +80,9 @@ public class DiscordPlatform {
 
         botClient.setMessageHandler(event -> {
             if (messageListener != null) messageListener.onMessage(event);
+        });
+        botClient.setSlashCommandHandler(event -> {
+            if (slashCommandListener != null) slashCommandListener.onCommand(event);
         });
 
         // Install the Components V2 noise filter BEFORE connecting so the very first

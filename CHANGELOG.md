@@ -5,6 +5,26 @@ All notable changes to Viscord will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [Unreleased]
+
+## [5.2.0] - 2026-10-14
+
+### Added
+- **Native Discord application commands.** Viscord now registers and handles `/link code`, `/list`, `/home name`, `/help`, and administrator-only `/status` through Discord interactions instead of relying only on ordinary message text.
+- **Safe Discord `/home` recovery.** A linked, online Minecraft player can invoke one validated home name from Discord. Dispatch stays on the Minecraft server thread, uses permission level 0, and never exposes arbitrary console or operator command execution.
+
+### Changed
+- Native command registration is scoped to the configured guild and only updates Viscord-owned command definitions; existing ordinary-message triggers remain available for compatibility.
+- Added command-specific rate limiting and configuration/documentation for the native command surface.
+- Bounded Javacord's historical message cache to zero capacity and zero-second storage with automatic cleanup enabled in every supported lane; Viscord consumes gateway events directly and does not read historical cached messages.
+
+### Tests
+- Added native command-definition contract tests across all supported source lanes.
+
+### Release scope
+- All thirteen supported loader cells target Viscord `5.2.0`: 1.18.2 Fabric/Forge, 1.19.2 Fabric/Forge, 1.20.1 Fabric/Forge, 1.21.1 Fabric/NeoForge, 26.1.2 NeoForge, 26.2 Fabric/NeoForge, and 26.3 Fabric/NeoForge.
+- No live server deployment or restart is included in this release.
+
 ## [5.1.1] - 2026-09-14
 
 ### Fixed

@@ -30,15 +30,15 @@ Disabling (`enabled = false`) makes both `/viscord discord link` and the Discord
    Code expires in 5 minutes.
    ```
 
-3. In Discord (any channel the bot can read), the player types:
+3. In Discord, use the native Viscord command in the configured server channel:
 
    ```
-   /link 123456
+   /link code:123456
    ```
 
-   (This is matched on `message.startsWith("/link ")` — it is *not* a registered Discord slash command.)
+   The response is private to the invoking Discord user. The legacy ordinary-message form `/link 123456` remains available for compatibility.
 
-4. `DiscordManager` calls `LinkedAccountsManager.verifyAndLink(code, discordUserId)`. If the code is valid and unexpired, the Discord ID is atomically bound to the Minecraft UUID and the bot replies with a success message in the same channel.
+4. `DiscordManager` calls `LinkedAccountsManager.verifyAndLink(code, discordUserId)`. If the code is valid and unexpired, the Discord ID is atomically bound to the Minecraft UUID and the bot returns a private ephemeral success response.
 
 5. The binding is written to `linked_accounts.json` asynchronously (off the server tick thread; see [performance.md](performance.md)).
 

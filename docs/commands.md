@@ -1,6 +1,6 @@
 # Commands
 
-All commands extracted directly from `discord/DiscordEventHandler.java::registerCommands`. Permission levels are vanilla Minecraft op levels (0 = any player, 4 = full op).
+In-game commands are extracted directly from `discord/DiscordEventHandler.java::registerCommands`. Permission levels are vanilla Minecraft op levels (0 = any player, 4 = full op).
 
 ## In-game commands
 
@@ -41,13 +41,25 @@ All commands extracted directly from `discord/DiscordEventHandler.java::register
 
 The deprecated `/vonix` tree was kept solely as a deprecation notice to migrate operators off old habit. Use `/viscord` going forward.
 
-## Discord-side triggers
+## Discord-side commands
 
-These are text-pattern triggers handled by `DiscordManager.onDiscordMessage`. They are **not** slash commands — type them in the bridged channel.
+Viscord registers these as native Discord application commands in the guild that owns the configured channel. Existing Viscord-owned commands are updated in place on bot startup, so stale `/link` registrations are repaired without deleting commands from another application.
+
+| Command | Scope | Description |
+|---|---|---|
+| `/link code` | Linked-account user | Link a Discord account using the 6-digit code from `/viscord discord link`. |
+| `/list` | Player | Show the current online-player list. |
+| `/home name` | Linked-account user | Safely dispatch the fixed Minecraft command `/home <name>` for the linked player. The home name is restricted to letters, numbers, `_`, and `-`; arbitrary command text is never accepted. |
+| `/help` | Player | Show the native Viscord command list. |
+| `/status` | Discord administrator | Show Viscord connection and Minecraft player status. |
+
+Commands are restricted to the configured main Discord channel. `/link` replies ephemerally and still uses the existing code expiry and rate limits. `/home` requires the Discord user to be linked, the linked Minecraft player to be online, and runs with permission level 0 rather than as console/op.
+
+## Legacy Discord text triggers
+
+These remain supported for compatibility, but are no longer required for the primary flow:
 
 | Trigger | Description |
 |---|---|
-| `!list` | Bot replies with the current player list embed. Player list is read on the server thread via `server.execute(...)` for thread safety (fixed in 4.1.7). Rate-limited (default 2 per user / 20 channel-wide per 60s). |
-| `/link <code>` | Link a Discord account using the 6-digit code from `/viscord discord link`. The code expires after `account_linking.code_expiry` seconds (default 300, range 60–600). Strict `^\d{6}$` pre-validation. Rate-limited (default 3 per user / 30 channel-wide per 60s, silent on hit). See [configuration.md `[discord_rate_limit]`](configuration.md). |
-
-> The `/link` trigger looks like a Discord slash command, but Viscord does not register it as one — it is matched on `message.startsWith("/link ")` in `DiscordManager`.
+| `!list` | Bot replies with the current player list embed. |
+| `/link <code>` | Legacy ordinary-message form of account linking. Do not select a native slash-command autocomplete entry when intentionally using this form. |

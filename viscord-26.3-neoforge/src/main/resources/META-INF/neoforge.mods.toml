@@ -1,0 +1,24 @@
+modLoader = "javafml"
+loaderVersion = "[12,)"
+license = "All Rights Reserved"
+
+[[mods]]
+modId = "viscord"
+version = "${version}"
+displayName = "Viscord"
+authors = "Vonix Network"
+description = '''Minecraft to Discord integration for the Vonix Network.'''
+
+[[dependencies.viscord]]
+modId = "neoforge"
+type = "required"
+versionRange = "[26.3,)"
+ordering = "NONE"
+side = "BOTH"
+
+[[dependencies.viscord]]
+modId = "minecraft"
+type = "required"
+versionRange = "[26.3,26.4)"
+ordering = "NONE"
+side = "BOTH"

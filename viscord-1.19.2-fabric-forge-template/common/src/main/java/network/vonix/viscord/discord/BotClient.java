@@ -5,8 +5,20 @@ import org.javacord.api.DiscordApi;
 import org.javacord.api.DiscordApiBuilder;
 import org.javacord.api.entity.activity.ActivityType;
 import org.javacord.api.entity.intent.Intent;
+import org.javacord.api.entity.server.Server;
+import org.javacord.api.event.interaction.SlashCommandCreateEvent;
 import org.javacord.api.event.message.MessageCreateEvent;
+import org.javacord.api.interaction.ApplicationCommand;
+import org.javacord.api.interaction.SlashCommand;
+import org.javacord.api.interaction.SlashCommandBuilder;
+import org.javacord.api.interaction.SlashCommandUpdater;
 
+import java.util.ArrayList;
+import java.util.LinkedHashMap;
+import java.util.LinkedHashSet;
+import java.util.List;
+import java.util.Map;
+import java.util.Set;
 import java.util.concurrent.CompletableFuture;
 import java.util.concurrent.RejectedExecutionException;
 import java.util.function.Consumer;
@@ -17,10 +29,14 @@ import java.util.function.Consumer;
  */
 public class BotClient {
 
+    private static final int DISCORD_MESSAGE_CACHE_CAPACITY = 0;
+    private static final int DISCORD_MESSAGE_CACHE_STORAGE_SECONDS = 0;
+
     private volatile DiscordApi api;
     private String token;
     private String channelId;
     private Consumer<MessageCreateEvent> messageHandler;
+    private Consumer<SlashCommandCreateEvent> slashCommandHandler;
 
     public BotClient() {
         // Initialize in disconnected state
@@ -28,6 +44,10 @@ public class BotClient {
 
     public void setMessageHandler(Consumer<MessageCreateEvent> handler) {
         this.messageHandler = handler;
+    }
+
+    public void setSlashCommandHandler(Consumer<SlashCommandCreateEvent> handler) {
+        this.slashCommandHandler = handler;
     }
 
     public CompletableFuture<Void> connect(String token, String channelId) {
@@ -62,6 +82,8 @@ public class BotClient {
     }
 
     private void onConnected(DiscordApi api) {
+        configureMessageCache(api);
+
         this.api = api;
         Viscord.LOGGER.info("Connected as {}", api.getYourself().getDiscriminatedName());
 
@@ -79,6 +101,110 @@ public class BotClient {
 
                 messageHandler.accept(event);
             }
+        });
+
+        api.addSlashCommandCreateListener(event -> {
+            if (slashCommandHandler != null) {
+                slashCommandHandler.accept(event);
+            }
+        });
+
+        registerSlashCommands(api).whenComplete((ignored, error) -> {
+            if (error != null) {
+                Viscord.LOGGER.error("[Discord] Failed to register native application commands", error);
+            } else {
+                Viscord.LOGGER.info("[Discord] Native application commands synchronized.");
+            }
+        });
+    }
+
+    static void configureMessageCache(DiscordApi api) {
+        // Viscord consumes gateway events directly and never reads Javacord's
+        // historical message cache. Keep the cache bounded to prevent a busy
+        // guild from retaining message objects for Javacord's default 12 hours.
+        api.setMessageCacheSize(DISCORD_MESSAGE_CACHE_CAPACITY, DISCORD_MESSAGE_CACHE_STORAGE_SECONDS);
+        api.setAutomaticMessageCacheCleanupEnabled(true);
+        Viscord.LOGGER.info("[Discord] Javacord message cache bounded to capacity={} and storage={}s.",
+                DISCORD_MESSAGE_CACHE_CAPACITY, DISCORD_MESSAGE_CACHE_STORAGE_SECONDS);
+    }
+
+    /**
+     * Synchronize only Viscord-owned commands in the guilds containing the
+     * configured Discord channel(s). Existing commands with the same name are
+     * updated in place, which repairs stale registrations without deleting
+     * commands owned by another application.
+     */
+    private CompletableFuture<Void> registerSlashCommands(DiscordApi local) {
+        Map<Long, Server> serversById = new LinkedHashMap<>();
+        if (channelId != null) {
+            for (String configuredChannelId : channelId.split(",")) {
+                String trimmed = configuredChannelId.trim();
+                if (trimmed.isEmpty()) continue;
+                try {
+                    local.getServerTextChannelById(trimmed)
+                            .ifPresent(channel -> serversById.put(channel.getServer().getId(), channel.getServer()));
+                } catch (RuntimeException e) {
+                    Viscord.LOGGER.warn("[Discord] Could not resolve configured command channel {}: {}",
+                            trimmed, e.getMessage());
+                }
+            }
+        }
+
+        if (serversById.isEmpty()) {
+            Viscord.LOGGER.warn("[Discord] No configured Discord guild could be resolved; native commands were not registered.");
+            return CompletableFuture.completedFuture(null);
+        }
+
+        CompletableFuture<Void> chain = CompletableFuture.completedFuture(null);
+        for (Server server : serversById.values()) {
+            chain = chain.thenCompose(ignored -> synchronizeCommandsForServer(local, server));
+        }
+        return chain;
+    }
+
+    private CompletableFuture<Void> synchronizeCommandsForServer(DiscordApi local, Server server) {
+        return local.getServerApplicationCommands(server).thenCompose(existing -> {
+            long owningApplicationId = local.getYourself().getId();
+            Map<String, ApplicationCommand> ownedByName = new LinkedHashMap<>();
+            Set<String> foreignNames = new LinkedHashSet<>();
+            for (ApplicationCommand command : existing) {
+                if (command.getApplicationId() == owningApplicationId) {
+                    ownedByName.putIfAbsent(command.getName(), command);
+                } else {
+                    foreignNames.add(command.getName());
+                }
+            }
+
+            List<CompletableFuture<?>> operations = new ArrayList<>();
+            for (DiscordSlashCommandDefinitions.Definition definition : DiscordSlashCommandDefinitions.all()) {
+                ApplicationCommand current = ownedByName.get(definition.name());
+                if (current instanceof SlashCommand slashCommand) {
+                    SlashCommandUpdater updater = slashCommand.createSlashCommandUpdater()
+                            .setName(definition.name())
+                            .setDescription(definition.description())
+                            .setEnabledInDms(false)
+                            .setSlashCommandOptions(definition.options());
+                    if (definition.administratorOnly()) {
+                        updater.setDefaultEnabledForPermissions(org.javacord.api.entity.permission.PermissionType.ADMINISTRATOR);
+                    } else {
+                        updater.setDefaultEnabledForEveryone();
+                    }
+                    operations.add(updater.updateForServer(server));
+                } else if (current == null && !foreignNames.contains(definition.name())) {
+                    SlashCommandBuilder builder = DiscordSlashCommandDefinitions.builder(definition);
+                    operations.add(builder.createForServer(server));
+                } else if (current == null) {
+                    Viscord.LOGGER.warn("[Discord] Skipping /{} because that name belongs to another application.",
+                            definition.name());
+                } else {
+                    Viscord.LOGGER.warn("[Discord] Cannot register /{} because an existing non-slash Viscord command has that name.",
+                            definition.name());
+                }
+            }
+
+            return CompletableFuture.allOf(operations.toArray(new CompletableFuture<?>[0]))
+                    .thenRun(() -> Viscord.LOGGER.info("[Discord] Synchronized {} native commands for guild {}.",
+                            operations.size(), server.getIdAsString()));
         });
     }
 
