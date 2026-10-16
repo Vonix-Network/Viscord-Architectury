@@ -2,7 +2,7 @@
 
 Welcome to the **Viscord** documentation. Viscord is a server-side Minecraft mod that bridges in-game chat and events to **Discord**, **Fluxer**, or both at once (with optional tridirectional relay between all three).
 
-The mod is built on [Architectury](https://github.com/architectury/architectury-api) and keeps five Minecraft lanes in one repository. The first four use Architectury templates that share a `common/` source tree; the 26.1.2 lane is a standalone NeoForge/ModDevGradle target:
+The mod is built on [Architectury](https://github.com/architectury/architectury-api) and keeps seven Minecraft versions and thirteen loader cells in one repository. The first four use Architectury templates that share a `common/` source tree; the 26.1.2, 26.2, and 26.3 targets use their version-specific Gradle projects:
 
 | Source directory | Minecraft | Loaders |
 |---|---|---|
@@ -11,8 +11,12 @@ The mod is built on [Architectury](https://github.com/architectury/architectury-
 | `viscord-1.20.1-fabric-forge-template/` | 1.20.1 | Fabric, Forge |
 | `viscord-1.21.1-fabric-neoforge-template/` | 1.21.1 | Fabric, NeoForge |
 | `viscord-1.26.1.2-neoforge-target/` | 26.1.2 | NeoForge |
+| `viscord-26.2-fabric/` | 26.2 | Fabric |
+| `viscord-26.2-neoforge/` | 26.2 | NeoForge |
+| `viscord-26.3-fabric/` | 26.3 | Fabric |
+| `viscord-26.3-neoforge/` | 26.3 | NeoForge |
 
-Current embedded version: **`5.0.0`** (stable release). Common repository line: **`2.0.0`**. See [the common-generation repository contract](COMMON-V2-REPOSITORY.md).
+Current embedded version: **`5.2.0`** (stable release). Common repository line: **`2.0.0`**. See [the common-generation repository contract](COMMON-V2-REPOSITORY.md).
 
 ---
 
@@ -38,7 +42,7 @@ Current embedded version: **`5.0.0`** (stable release). Common repository line: 
 - [**Architecture**](architecture.md) — Architectury layout, `common/` vs per-loader source sets, shaded dependencies.
 - [**Performance & Threading**](performance.md) — `ASYNC_EXECUTOR`, status coalescing, LRU caches, off-tick I/O.
 - [**Security Model**](security.md) — token redaction, `SecureRandom` link codes, TOCTOU mitigations.
-- [**Building From Source**](building-from-source.md) — Gradle wrappers, all five version lanes, and the `build_menu.py` helper.
+- [**Building From Source**](building-from-source.md) — Gradle projects for all thirteen loader cells and the `build_menu.py` helper.
 
 ---
 

@@ -1,6 +1,6 @@
 # Building From Source
 
-Each of the five Viscord lanes is a self-contained Architectury or ModDevGradle Gradle project. You build them independently; the four Architectury lanes share the common source contract and the 26.1.2 lane is standalone.
+Each Viscord target is a self-contained Architectury or ModDevGradle Gradle project. Build targets independently; the four legacy Architectury templates share the common source contract, while 26.1.2, 26.2, and 26.3 use their version-specific projects.
 
 ## Prerequisites
 
@@ -26,15 +26,15 @@ neoforge/build/libs/viscord-neoforge-<version>.jar
 
 (Older templates: `forge/build/libs/viscord-forge-<version>.jar` instead of `neoforge/`.)
 
-The `<version>` value comes from `mod_version` in `gradle.properties`. The `5.0.0` stable release uses the same embedded version in all five lanes, including the standalone 26.1.2 ModDevGradle project.
+The `<version>` value comes from `mod_version` in `gradle.properties`. The `5.2.0` stable release uses the same embedded version across all thirteen loader cells.
 
-## Build all five version lanes
+## Build all supported targets
 
-The bundled helper covers the four Architectury templates. Build the standalone 26.1.2 target separately with its Java 25/ModDevGradle toolchain; do not assume the shell loop below selects a compatible system Gradle for every lane.
+The bundled helper covers the four Architectury templates and the version-specific targets. Use each target's declared Java/Gradle toolchain; do not assume one system Gradle selects a compatible toolchain for every lane.
 
 ## `build_menu.py`
 
-A modern terminal UI for the four Architectury templates plus the standalone 26.1.2 lane lives at the top of the repo:
+A modern terminal UI for the four Architectury templates plus the 26.1.2, 26.2, and 26.3 targets lives at the top of the repo:
 
 ```bash
 python3 build_menu.py
@@ -65,6 +65,6 @@ If you're adding a new helper script, name it something other than `fix*.py` or 
 
 ## CI / release expectations
 
-`.github/workflows/release.yml` runs the nine-lane matrix when a `v*` tag is pushed, selects one matching jar per lane, computes `SHA256SUMS`, and creates a GitHub stable release. Workflow dispatch can run the build jobs without publishing a release.
+`.github/workflows/release.yml` runs the thirteen-cell matrix when a `v*` tag is pushed, selects one matching jar per cell, computes `SHA256SUMS`, and creates a GitHub stable release. Workflow dispatch can run the build jobs without publishing a release.
 
-When you bump versions, confirm the four Architectury templates remain in parity on the `common/` tree and separately verify the standalone 26.1.2 target against its own API/toolchain contract (see [architecture.md](architecture.md) — *Cross-version drift*).
+When you bump versions, confirm the four Architectury templates remain in parity on the `common/` tree and separately verify each 26.x target against its own API/toolchain contract (see [architecture.md](architecture.md) — *Cross-version drift*).

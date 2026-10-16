@@ -1,8 +1,8 @@
 # Architecture
 
-Viscord is built on [**Architectury**](https://github.com/architectury/architectury-api) — a cross-loader abstraction that lets one common source tree target Fabric, Forge, and NeoForge from a single Gradle multi-project build.
+Viscord is built on [**Architectury**](https://github.com/architectury/architectury-api) for its legacy lanes, with version-specific Gradle projects for the current 26.x targets.
 
-The repo currently ships **four parallel Architectury templates** plus a standalone NeoForge lane for Minecraft 26.1.2.
+The repo currently ships **four parallel Architectury templates** plus standalone targets for Minecraft 26.1.2, 26.2, and 26.3.
 
 ## Top-level layout
 
@@ -18,10 +18,14 @@ Viscord-Architectury/
 ├── viscord-1.19.2-fabric-forge-template/
 ├── viscord-1.20.1-fabric-forge-template/
 ├── viscord-1.21.1-fabric-neoforge-template/
-└── viscord-1.26.1.2-neoforge-target/
+├── viscord-1.26.1.2-neoforge-target/
+├── viscord-26.2-fabric/
+├── viscord-26.2-neoforge/
+├── viscord-26.3-fabric/
+└── viscord-26.3-neoforge/
 ```
 
-> The four template directories share the same package structure and most of the same source files in `common/`. **Those four remain in parity** on the common tree. The 26.1.2 lane is standalone because its NeoForge/Java 25 toolchain is a separate compatibility cell.
+> The four template directories share the same package structure and most of the same source files in `common/`. **Those four remain in parity** on the common tree. The 26.x targets are version-specific compatibility cells with their own loader/toolchain contracts.
 
 ## Inside a template
 
@@ -103,7 +107,7 @@ Since 4.2.0 the `ActionRowImpl` patch lives in the fabric / forge / neoforge sou
 
 ## Cross-version drift
 
-The four Architectury templates' `common/` trees remain in parity on their shared files except for unavoidable Mojang-API renames. The 26.1.2 NeoForge target is a standalone ModDevGradle lane and is verified against its own target-specific source and packaging contract.
+The four Architectury templates' `common/` trees remain in parity on their shared files except for unavoidable Mojang-API renames. The 26.x targets are standalone/version-specific lanes and are verified against their own target-specific source and packaging contracts.
 
 | API change | Pre / Post |
 |---|---|
@@ -111,7 +115,7 @@ The four Architectury templates' `common/` trees remain in parity on their share
 | Player system message | `sendMessage(msg, NIL_UUID)` (1.18.2 / 1.19.2) → `sendSystemMessage(msg, false)` (1.20.1+) |
 | Brigadier success builder | `sendSuccess(Component, ...)` → `sendSuccess(Supplier<Component>, ...)` (1.20+) |
 
-Before 4.2.0 the 1.21.1 template held a number of bug fixes the older templates had drifted away from — most notably `FluxerBotClient.selfId` ID-based self-message filtering (older templates fell back to broken prefix matching) and `DiscordManager.resetInstance()`. **The 4.2.0 release brought the four Architectury templates back into parity; the 26.1.2 target is maintained as a separate NeoForge lane.**
+Before 4.2.0 the 1.21.1 template held a number of bug fixes the older templates had drifted away from — most notably `FluxerBotClient.selfId` ID-based self-message filtering (older templates fell back to broken prefix matching) and `DiscordManager.resetInstance()`. **The 4.2.0 release brought the four Architectury templates back into parity; the 26.x targets are maintained as separate version-specific lanes.**
 
 ## Where to look first when reading the code
 

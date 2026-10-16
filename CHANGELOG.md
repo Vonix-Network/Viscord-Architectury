@@ -68,7 +68,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 Critical hotfix for a server crash during shutdown. All nine lanes are rebuilt with this fix; the previous `5.0.0-hf` (26.1.2 Kotlin-only) is superseded.
 
 ### Fixed
-- **Server crash on player quit during shutdown (`RejectedExecutionException`).** When the Minecraft server stopped, Viscord called `discord.disconnect()` synchronously, which tore down Javacord's internal rate-limit executor immediately. Player-quit events that fired after this point attempted to send leave embeds through the dead executor, throwing `RejectedExecutionException` from Javacord's shaded `RatelimitManager` and crashing the server tick loop. Three-layer fix applied across all five version templates:
+- **Server crash on player quit during shutdown (`RejectedExecutionException`).** When the Minecraft server stopped, Viscord called `discord.disconnect()` synchronously, which tore down Javacord's internal rate-limit executor immediately. Player-quit events that fired after this point attempted to send leave embeds through the dead executor, throwing `RejectedExecutionException` from Javacord's shaded `RatelimitManager` and crashing the server tick loop. Three-layer fix applied across the legacy version templates:
   - A `volatile boolean shuttingDown` flag is now set *before* any disconnect work begins, providing a fast, thread-safe signal to all event handlers.
   - Discord disconnect is delayed by a 2.5-second grace period via `scheduleAsync()`, allowing in-flight player-quit and death events to complete before Javacord's executor terminates.
   - `BotClient.sendEmbed` catches `RejectedExecutionException` and drops the send gracefully during shutdown instead of propagating the exception.
@@ -102,7 +102,7 @@ Common-generation repository release. This stable release starts the shared repo
 
 ### Added
 - Added the Minecraft **26.1.2 / NeoForge 26.1.2.93** lane to the single-repository version matrix.
-- Documented the five-lane repository structure and release boundary in `docs/COMMON-V2-REPOSITORY.md`.
+- Documented the repository structure and release boundary in `docs/COMMON-V2-REPOSITORY.md`.
 
 ### Release notes
 - Built and packaged across all nine supported lanes by the tag-triggered GitHub Actions workflow; SHA-256 checksums are included with the release.

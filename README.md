@@ -1,20 +1,20 @@
 # Viscord
 
-[![Minecraft](https://img.shields.io/badge/Minecraft-1.18.2%20%7C%201.19.2%20%7C%201.20.1%20%7C%201.21.1-brightgreen.svg)](https://minecraft.net)
+[![Minecraft](https://img.shields.io/badge/Minecraft-1.18.2%20%7C%201.19.2%20%7C%201.20.1%20%7C%201.21.1%20%7C%2026.1.2%20%7C%2026.2%20%7C%2026.3-brightgreen.svg)](https://minecraft.net)
 [![Fabric](https://img.shields.io/badge/Fabric-API-blue.svg)](https://fabricmc.net)
 [![Forge](https://img.shields.io/badge/Forge-orange.svg)](https://mcforge.net)
 [![NeoForge](https://img.shields.io/badge/NeoForge-purple.svg)](https://neoforged.net)
 
 **Viscord** is a server-side bidirectional chat-integration mod that bridges your Minecraft server to Discord, Fluxer, or both at once. Players do **not** need to install the mod.
 
-> **Current embedded mod version:** `5.0.0` (stable release) · **Common repository line:** `2.0.0`. Viscord's historical `v2.0.0` release remains unchanged.
+> **Current embedded mod version:** `5.2.0` (stable release) · **Common repository line:** `2.0.0`. Viscord's historical `v2.0.0` release remains unchanged.
 >
 > 📖 **Full documentation:** see [`docs/`](docs/README.md) for navigable guides — getting started, configuration reference, platform setup, account linking, multi-server, performance/threading internals, security model, troubleshooting, architecture, build instructions, and the [`2.0.0` common-generation repository contract](docs/COMMON-V2-REPOSITORY.md).
 
 ## ✨ Features
 
 - **Two platforms, four modes**: Discord-only, Fluxer-only, both at once, or tridirectional Discord ↔ Fluxer ↔ Minecraft bridging
-- **Five Minecraft versions, one repository**: 1.18.2, 1.19.2, 1.20.1 (Fabric + Forge), 1.21.1 (Fabric + NeoForge), and 26.1.2 (NeoForge) — all supported lanes are kept together with shared common code
+- **Seven Minecraft versions, one repository**: 1.18.2, 1.19.2, 1.20.1 (Fabric + Forge), 1.21.1 (Fabric + NeoForge), 26.1.2 (NeoForge), 26.2 (Fabric + NeoForge), and 26.3 (Fabric + NeoForge) — all thirteen supported loader cells are kept together with shared common code
 - **Bidirectional chat** with rich formatting (`§` and `&` color codes, Discord markdown)
 - **Event notifications**: joins, leaves, deaths, advancements, server up/down
 - **Customizable formats** via `{username}`, `{message}`, `{prefix}` placeholders
