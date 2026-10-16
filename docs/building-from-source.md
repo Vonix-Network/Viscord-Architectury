@@ -4,7 +4,7 @@ Each Viscord target is a self-contained Architectury or ModDevGradle Gradle proj
 
 ## Prerequisites
 
-- **JDK 17+** (JDK 17 for 1.18.2–1.20.1, JDK 21 for 1.21.1, and JDK 25 for 26.1.2 — see each lane's `gradle.properties`).
+- **JDK 17+** (JDK 17 for 1.18.2–1.20.1, JDK 21 for 1.21.1, and JDK 25 for all 26.x targets — see each lane's `gradle.properties`).
 - The Gradle wrapper (`./gradlew`) — no system Gradle install needed.
 - ~4 GB of free RAM (the Gradle JVM heap is set to **4G**, raised in 4.2.0 to avoid OOM on Architectury's transformation passes; `.gitignore` covers `*.hprof` heap dumps from earlier OOMs).
 
