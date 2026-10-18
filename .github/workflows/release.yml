@@ -55,7 +55,12 @@ jobs:
           JAR_PATTERN: ${{ matrix.pattern }}
         run: |
           set -euo pipefail
-          JAR="$(find . -type f -path '*/build/libs/*.jar' -name "$JAR_PATTERN" ! -name '*sources*' ! -name '*dev*' ! -name '*shadow*' ! -name '*slim*' | head -n 1)"
+          CANDIDATES="$RUNNER_TEMP/jar-candidates.txt"
+          find . -type f -path '*/build/libs/*.jar' -name "$JAR_PATTERN" ! -name '*sources*' ! -name '*dev*' ! -name '*shadow*' ! -name '*slim*' > "$CANDIDATES"
+          test -s "$CANDIDATES"
+          echo "release jar candidates for ${{ matrix.asset_name }} (using the first):"
+          sed 's/^/  /' "$CANDIDATES"
+          JAR="$(head -n 1 "$CANDIDATES")"
           test -n "$JAR"
           LIST="$RUNNER_TEMP/jarlist.txt"
           jar tf "$JAR" > "$LIST"

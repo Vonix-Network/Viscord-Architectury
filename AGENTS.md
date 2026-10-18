@@ -51,13 +51,13 @@ The first four lanes are Architectury projects with a shared `common/` source se
 
 A prior Viscord release investigation found that the Forge/NeoForge shaded artifact could omit Javacord's `MessageBuilderBase`, producing runtime `ClassNotFoundException`/message-builder failures even when compilation passed. The current release must not carry that regression forward.
 
-For every shaded Architectury loader artifact (1.18.2 through 1.21.1), the selected release JAR must contain the relocated class:
+For every lane that relocates Javacord into its release JAR — the four Architectury projects (1.18.2 through 1.21.1) and the 26.2/26.3 Fabric targets — the selected release JAR must contain the relocated class:
 
 ```text
 network/vonix/viscord/shadow/javacord/api/entity/message/MessageBuilderBase.class
 ```
 
-The standalone 26.x targets are core-contract lanes where applicable and are intentionally excluded from this Javacord-specific check. The tag-triggered workflow must fail closed if a required shaded loader artifact lacks the class. Do not replace this archive check with a source grep or a successful Gradle build.
+The standalone NeoForge 26.x targets do not relocate Javacord; they bundle it as nested `META-INF/jarjar` jars and are gated on those bundles instead, as recorded in the dependency-closure bullet under Build and CI. The tag-triggered workflow must fail closed if a required shaded loader artifact lacks the class. Do not replace this archive check with a source grep or a successful Gradle build.
 
 The repository also keeps the related Forge/NeoForge `eventBus.excludedPackages` protection for relocated Javacord packages; preserve it when touching loader metadata.
 
