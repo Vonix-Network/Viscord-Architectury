@@ -70,7 +70,8 @@ The authoritative release build is `.github/workflows/release.yml`.
 - Architectury/Loom lanes run Gradle under Java 21, even for Minecraft 1.18.2–1.20.1 source targets that compile with Java 17 compatibility settings.
 - The 26.1.2 and 26.2/26.3 NeoForge lanes run Java 25 with Gradle 9.2.0; the 26.2/26.3 Fabric lanes run Java 25 with Gradle 9.5.1.
 - CI provisions Gradle explicitly with `gradle/actions/setup-gradle`; do not assume `gradle-wrapper.jar` is committed.
-- Each matrix job selects one non-source/non-dev release JAR, performs the required archive checks, and uploads it.
+- Each matrix job selects one non-source/non-dev release JAR, requires exactly one candidate to exist, performs the required archive checks, and uploads it.
+- A release tag must equal `v` + the lane `mod_version`. A tag-triggered build fails when `GITHUB_REF_NAME` differs from `v<mod_version>`, and the release job independently rejects any staged asset whose filename does not carry the tag's version, so a tag can never publish artifacts stamped with another version.
 - Every one of the thirteen matrix cells runs a dependency-closure check before its jar can be published; no lane is exempt. Cells flagged `packaging: 'shaded'` must contain the relocated `MessageBuilderBase` class and no unrelocated `org/javacord/` entry. Cells flagged `packaging: 'jarjar'` (the standalone NeoForge 26.x targets) must contain the nested `META-INF/jarjar/javacord-{api,core}-*.jar` bundles instead. The check prints one pass line per lane, so a green job is evidence that the gate ran.
 - The release job gathers exactly thirteen JARs and writes `SHA256SUMS`.
 - CI does not connect to Discord/Fluxer, deploy a server, activate a mod, or use production credentials.
