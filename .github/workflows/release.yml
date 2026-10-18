@@ -17,19 +17,19 @@ jobs:
       fail-fast: false
       matrix:
         include:
-          - { project: 'viscord-1.18.2-fabric-forge-template', loader: 'fabric', jdk: '21', gradle: '8.14', asset_name: 'viscord-1.18.2-fabric', pattern: 'viscord-fabric-*.jar', shaded: 'true' }
-          - { project: 'viscord-1.18.2-fabric-forge-template', loader: 'forge', jdk: '21', gradle: '8.14', asset_name: 'viscord-1.18.2-forge', pattern: 'viscord-forge-*.jar', shaded: 'true' }
-          - { project: 'viscord-1.19.2-fabric-forge-template', loader: 'fabric', jdk: '21', gradle: '8.14', asset_name: 'viscord-1.19.2-fabric', pattern: 'viscord-fabric-*.jar', shaded: 'true' }
-          - { project: 'viscord-1.19.2-fabric-forge-template', loader: 'forge', jdk: '21', gradle: '8.14', asset_name: 'viscord-1.19.2-forge', pattern: 'viscord-forge-*.jar', shaded: 'true' }
-          - { project: 'viscord-1.20.1-fabric-forge-template', loader: 'fabric', jdk: '21', gradle: '8.14', asset_name: 'viscord-1.20.1-fabric', pattern: 'viscord-fabric-*.jar', shaded: 'true' }
-          - { project: 'viscord-1.20.1-fabric-forge-template', loader: 'forge', jdk: '21', gradle: '8.14', asset_name: 'viscord-1.20.1-forge', pattern: 'viscord-forge-*.jar', shaded: 'true' }
-          - { project: 'viscord-1.21.1-fabric-neoforge-template', loader: 'fabric', jdk: '21', gradle: '8.14', asset_name: 'viscord-1.21.1-fabric', pattern: 'viscord-fabric-*.jar', shaded: 'true' }
-          - { project: 'viscord-1.21.1-fabric-neoforge-template', loader: 'neoforge', jdk: '21', gradle: '8.14', asset_name: 'viscord-1.21.1-neoforge', pattern: 'viscord-neoforge-*.jar', shaded: 'true' }
-          - { project: 'viscord-1.26.1.2-neoforge-target', loader: 'neoforge', jdk: '25', gradle: '9.2.0', asset_name: 'viscord-26.1.2-neoforge', pattern: 'viscord-*.jar', shaded: 'false' }
-          - { project: 'viscord-26.2-fabric', loader: 'fabric', jdk: '25', gradle: '9.5.1', asset_name: 'viscord-26.2-fabric', pattern: 'viscord-fabric-*.jar', shaded: 'false' }
-          - { project: 'viscord-26.2-neoforge', loader: 'neoforge', jdk: '25', gradle: '9.2.0', asset_name: 'viscord-26.2-neoforge', pattern: 'viscord-*.jar', shaded: 'false' }
-          - { project: 'viscord-26.3-fabric', loader: 'fabric', jdk: '25', gradle: '9.5.1', asset_name: 'viscord-26.3-fabric', pattern: 'viscord-fabric-*.jar', shaded: 'false' }
-          - { project: 'viscord-26.3-neoforge', loader: 'neoforge', jdk: '25', gradle: '9.2.0', asset_name: 'viscord-26.3-neoforge', pattern: 'viscord-*.jar', shaded: 'false' }
+          - { project: 'viscord-1.18.2-fabric-forge-template', loader: 'fabric', jdk: '21', gradle: '8.14', asset_name: 'viscord-1.18.2-fabric', pattern: 'viscord-fabric-*.jar', packaging: 'shaded' }
+          - { project: 'viscord-1.18.2-fabric-forge-template', loader: 'forge', jdk: '21', gradle: '8.14', asset_name: 'viscord-1.18.2-forge', pattern: 'viscord-forge-*.jar', packaging: 'shaded' }
+          - { project: 'viscord-1.19.2-fabric-forge-template', loader: 'fabric', jdk: '21', gradle: '8.14', asset_name: 'viscord-1.19.2-fabric', pattern: 'viscord-fabric-*.jar', packaging: 'shaded' }
+          - { project: 'viscord-1.19.2-fabric-forge-template', loader: 'forge', jdk: '21', gradle: '8.14', asset_name: 'viscord-1.19.2-forge', pattern: 'viscord-forge-*.jar', packaging: 'shaded' }
+          - { project: 'viscord-1.20.1-fabric-forge-template', loader: 'fabric', jdk: '21', gradle: '8.14', asset_name: 'viscord-1.20.1-fabric', pattern: 'viscord-fabric-*.jar', packaging: 'shaded' }
+          - { project: 'viscord-1.20.1-fabric-forge-template', loader: 'forge', jdk: '21', gradle: '8.14', asset_name: 'viscord-1.20.1-forge', pattern: 'viscord-forge-*.jar', packaging: 'shaded' }
+          - { project: 'viscord-1.21.1-fabric-neoforge-template', loader: 'fabric', jdk: '21', gradle: '8.14', asset_name: 'viscord-1.21.1-fabric', pattern: 'viscord-fabric-*.jar', packaging: 'shaded' }
+          - { project: 'viscord-1.21.1-fabric-neoforge-template', loader: 'neoforge', jdk: '21', gradle: '8.14', asset_name: 'viscord-1.21.1-neoforge', pattern: 'viscord-neoforge-*.jar', packaging: 'shaded' }
+          - { project: 'viscord-1.26.1.2-neoforge-target', loader: 'neoforge', jdk: '25', gradle: '9.2.0', asset_name: 'viscord-26.1.2-neoforge', pattern: 'viscord-*.jar', packaging: 'jarjar' }
+          - { project: 'viscord-26.2-fabric', loader: 'fabric', jdk: '25', gradle: '9.5.1', asset_name: 'viscord-26.2-fabric', pattern: 'viscord-fabric-*.jar', packaging: 'shaded' }
+          - { project: 'viscord-26.2-neoforge', loader: 'neoforge', jdk: '25', gradle: '9.2.0', asset_name: 'viscord-26.2-neoforge', pattern: 'viscord-*.jar', packaging: 'jarjar' }
+          - { project: 'viscord-26.3-fabric', loader: 'fabric', jdk: '25', gradle: '9.5.1', asset_name: 'viscord-26.3-fabric', pattern: 'viscord-fabric-*.jar', packaging: 'shaded' }
+          - { project: 'viscord-26.3-neoforge', loader: 'neoforge', jdk: '25', gradle: '9.2.0', asset_name: 'viscord-26.3-neoforge', pattern: 'viscord-*.jar', packaging: 'jarjar' }
     steps:
       - uses: actions/checkout@v4
       - uses: actions/setup-java@v4
@@ -57,12 +57,30 @@ jobs:
           set -euo pipefail
           JAR="$(find . -type f -path '*/build/libs/*.jar' -name "$JAR_PATTERN" ! -name '*sources*' ! -name '*dev*' ! -name '*shadow*' ! -name '*slim*' | head -n 1)"
           test -n "$JAR"
-          if [ "${{ matrix.shaded }}" = "true" ]; then
-            if ! jar tf "$JAR" | grep -Fxq 'network/vonix/viscord/shadow/javacord/api/entity/message/MessageBuilderBase.class'; then
-              echo "Required relocated Javacord MessageBuilderBase.class is missing from $JAR"
+          LIST="$RUNNER_TEMP/jarlist.txt"
+          jar tf "$JAR" > "$LIST"
+          test -s "$LIST"
+          case "${{ matrix.packaging }}" in
+            shaded)
+              grep -Fxq 'network/vonix/viscord/shadow/javacord/api/entity/message/MessageBuilderBase.class' "$LIST" \
+                || { echo "MISSING relocated Javacord MessageBuilderBase.class in $JAR"; exit 1; }
+              if grep -q '^org/javacord/' "$LIST"; then
+                echo "UNRELOCATED org/javacord/ entries present in $JAR"
+                exit 1
+              fi
+              ;;
+            jarjar)
+              grep -Eq '^META-INF/jarjar/javacord-core-[^/]*\.jar$' "$LIST" \
+                || { echo "MISSING nested META-INF/jarjar javacord-core jar in $JAR"; exit 1; }
+              grep -Eq '^META-INF/jarjar/javacord-api-[^/]*\.jar$' "$LIST" \
+                || { echo "MISSING nested META-INF/jarjar javacord-api jar in $JAR"; exit 1; }
+              ;;
+            *)
+              echo "Unknown packaging for ${{ matrix.asset_name }}: '${{ matrix.packaging }}'"
               exit 1
-            fi
-          fi
+              ;;
+          esac
+          echo "dependency-closure gate PASSED: ${{ matrix.asset_name }} packaging=${{ matrix.packaging }} jar=$(basename "$JAR")"
           mkdir -p "$RUNNER_TEMP/release"
           MOD_VERSION="$(awk -F= '/^[[:space:]]*mod_version[[:space:]]*=/ {gsub(/[[:space:]]/, "", $2); print $2; exit}' gradle.properties)"
           test -n "$MOD_VERSION"
