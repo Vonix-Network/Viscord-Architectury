@@ -71,6 +71,7 @@ The authoritative release build is `.github/workflows/release.yml`.
 - The 26.1.2 and 26.2/26.3 NeoForge lanes run Java 25 with Gradle 9.2.0; the 26.2/26.3 Fabric lanes run Java 25 with Gradle 9.5.1.
 - CI provisions Gradle explicitly with `gradle/actions/setup-gradle`; do not assume `gradle-wrapper.jar` is committed.
 - Each matrix job selects one non-source/non-dev release JAR, performs the required archive checks, and uploads it.
+- The relocated-Javacord archive check runs for every matrix cell whose `shaded: 'true'` flag is set — the eight cells built from the four shared-core Architectury projects, in both loaders. The standalone 26.x targets are intentionally excluded from this Javacord-specific check.
 - The release job gathers exactly thirteen JARs and writes `SHA256SUMS`.
 - CI does not connect to Discord/Fluxer, deploy a server, activate a mod, or use production credentials.
 

@@ -3,7 +3,7 @@
 This page covers two migration paths:
 
 1. **Legacy JSON → TOML** (Viscord 3.x → 4.x).
-2. **4.1.x → 4.2.0** (current).
+2. **4.1.x → 4.2.0** (most recent required config migration; no config migration was required by the 5.x releases).
 
 ## 1. Legacy JSON → TOML
 
