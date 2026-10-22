@@ -92,6 +92,12 @@ shadowJar {
     relocate 'com.neovisionaries', 'network.vonix.viscord.shadow.neovisionaries'
     relocate 'com.codahale', 'network.vonix.viscord.shadow.codahale'
     relocate 'org.bouncycastle', 'network.vonix.viscord.shadow.bouncycastle'
+    // Never ship a log4j SPI descriptor from a mod jar. Javacord registers a
+    // PropertySource service, and mergeServiceFiles() rewrites it into the jar root
+    // pointing at a relocated mod class. log4j's PropertiesUtil runs during the
+    // MC-BOOTSTRAP bootstrap, where a mod class must never be resolvable.
+    exclude 'META-INF/services/org.apache.logging.log4j.*'
+
     mergeServiceFiles()
 }
 

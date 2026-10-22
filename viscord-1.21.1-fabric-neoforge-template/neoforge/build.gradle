@@ -138,6 +138,12 @@ shadowJar {
     // (including serde), and a split package fails JPMS resolution with architectury.
     relocate 'com.electronwill.nightconfig', 'network.vonix.viscord.shadow.nightconfig'
 
+    // Never ship a log4j SPI descriptor from a mod jar. Javacord registers a
+    // PropertySource service, and mergeServiceFiles() rewrites it into the jar root
+    // pointing at a relocated mod class. log4j's PropertiesUtil runs during the
+    // MC-BOOTSTRAP bootstrap, where a mod class must never be resolvable.
+    exclude 'META-INF/services/org.apache.logging.log4j.*'
+
     mergeServiceFiles()
 }
 

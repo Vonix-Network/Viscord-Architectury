@@ -5,7 +5,7 @@ import net.minecraft.server.MinecraftServer;
 import network.vonix.viscord.Viscord;
 import network.vonix.viscord.config.toml.ViscordConfigToml;
 import network.vonix.viscord.discord.BotClient;
-import network.vonix.viscord.discord.ComponentV2LogFilter;
+import network.vonix.viscord.discord.JavacordLogQuiet;
 import network.vonix.viscord.discord.EmbedFactory;
 import network.vonix.viscord.discord.WebhookClient;
 import network.vonix.viscord.utils.DiscordFormatter;
@@ -85,15 +85,11 @@ public class DiscordPlatform {
             if (slashCommandListener != null) slashCommandListener.onCommand(event);
         });
 
-        // Install the Components V2 noise filter BEFORE connecting so the very first
-        // MESSAGE_UPDATE that hits the gateway is already filtered. Watched set is
-        // {chat channel, events channel} — these are the only channels Viscord
-        // actually reads from. Anything else (giveaway bots, ticket bots, etc. in
-        // unrelated guild channels) is silently dropped.
-        java.util.Set<String> watched = new java.util.HashSet<>();
-        if (channelId != null && !channelId.isEmpty()) watched.add(channelId);
-        if (eventChannelId != null && !eventChannelId.isEmpty()) watched.add(eventChannelId);
-        ComponentV2LogFilter.install(watched);
+        // Quiet Javacord's Components V2 packet warnings BEFORE connecting so the very
+        // first MESSAGE_UPDATE that hits the gateway is already filtered. This only
+        // raises the level of the four Javacord loggers that emit the noise; no
+        // log4j-core type is subclassed and no LoggerConfig is mutated.
+        JavacordLogQuiet.install();
 
         botClient.connect(botToken, channelId).thenRunAsync(() -> {
             if (isStatusOnly) {
@@ -103,7 +99,7 @@ public class DiscordPlatform {
                 sendStartupEmbed(ViscordConfigToml.Server.NAME.get());
             }
             pushStatus();
-        }, CompletableFuture.delayedExecutor(5, TimeUnit.SECONDS)).exceptionally(t -> {
+        }, CompletableFuture.delayedExecutor(5, TimeUnit.SECONDS, Viscord.ASYNC_EXECUTOR)).exceptionally(t -> {
             Viscord.LOGGER.error("[Discord] Failed to connect bot: {}", t.getMessage());
             return null;
         });

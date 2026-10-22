@@ -34,6 +34,11 @@ public final class Viscord {
         ScheduledThreadPoolExecutor executor = new ScheduledThreadPoolExecutor(cores, runnable -> {
             Thread thread = new Thread(runnable, "Viscord-Async-" + counter.incrementAndGet());
             thread.setDaemon(true);
+            // Forge's EventSubclassTransformer resolves superclasses through the
+            // thread context class loader. Pool threads must therefore carry the
+            // Viscord (game) loader, otherwise shaded Javacord classes get looked
+            // up on the system loader and fail to link inside the game layer.
+            thread.setContextClassLoader(Viscord.class.getClassLoader());
             return thread;
         });
         executor.setMaximumPoolSize(Math.max(8, cores * 2));

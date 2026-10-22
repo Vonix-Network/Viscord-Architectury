@@ -88,7 +88,7 @@ public class BotClient {
         Viscord.LOGGER.info("Connected as {}", api.getYourself().getDiscriminatedName());
 
         // Components V2 noise (Container=17, TextDisplay=10, etc.) is suppressed by
-        // ComponentV2LogFilter (see DiscordPlatform.initialize). The previous global
+        // JavacordLogQuiet (see DiscordPlatform.initialize). The previous global
         // UncaughtExceptionHandler approach was a no-op because Javacord catches+logs
         // the parse exception internally instead of letting it propagate.
 
@@ -273,7 +273,7 @@ public class BotClient {
             embed.setTimestampToNow();
 
             try {
-                return channel.sendMessage(embed);
+                return sendMessageWithGameClassLoader(channel, embed);
             } catch (RejectedExecutionException e) {
                 if (Viscord.isShuttingDown()) {
                     Viscord.LOGGER.warn("[Discord] Dropping embed because the Discord executor rejected it during server shutdown");
@@ -282,6 +282,36 @@ public class BotClient {
                 throw e;
             }
         }).orElse(CompletableFuture.completedFuture(null));
+    }
+
+    /**
+     * Sends through Javacord with the thread context class loader pinned to the mod
+     * loader.
+     *
+     * <p>Forge's EventSubclassTransformer resolves a class's superclass through
+     * {@code Thread.currentThread().getContextClassLoader()} when it transforms mod
+     * classes. Javacord loads shaded classes lazily on whatever thread performs the
+     * call, so an embed sent from a pool thread whose context loader is the system
+     * loader makes the transformer fail with
+     * {@code ClassNotFoundException: ...shadow.javacord.api.entity.message.MessageBuilderBase}
+     * and links the class outside the game module layer. Pinning the context loader
+     * keeps the lookup inside the game loader.
+     */
+    private static CompletableFuture<org.javacord.api.entity.message.Message> sendMessageWithGameClassLoader(
+            org.javacord.api.entity.channel.TextChannel channel,
+            org.javacord.api.entity.message.embed.EmbedBuilder embed) {
+        Thread thread = Thread.currentThread();
+        ClassLoader gameLoader = BotClient.class.getClassLoader();
+        ClassLoader previous = thread.getContextClassLoader();
+        if (gameLoader == null || previous == gameLoader) {
+            return channel.sendMessage(embed);
+        }
+        thread.setContextClassLoader(gameLoader);
+        try {
+            return channel.sendMessage(embed);
+        } finally {
+            thread.setContextClassLoader(previous);
+        }
     }
 
     public boolean isConnected() {

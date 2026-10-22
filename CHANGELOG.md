@@ -7,6 +7,21 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [5.2.1] - 2026-10-22
+
+### Fixed
+- **Discord work no longer runs on the JDK common ForkJoinPool.** `DiscordPlatform.initialize` scheduled the post-connect startup embed with `CompletableFuture.delayedExecutor(5, SECONDS)`, which runs on `ForkJoinPool.commonPool()`. Those threads carry the system class loader as their thread context class loader, so Forge's `EventSubclassTransformer` resolved the shaded Javacord superclass through the wrong loader and logged `Could not find parent network/vonix/viscord/shadow/javacord/api/entity/message/MessageBuilderBase … in classloader jdk.internal.loader.ClassLoaders$AppClassLoader` followed by `An error occurred building event handler` on every server start. Delayed Discord work now runs on `Viscord.ASYNC_EXECUTOR`.
+- **Viscord worker threads carry the game class loader.** `Viscord.ASYNC_EXECUTOR` threads now pin `setContextClassLoader(Viscord.class.getClassLoader())`, and `BotClient.sendEmbed` pins the context loader around the Javacord `sendMessage` call, so shaded Javacord classes always resolve inside the game module layer regardless of which thread performs the send.
+- **Components V2 noise suppression no longer subclasses log4j-core.** `ComponentV2LogFilter` extended `org.apache.logging.log4j.core.filter.AbstractFilter` and mutated `LoggerConfig` filter chains from a mod-loader class. On Forge 1.20.1 log4j lives in the `MC-BOOTSTRAP` module layer, so such a class links log4j-core supertypes (including `Filter`'s `MessageSupplier` overloads) outside that layer — the exact shape of the `LinkageError: loader constraint violation … wants to load interface org.apache.logging.log4j.util.MessageSupplier` reported from `EventBus.handleException`, which replaces any exception thrown by an event listener and terminates the server. It is replaced by `JavacordLogQuiet`, which only raises the level of the four noisy Javacord loggers through `Configurator.setLevel(String, Level)`.
+- **No log4j SPI descriptor is published in the shaded jars.** `mergeServiceFiles()` rewrote Javacord's `META-INF/services/org.apache.logging.log4j.util.PropertySource` into the jar root pointing at a relocated mod class. log4j's `PropertiesUtil` runs during bootstrap and must never resolve a mod class; the descriptor is now excluded from every shaded lane.
+
+### Changed
+- Components V2 packet chatter from the Javacord gateway is suppressed by logger level rather than by a per-message filter. Real errors from those loggers still appear; the previous per-message `DEBUG` line for watched channels is gone.
+
+### Release scope
+- All thirteen supported loader cells rebuilt at `5.2.1`: 1.18.2 Fabric/Forge, 1.19.2 Fabric/Forge, 1.20.1 Fabric/Forge, 1.21.1 Fabric/NeoForge, 26.1.2 NeoForge, 26.2 Fabric/NeoForge, and 26.3 Fabric/NeoForge.
+- No config keys, commands, or linked-account data change in this release.
+
 ## [5.2.0] - 2026-10-14
 
 ### Added
